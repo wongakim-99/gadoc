@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getChatSocket } from '@/lib/socket';
 import { syncPeerVideoTrackSenders } from './mediaTracks';
 import {
@@ -18,6 +18,19 @@ import { PendingIceCandidates } from './iceCandidates';
 
 export function useHuddle(currentUserId: string, channelId: string) {
     const store = useHuddleStore();
+    const [socketReady, setSocketReady] = useState(false);
+    useEffect(() => {
+        const socket = getChatSocket();
+        const connected = () => setSocketReady(true);
+        const disconnected = () => setSocketReady(false);
+        setSocketReady(socket.connected);
+        socket.on('connect', connected);
+        socket.on('disconnect', disconnected);
+        return () => {
+            socket.off('connect', connected);
+            socket.off('disconnect', disconnected);
+        };
+    }, []);
     const rtcConfigRef = useRef<RTCConfiguration>(resolveHuddleRtcConfig());
     const peers = useRef<Map<string, RTCPeerConnection>>(new Map());
     const videoSenders = useRef<Map<string, RTCRtpSender>>(new Map());
@@ -552,6 +565,7 @@ export function useHuddle(currentUserId: string, channelId: string) {
     });
 
     return {
+        socketReady,
         activeChannelId: store.activeChannelId,
         participants: store.participants,
         localStream: store.localStream,

@@ -111,6 +111,7 @@ jobs:
       INTERNAL_API_URL: http://127.0.0.1:8084
       NEXT_PUBLIC_API_URL: http://127.0.0.1:3002/api
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3002
+      NEXT_PUBLIC_SOCKET_URL: http://127.0.0.1:8084
       SLACORD_E2E_BASE_URL: http://127.0.0.1:3002
       SLACORD_E2E_API_URL: http://127.0.0.1:8084/api
     steps:

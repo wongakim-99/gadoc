@@ -146,6 +146,7 @@ export default function ChannelPage({ params }: Props) {
                 onOpenPins={() => setShowPins(true)}
                 onStartHuddle={handleStartHuddle}
                 huddleActive={huddleActive}
+                huddleReady={huddle.socketReady}
             />
             <div className="flex min-h-0 flex-1">
                 <div className="flex min-h-0 flex-1 flex-col">

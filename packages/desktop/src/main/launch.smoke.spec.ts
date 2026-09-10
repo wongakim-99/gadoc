@@ -76,7 +76,14 @@ describe('desktop launch smoke', () => {
     let baseUrl = '';
 
     beforeAll(async () => {
-        execFileSync('yarn', ['build'], { cwd: packageRoot, stdio: 'pipe' });
+        // Invoke the JS CLI directly: Windows cannot exec a yarn.cmd shim.
+        const tsupPackagePath = requireFromThisFile.resolve('tsup/package.json');
+        const tsupBin = requireFromThisFile(tsupPackagePath).bin.tsup as string;
+        execFileSync(
+            process.execPath,
+            [path.resolve(path.dirname(tsupPackagePath), tsupBin), '--config', 'tsup.config.ts'],
+            { cwd: packageRoot, stdio: 'pipe' },
+        );
         server = createSmokeServer();
         await new Promise<void>((resolve) => {
             server.listen(0, '127.0.0.1', () => resolve());
@@ -89,6 +96,7 @@ describe('desktop launch smoke', () => {
     });
 
     afterAll(async () => {
+        if (!server?.listening) return;
         await new Promise<void>((resolve, reject) => {
             server.close((error) => {
                 if (error) reject(error);

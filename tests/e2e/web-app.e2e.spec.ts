@@ -434,13 +434,13 @@ test.describe.serial("slacord web e2e", () => {
     );
 
     await expect(
-      page.getByRole("dialog", { name: "워크스페이스 빠른 검색" }),
+      page.getByRole("dialog", { name: "워크스페이스 검색" }),
     ).toBeVisible();
     await page
-      .getByPlaceholder("메시지, 문서, 이슈, 채널, 동작으로 검색...")
+      .getByPlaceholder("채널, 메시지, 문서, 이슈 검색")
       .fill(targetContent);
     const messageResult = page
-      .getByRole("link", { name: new RegExp(targetContent) })
+      .getByRole("option", { name: new RegExp(targetContent) })
       .first();
     await expect(messageResult).toBeVisible();
 
@@ -504,18 +504,18 @@ test.describe.serial("slacord web e2e", () => {
         process.platform === "darwin" ? "Meta+K" : "Control+K",
       );
       await expect(
-        page.getByRole("dialog", { name: "워크스페이스 빠른 검색" }),
+        page.getByRole("dialog", { name: "워크스페이스 검색" }),
       ).toBeVisible();
     };
 
-    const paletteInput = page.getByRole("textbox", {
-      name: "명령 팔레트 검색",
+    const paletteInput = page.getByRole("combobox", {
+      name: "워크스페이스 검색",
     });
 
     await openPalette();
     await paletteInput.fill(extraChannelName);
     await page
-      .getByRole("link", { name: new RegExp(`${extraChannelName} 공개 채널`) })
+      .getByRole("option", { name: new RegExp(`${extraChannelName} 채널`) })
       .first()
       .click();
     await page.waitForURL(`**/${fixture.teamId}/channel/${extraChannelId}`);
@@ -523,7 +523,7 @@ test.describe.serial("slacord web e2e", () => {
     await openPalette();
     await paletteInput.fill(documentTitle);
     await page
-      .getByRole("button", { name: new RegExp(`"${documentTitle}" 문서 생성`) })
+      .getByRole("option", { name: new RegExp(`"${documentTitle}" 문서 생성`) })
       .click();
     await page.waitForURL(new RegExp(`/${fixture.teamId}/docs/[^?]+\\?edit=1`));
     await expect(page.locator("input").first()).toHaveValue(documentTitle);
@@ -531,7 +531,7 @@ test.describe.serial("slacord web e2e", () => {
     await openPalette();
     await paletteInput.fill(issueTitle);
     await page
-      .getByRole("button", { name: new RegExp(`"${issueTitle}" 이슈 초안 열기`) })
+      .getByRole("option", { name: new RegExp(`"${issueTitle}" 이슈 초안 열기`) })
       .click();
     await page.waitForURL(
       new RegExp(`/${fixture.teamId}/issues\\?create=1&status=todo&title=`),
@@ -591,6 +591,13 @@ test.describe.serial("slacord web e2e", () => {
     await expect(
       page.getByText("guest는 공지를 읽기만 할 수 있습니다."),
     ).toBeVisible();
+
+    await expect(page.getByRole("link", { name: "휴지통", exact: true })).toHaveCount(0);
+    const runtimeErrors: string[] = [];
+    page.on("pageerror", error => runtimeErrors.push(error.message));
+    await page.goto(`/${fixture.teamId}/docs/archived`);
+    await expect(page.getByRole("alert").filter({ hasText: "관리자 권한이 필요합니다." })).toBeVisible();
+    expect(runtimeErrors).toEqual([]);
   });
 
   test("설정 페이지에서 외부 브리지 relay 구성을 저장함", async ({ page }) => {
