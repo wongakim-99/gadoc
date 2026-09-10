@@ -33,8 +33,12 @@ export interface DesktopUpdateInstallResult {
 export interface SlacordDesktopBridge {
     isDesktop: boolean;
     platform: string;
+    /** Optional additions keep web deployments compatible with older shells. */
+    bridgeVersion?: number;
+    setBadgeCount?: (count: number) => Promise<boolean>;
+    onNavigate?: (listener: (href: string) => void) => () => void;
     notify: (title: string, body: string, href?: string) => Promise<boolean>;
-    requestMediaAccess: () => Promise<{ microphone: boolean; camera: boolean }>;
+    requestMediaAccess: (kind?: 'microphone' | 'camera') => Promise<{ microphone: boolean; camera: boolean }>;
     getUpdateStatus: () => Promise<DesktopUpdateStatus>;
     checkForUpdates: () => Promise<DesktopUpdateCheckResult>;
     downloadUpdate: () => Promise<DesktopUpdateDownloadResult>;

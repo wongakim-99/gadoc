@@ -4,10 +4,10 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 
-const require = createRequire(import.meta.url);
+const requireFromThisFile = createRequire(import.meta.url);
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(currentDir, '../..');
-const electronBinary = require('electron');
+const electronBinary = requireFromThisFile('electron');
 
 function createSmokeServer() {
     let resolveReady: ((payload: Record<string, string>) => void) | null = null;
@@ -15,7 +15,13 @@ function createSmokeServer() {
         resolveReady = resolve;
     });
 
+    let webRevision = 1;
     const server = http.createServer((request, response) => {
+        if (request.url === '/__web_update__') {
+            webRevision = 2;
+            response.writeHead(204).end();
+            return;
+        }
         if (request.url === '/favicon.ico') {
             response.writeHead(204).end();
             return;
@@ -28,7 +34,10 @@ function createSmokeServer() {
             return;
         }
 
-        response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        response.writeHead(200, {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'no-store',
+        });
         response.end(`<!doctype html>
 <html lang="ko">
   <head>
@@ -38,11 +47,13 @@ function createSmokeServer() {
   <body>
     <h1 id="status">대기 중</h1>
     <script>
+      const revision = ${webRevision};
       const bridge = window.slacordDesktop;
       const target = document.getElementById('status');
       if (bridge && bridge.isDesktop && typeof bridge.getUpdateStatus === 'function') {
         target.textContent = '데스크톱 브리지 준비';
-        fetch('/__desktop_ready__?desktop=1&notify=' + Number(typeof bridge.notify === 'function') + '&updater=' + Number(typeof bridge.getUpdateStatus === 'function') + '&href=' + encodeURIComponent(window.location.pathname));
+        if (revision === 1) { fetch('/__web_update__').then(() => location.reload()); }
+        else bridge.getUpdateStatus().then(() => fetch('/__desktop_ready__?revision=' + revision + '&bridge=' + bridge.bridgeVersion + '&desktop=1&notify=' + Number(typeof bridge.notify === 'function') + '&updater=' + Number(typeof bridge.getUpdateStatus === 'function') + '&href=' + encodeURIComponent(window.location.pathname))).catch(error => fetch('/__desktop_ready__?error=' + encodeURIComponent(error.message)));
       } else {
         target.textContent = '브리지 누락';
         fetch('/__desktop_ready__?desktop=0&notify=0&updater=0&href=' + encodeURIComponent(window.location.pathname));
@@ -86,9 +97,9 @@ describe('desktop launch smoke', () => {
         });
     });
 
-    it('Electron 앱이 실행되고 preload 브리지가 렌더러에 노출됨', async () => {
+    it('앱 재빌드 없이 새 웹 버전을 로드하고 preload IPC를 유지함', async () => {
         const logs: string[] = [];
-        const appEnv = {
+        const appEnv: NodeJS.ProcessEnv = {
             ...process.env,
             ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
             ELECTRON_ENABLE_LOGGING: '1',
@@ -123,6 +134,8 @@ describe('desktop launch smoke', () => {
             ]);
 
             expect(ready).toEqual({
+                revision: '2',
+                bridge: '2',
                 desktop: '1',
                 notify: '1',
                 updater: '1',

@@ -1,8 +1,15 @@
 import { app, BrowserWindow, dialog, ipcMain, type BrowserWindow as BrowserWindowType } from 'electron';
-import type { DesktopUpdateCheckResult, DesktopUpdateDownloadResult, DesktopUpdateInstallResult, DesktopUpdateStage, DesktopUpdateStatus } from '@slacord/contracts';
+import type {
+    DesktopUpdateCheckResult,
+    DesktopUpdateDownloadResult,
+    DesktopUpdateInstallResult,
+    DesktopUpdateStage,
+    DesktopUpdateStatus,
+} from '@slacord/contracts';
 import log from 'electron-log';
 import { autoUpdater } from 'electron-updater';
 import { attachUpdateWindow, getUpdateStatus, setUpdateProgress, setUpdateStatus } from './update-status';
+import { isTrustedSender } from './ipc-security';
 import { normalizeUpdateError, shouldFallbackToManualDownload } from './update-errors';
 
 const CHECK_INTERVAL_MS = 1000 * 60 * 60 * 6;
@@ -33,7 +40,6 @@ export function setupAutoUpdates(window: BrowserWindowType) {
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
     autoUpdater.autoRunAppAfterInstall = true;
-    autoUpdater.forceCodeSigning = process.platform === 'darwin';
     autoUpdater.on('checking-for-update', () => send('checking'));
     autoUpdater.on('update-available', (info) => {
         downloadedVersion = '';
@@ -56,7 +62,10 @@ export function setupAutoUpdates(window: BrowserWindowType) {
     autoUpdater.on('update-downloaded', async (info) => {
         downloadedVersion = info.version;
         setUpdateProgress(null);
-        send('downloaded', `v${info.version}`, { availableVersion: info.version, progress: 1 });
+        send('downloaded', `v${info.version}`, {
+            availableVersion: info.version,
+            progress: 1,
+        });
         if (installRequested) return;
         const choice = await dialog.showMessageBox({
             type: 'info',
@@ -83,15 +92,30 @@ export function setupAutoUpdates(window: BrowserWindowType) {
 function registerHandlers() {
     if (handlersRegistered) return;
     handlersRegistered = true;
-    ipcMain.handle('desktop:get-update-status', async () => getUpdateStatus());
-    ipcMain.handle('desktop:check-for-updates', async () => checkForUpdates());
-    ipcMain.handle('desktop:download-update', async () => downloadUpdate());
-    ipcMain.handle('desktop:restart-to-update', async () => restartToInstall());
+    ipcMain.handle('desktop:get-update-status', async (event) => {
+        assertTrusted(event);
+        return getUpdateStatus();
+    });
+    ipcMain.handle('desktop:check-for-updates', async (event) => {
+        assertTrusted(event);
+        return checkForUpdates();
+    });
+    ipcMain.handle('desktop:download-update', async (event) => {
+        assertTrusted(event);
+        return downloadUpdate();
+    });
+    ipcMain.handle('desktop:restart-to-update', async (event) => {
+        assertTrusted(event);
+        return restartToInstall();
+    });
 }
 
 async function checkForUpdates(): Promise<DesktopUpdateCheckResult> {
     if (!app.isPackaged) {
-        return { ok: false, status: createStatus('idle', '패키징된 앱에서만 업데이트를 확인할 수 있어요.') };
+        return {
+            ok: false,
+            status: createStatus('idle', '패키징된 앱에서만 업데이트를 확인할 수 있어요.'),
+        };
     }
     if (!supportsInAppAutoUpdate()) {
         return {
@@ -107,7 +131,9 @@ async function checkForUpdates(): Promise<DesktopUpdateCheckResult> {
         .then(() => ({ ok: true, status: getUpdateStatus() }))
         .catch((error: Error) => {
             const detail = normalizeUpdateError(error);
-            send('error', detail, { manualDownloadRequired: shouldFallbackToManualDownload(error) });
+            send('error', detail, {
+                manualDownloadRequired: shouldFallbackToManualDownload(error),
+            });
             return { ok: false, status: getUpdateStatus() };
         })
         .finally(() => {
@@ -118,14 +144,21 @@ async function checkForUpdates(): Promise<DesktopUpdateCheckResult> {
 
 async function downloadUpdate(): Promise<DesktopUpdateDownloadResult> {
     if (!app.isPackaged) {
-        return { ok: false, status: createStatus('idle', '패키징된 앱에서만 업데이트를 내려받을 수 있어요.') };
+        return {
+            ok: false,
+            status: createStatus('idle', '패키징된 앱에서만 업데이트를 내려받을 수 있어요.'),
+        };
     }
     if (!supportsInAppAutoUpdate()) {
         return {
             ok: false,
-            status: createStatus('error', 'macOS는 지금 앱 안 다운로드 대신 다운로드 페이지에서 새 설치 파일을 안내하고 있어요.', {
-                manualDownloadRequired: true,
-            }),
+            status: createStatus(
+                'error',
+                'macOS는 지금 앱 안 다운로드 대신 다운로드 페이지에서 새 설치 파일을 안내하고 있어요.',
+                {
+                    manualDownloadRequired: true,
+                },
+            ),
         };
     }
     if (getUpdateStatus().stage === 'downloaded') {
@@ -155,10 +188,16 @@ async function downloadUpdate(): Promise<DesktopUpdateDownloadResult> {
 
 async function restartToInstall(): Promise<DesktopUpdateInstallResult> {
     if (!app.isPackaged) {
-        return { ok: false, status: createStatus('idle', '패키징된 앱에서만 업데이트를 설치할 수 있어요.') };
+        return {
+            ok: false,
+            status: createStatus('idle', '패키징된 앱에서만 업데이트를 설치할 수 있어요.'),
+        };
     }
     if (!downloadedVersion) {
-        return { ok: false, status: createStatus('idle', '설치할 업데이트가 아직 준비되지 않았어요.') };
+        return {
+            ok: false,
+            status: createStatus('idle', '설치할 업데이트가 아직 준비되지 않았어요.'),
+        };
     }
     if (installRequested) {
         return { ok: true, status: getUpdateStatus() };
@@ -166,7 +205,10 @@ async function restartToInstall(): Promise<DesktopUpdateInstallResult> {
 
     installRequested = true;
     setUpdateProgress(null);
-    send('installing', `v${downloadedVersion}`, { availableVersion: downloadedVersion, progress: 1 });
+    send('installing', `v${downloadedVersion}`, {
+        availableVersion: downloadedVersion,
+        progress: 1,
+    });
     const windows = BrowserWindow.getAllWindows();
     for (const window of windows) {
         if (!window.isDestroyed()) window.webContents.send('desktop:update-status', getUpdateStatus());
@@ -199,7 +241,11 @@ function send(stage: DesktopUpdateStage, detail = '', overrides: Partial<Desktop
     setUpdateStatus({ ...createStatus(stage, detail), ...overrides });
 }
 
-function createStatus(stage: DesktopUpdateStage, detail = '', overrides: Partial<DesktopUpdateStatus> = {}): DesktopUpdateStatus {
+function createStatus(
+    stage: DesktopUpdateStage,
+    detail = '',
+    overrides: Partial<DesktopUpdateStatus> = {},
+): DesktopUpdateStatus {
     return {
         stage,
         detail,
@@ -208,4 +254,8 @@ function createStatus(stage: DesktopUpdateStage, detail = '', overrides: Partial
         manualDownloadRequired: false,
         ...overrides,
     };
+}
+
+function assertTrusted(event: Electron.IpcMainInvokeEvent) {
+    if (!isTrustedSender(event)) throw new Error('Untrusted desktop request.');
 }

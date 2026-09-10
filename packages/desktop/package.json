@@ -1,7 +1,7 @@
 {
   "name": "@slacord/desktop",
   "version": "1.0.10",
-  "description": "Slacord 데스크톱 앱 (Electron + DMG)",
+  "description": "Slacord \ub370\uc2a4\ud06c\ud1b1 \uc571 (Electron + DMG)",
   "author": "kscold",
   "private": true,
   "main": "dist/main.js",
@@ -16,7 +16,8 @@
     "dist:win": "yarn build && electron-builder --win nsis --publish never",
     "release:mac": "yarn build && electron-builder --mac dmg zip --publish always",
     "release:win": "yarn build && electron-builder --win nsis --publish always",
-    "clean": "rm -rf dist release"
+    "clean": "rm -rf dist release",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@slacord/contracts": "1.0.10",
@@ -83,8 +84,8 @@
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.inherit.plist",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "허들(음성 통화)을 위해 마이크 접근이 필요합니다.",
-        "NSCameraUsageDescription": "영상 통화를 위해 카메라 접근이 필요합니다."
+        "NSMicrophoneUsageDescription": "\ud5c8\ub4e4(\uc74c\uc131 \ud1b5\ud654)\uc744 \uc704\ud574 \ub9c8\uc774\ud06c \uc811\uadfc\uc774 \ud544\uc694\ud569\ub2c8\ub2e4.",
+        "NSCameraUsageDescription": "\uc601\uc0c1 \ud1b5\ud654\ub97c \uc704\ud574 \uce74\uba54\ub77c \uc811\uadfc\uc774 \ud544\uc694\ud569\ub2c8\ub2e4."
       }
     },
     "win": {

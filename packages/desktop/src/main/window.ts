@@ -1,9 +1,12 @@
 import { app, BrowserWindow } from 'electron';
 import { getPreloadPath, getStartUrl } from './config';
 import { protectNavigation } from './permissions';
+import { offlinePage } from './offline';
 
 let isQuitting = false;
-app.on('before-quit', () => { isQuitting = true; });
+app.on('before-quit', () => {
+    isQuitting = true;
+});
 
 export function createMainWindow() {
     const window = new BrowserWindow({
@@ -12,7 +15,7 @@ export function createMainWindow() {
         minWidth: 1180,
         minHeight: 760,
         backgroundColor: '#0f0c09',
-        titleBarStyle: 'hiddenInset',
+        titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
         show: false,
         webPreferences: {
             preload: getPreloadPath(),
@@ -25,17 +28,23 @@ export function createMainWindow() {
     });
 
     protectNavigation(window.webContents);
+    window.webContents.on('did-fail-load', (_event, code, _description, url, isMainFrame) => {
+        if (!isMainFrame || code === -3 || url.startsWith('data:')) return;
+        void window.loadURL(offlinePage(getStartUrl())).catch(() => undefined);
+        window.show();
+    });
     window.once('ready-to-show', () => window.show());
 
-    // macOS: 빨간 X 클릭 시 창 숨기기 (렌더러+소켓 유지 → 알림 수신 가능)
-    // Cmd+Q(before-quit) 시에만 실제 종료
+    // Windows/macOS: close hides the window, preserving sockets and calls.
+    // Tray Quit or Cmd+Q is the explicit exit path.
     window.on('close', (event) => {
-        if (process.platform === 'darwin' && !isQuitting) {
+        if (!isQuitting) {
             event.preventDefault();
             window.hide();
         }
     });
 
-    void window.loadURL(getStartUrl());
+    window.on('focus', () => window.flashFrame(false));
+    void window.loadURL(getStartUrl()).catch(() => undefined);
     return window;
 }

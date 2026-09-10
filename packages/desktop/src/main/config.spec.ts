@@ -1,4 +1,4 @@
-import { getAppOrigin, getStartUrl, isAllowedUrl } from './config';
+import { getAppOrigin, getStartUrl, isAllowedUrl, resolveAppPath, isExternalUrl } from './config';
 
 describe('desktop config', () => {
     const originalEnv = process.env;
@@ -24,5 +24,21 @@ describe('desktop config', () => {
         expect(isAllowedUrl('https://slacord.cloud/auth/login')).toBe(true);
         expect(isAllowedUrl('https://malicious.example.com')).toBe(false);
         expect(isAllowedUrl('not-a-url')).toBe(false);
+    });
+    it('trusts local development only at the configured origin and port', () => {
+        expect(isAllowedUrl('http://localhost:3002')).toBe(false);
+        expect(isAllowedUrl('http://slacord.cloud')).toBe(false);
+        expect(isAllowedUrl('https://slacord.cloud:8443')).toBe(false);
+        process.env.SLACORD_DESKTOP_START_URL = 'http://localhost:3002/auth/login';
+        expect(isAllowedUrl('http://localhost:3002/team')).toBe(true);
+        expect(isAllowedUrl('http://localhost:4000')).toBe(false);
+    });
+    it('notification paths cannot escape the application origin', () => {
+        expect(resolveAppPath('/team/issues?issue=123')).toBe('/team/issues?issue=123');
+        expect(resolveAppPath('//evil.example')).toBeNull();
+        expect(resolveAppPath('/\\evil.example')).toBeNull();
+        expect(resolveAppPath('https://evil.example')).toBeNull();
+        expect(isExternalUrl('file:///etc/passwd')).toBe(false);
+        expect(isExternalUrl('https://example.com')).toBe(true);
     });
 });

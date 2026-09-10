@@ -1,14 +1,40 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { DesktopUpdateCheckResult, DesktopUpdateDownloadResult, DesktopUpdateInstallResult, DesktopUpdateStatus, SlacordDesktopBridge } from '@slacord/contracts';
+import type {
+    DesktopUpdateCheckResult,
+    DesktopUpdateDownloadResult,
+    DesktopUpdateInstallResult,
+    DesktopUpdateStatus,
+    SlacordDesktopBridge,
+} from '@slacord/contracts';
 
 type DesktopRenderer = Pick<typeof ipcRenderer, 'invoke' | 'on' | 'off'>;
 
 export function createDesktopBridge(renderer: DesktopRenderer = ipcRenderer): SlacordDesktopBridge {
     return {
         isDesktop: true,
+        bridgeVersion: 2,
+        setBadgeCount: (count) => renderer.invoke('desktop:set-badge-count', count),
+        onNavigate: (listener) => {
+            const handler = (_event: Electron.IpcRendererEvent, href: string) => listener(href);
+            renderer.on('desktop:navigate', handler);
+            renderer
+                .invoke('desktop:navigation-ready')
+                .then((href: string | null) => {
+                    if (href) listener(href);
+                })
+                .catch(() => undefined);
+            return () => renderer.off('desktop:navigate', handler);
+        },
         platform: process.platform,
-        notify: (title: string, body: string, href?: string) => renderer.invoke('desktop:notify', { title, body, href }),
-        requestMediaAccess: () => renderer.invoke('desktop:request-media-access') as Promise<{ microphone: boolean; camera: boolean }>,
+        notify: (title: string, body: string, href?: string) =>
+            renderer.invoke('desktop:notify', { title, body, href }),
+        requestMediaAccess: (kind) =>
+            (kind
+                ? renderer.invoke('desktop:request-media-access', kind)
+                : renderer.invoke('desktop:request-media-access')) as Promise<{
+                microphone: boolean;
+                camera: boolean;
+            }>,
         getUpdateStatus: () => renderer.invoke('desktop:get-update-status') as Promise<DesktopUpdateStatus>,
         checkForUpdates: () => renderer.invoke('desktop:check-for-updates') as Promise<DesktopUpdateCheckResult>,
         downloadUpdate: () => renderer.invoke('desktop:download-update') as Promise<DesktopUpdateDownloadResult>,

@@ -4,6 +4,8 @@ import { createMainWindow } from './window';
 import { configurePermissions, requestMediaAccess } from './permissions';
 import { registerNotificationIpc } from './notifications';
 import { setupAutoUpdates } from './updates';
+import { setupTray } from './tray';
+import { isTrustedSender } from './ipc-security';
 
 let mainWindow: ReturnType<typeof createMainWindow> | null = null;
 const isCiLinux = process.platform === 'linux' && process.env.CI === 'true';
@@ -26,22 +28,36 @@ process.on('unhandledRejection', (reason) => {
 });
 
 app.setName('Slacord');
+if (process.platform === 'win32') app.setAppUserModelId('com.kscold.slacord');
 
-app.whenReady().then(() => {
-    configurePermissions();
-    registerNotificationIpc();
-    ipcMain.handle('desktop:request-media-access', () => requestMediaAccess());
-    mainWindow = createMainWindow();
-    setupAutoUpdates(mainWindow);
-    app.on('activate', () => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.show();
-        } else {
-            mainWindow = createMainWindow();
-            setupAutoUpdates(mainWindow);
-        }
+if (app.isPackaged && !app.requestSingleInstanceLock()) {
+    app.quit();
+} else {
+    app.on('second-instance', () => {
+        if (mainWindow?.isMinimized()) mainWindow.restore();
+        mainWindow?.show();
+        mainWindow?.focus();
     });
-});
+    app.whenReady().then(() => {
+        configurePermissions();
+        registerNotificationIpc();
+        ipcMain.handle('desktop:request-media-access', (event, kind: unknown) => {
+            if (!isTrustedSender(event)) return { microphone: false, camera: false };
+            return requestMediaAccess(kind === 'microphone' || kind === 'camera' ? kind : undefined);
+        });
+        mainWindow = createMainWindow();
+        setupAutoUpdates(mainWindow);
+        setupTray(() => mainWindow);
+        app.on('activate', () => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.show();
+            } else {
+                mainWindow = createMainWindow();
+                setupAutoUpdates(mainWindow);
+            }
+        });
+    });
+}
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();

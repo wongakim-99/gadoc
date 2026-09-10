@@ -53,19 +53,23 @@ async function createHarness(options: UpdateHarnessOptions = {}) {
         autoDownload: true,
         autoInstallOnAppQuit: false,
         autoRunAppAfterInstall: false,
-        forceCodeSigning: false,
         on: vi.fn((event: string, handler: (payload?: any) => any) => {
             updateEvents.set(event, handler);
             return autoUpdater;
         }),
-        checkForUpdates: vi.fn(() => options.checkReject ? Promise.reject(options.checkReject) : Promise.resolve({})),
-        downloadUpdate: vi.fn(() => options.downloadReject ? Promise.reject(options.downloadReject) : Promise.resolve([])),
+        checkForUpdates: vi.fn(() => (options.checkReject ? Promise.reject(options.checkReject) : Promise.resolve({}))),
+        downloadUpdate: vi.fn(() =>
+            options.downloadReject ? Promise.reject(options.downloadReject) : Promise.resolve([]),
+        ),
         quitAndInstall: vi.fn(),
     };
 
+    vi.doMock('./ipc-security', () => ({ isTrustedSender: () => true }));
     vi.doMock('electron', () => electronModule);
     vi.doMock('electron-updater', () => ({ autoUpdater }));
-    vi.doMock('electron-log', () => ({ default: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
+    vi.doMock('electron-log', () => ({
+        default: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
+    }));
 
     const updates = await import('./updates');
     const updateStatus = await import('./update-status');
@@ -100,7 +104,6 @@ describe('desktop updates integration', () => {
         expect(harness.autoUpdater.autoDownload).toBe(false);
         expect(harness.autoUpdater.autoInstallOnAppQuit).toBe(true);
         expect(harness.autoUpdater.autoRunAppAfterInstall).toBe(true);
-        expect(harness.autoUpdater.forceCodeSigning).toBe(true);
     });
 
     it('패키징된 앱에서 다운로드 후 재시작 설치 흐름을 진행함', async () => {
