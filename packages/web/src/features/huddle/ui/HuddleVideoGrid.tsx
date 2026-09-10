@@ -3,7 +3,15 @@
 import { useEffect, useRef } from 'react';
 import type { HuddleParticipant } from '../model/huddle.store';
 
-function VideoTile({ stream, label, muted }: { stream: MediaStream | null | undefined; label: string; muted?: boolean }) {
+function VideoTile({
+    stream,
+    label,
+    muted,
+}: {
+    stream: MediaStream | null | undefined;
+    label: string;
+    muted?: boolean;
+}) {
     const ref = useRef<HTMLVideoElement>(null);
 
     useEffect(() => {
@@ -21,7 +29,9 @@ function VideoTile({ stream, label, muted }: { stream: MediaStream | null | unde
                     {label.charAt(0).toUpperCase()}
                 </div>
             )}
-            <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white">{label}</span>
+            <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white">
+                {label}
+            </span>
         </div>
     );
 }
@@ -40,9 +50,13 @@ export function HuddleVideoGrid({ localStream, participants, currentUsername, lo
 
     return (
         <div className={`grid gap-2 ${cols}`}>
-            <VideoTile stream={localStreamForTile} label={`${currentUsername} (나${localVisualLabel ? ` · ${localVisualLabel}` : ''})`} muted />
+            <VideoTile
+                stream={localStreamForTile}
+                label={`${currentUsername} (나${localVisualLabel ? ` · ${localVisualLabel}` : ''})`}
+                muted
+            />
             {participants.map((p) => (
-                <VideoTile key={p.userId} stream={p.video ? p.stream : null} label={p.userId} />
+                <VideoTile key={p.userId} stream={p.video ? p.stream : null} label={p.userId} muted />
             ))}
         </div>
     );

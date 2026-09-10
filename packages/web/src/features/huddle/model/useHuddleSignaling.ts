@@ -38,13 +38,24 @@ export function useHuddleSignaling(handlers: HuddleSignalingHandlers): void {
 
     useEffect(() => {
         const socket = getChatSocket();
-        const currentUserId = handlersRef.current.currentUserId;
 
-        const onConnect = () => {
+        const onConnect = async () => {
             const channelId = useHuddleStore.getState().activeChannelId;
             if (!channelId) return;
-            socket.emit('huddle:join', { channelId });
-            handlersRef.current.emitMediaState(channelId);
+            try {
+                const result = (await socket.timeout(5000).emitWithAck('huddle:join', { channelId })) as {
+                    ok: boolean;
+                    error?: string;
+                };
+                if (!handlersRef.current.isActiveChannel(channelId)) return;
+                if (!result?.ok) throw new Error(result?.error ?? '통화에 다시 연결하지 못했습니다.');
+                handlersRef.current.emitMediaState(channelId);
+            } catch {
+                if (handlersRef.current.isActiveChannel(channelId)) {
+                    handlersRef.current.onCleanup();
+                    useHuddleStore.getState().setError('통화에 다시 연결하지 못했습니다. 다시 참여해주세요.');
+                }
+            }
         };
 
         const onUserJoined = (data: { channelId: string; userId: string }) => {
@@ -53,28 +64,36 @@ export function useHuddleSignaling(handlers: HuddleSignalingHandlers): void {
             h.onUserJoined(data.channelId, data.userId);
         };
 
-        const onUserLeft = (data: { userId: string }) => {
+        const onUserLeft = (data: { channelId: string; userId: string }) => {
+            if (!handlersRef.current.isActiveChannel(data.channelId)) return;
             handlersRef.current.onUserLeft(data.userId);
         };
 
-        const onOffer = async (data: { channelId: string; fromUserId: string; offer: RTCSessionDescriptionInit }) => {
-            await handlersRef.current.onOffer(data.channelId, data.fromUserId, data.offer);
+        const handleSignal = async (channelId: string, action: () => Promise<void> | void) => {
+            if (!handlersRef.current.isActiveChannel(channelId)) return;
+            try {
+                await action();
+            } catch {
+                if (handlersRef.current.isActiveChannel(channelId)) {
+                    useHuddleStore.getState().setError('통화 연결을 처리하지 못했습니다. 나간 뒤 다시 참여해주세요.');
+                }
+            }
         };
-
-        const onAnswer = async (data: { fromUserId: string; answer: RTCSessionDescriptionInit }) => {
-            await handlersRef.current.onAnswer(data.fromUserId, data.answer);
-        };
-
-        const onIceCandidate = async (data: { fromUserId: string; candidate: RTCIceCandidateInit }) => {
-            await handlersRef.current.onIceCandidate(data.fromUserId, data.candidate);
-        };
+        const onOffer = (data: { channelId: string; fromUserId: string; offer: RTCSessionDescriptionInit }) =>
+            handleSignal(data.channelId, () =>
+                handlersRef.current.onOffer(data.channelId, data.fromUserId, data.offer),
+            );
+        const onAnswer = (data: { channelId: string; fromUserId: string; answer: RTCSessionDescriptionInit }) =>
+            handleSignal(data.channelId, () => handlersRef.current.onAnswer(data.fromUserId, data.answer));
+        const onIceCandidate = (data: { channelId: string; fromUserId: string; candidate: RTCIceCandidateInit }) =>
+            handleSignal(data.channelId, () => handlersRef.current.onIceCandidate(data.fromUserId, data.candidate));
 
         const onParticipants = (data: { channelId: string; participants: HuddleParticipantState[] }) => {
             const h = handlersRef.current;
             if (!h.isActiveChannel(data.channelId)) return;
-            useHuddleStore.getState().setParticipants(
-                data.participants.filter((participant) => participant.userId !== h.currentUserId),
-            );
+            useHuddleStore
+                .getState()
+                .setParticipants(data.participants.filter((participant) => participant.userId !== h.currentUserId));
         };
 
         socket.on('connect', onConnect);

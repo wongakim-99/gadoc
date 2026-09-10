@@ -1,5 +1,6 @@
 'use client';
 
+import { NotificationPermissionButton } from './NotificationPermissionButton';
 import { forwardRef, useId, useRef, type RefObject } from 'react';
 import { getAvatarColor } from '@/src/shared/lib/avatar';
 import { formatShortDateTime } from '@/src/shared/lib/datetime';
@@ -9,6 +10,7 @@ import { useDialogFocusTrap } from '@/src/shared/ui/useDialogFocusTrap';
 
 interface Props {
     id?: string;
+    error?: string | null;
     notifications: AppNotification[];
     onClose: () => void;
     onMarkAsRead: (id: string) => Promise<void> | void;
@@ -19,7 +21,7 @@ interface Props {
 }
 
 export const NotificationPanel = forwardRef<HTMLElement, Props>(function NotificationPanel(
-    { id, notifications, onClose, onMarkAsRead, onMarkAllAsRead, onOpen, open, restoreFocusRef },
+    { id, error, notifications, onClose, onMarkAsRead, onMarkAllAsRead, onOpen, open, restoreFocusRef },
     ref,
 ) {
     const surfaceRef = useRef<HTMLElement>(null);
@@ -83,7 +85,13 @@ export const NotificationPanel = forwardRef<HTMLElement, Props>(function Notific
                     </button>
                 </div>
             </div>
+            <NotificationPermissionButton />
             <div className="flex-1 overflow-y-auto">
+                {error && (
+                    <p role="alert" className="px-4 py-3 text-sm text-red-300">
+                        {error}
+                    </p>
+                )}
                 {notifications.length === 0 && (
                     <p className="px-4 py-8 text-center text-sm text-text-tertiary">알림이 없습니다.</p>
                 )}

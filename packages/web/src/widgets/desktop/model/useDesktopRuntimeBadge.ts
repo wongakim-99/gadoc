@@ -16,12 +16,15 @@ export function useDesktopRuntimeBadge() {
     const [status, setStatus] = useState<DesktopUpdateStatus>(IDLE_STATUS);
     const [downloading, setDownloading] = useState(false);
     const [installing, setInstalling] = useState(false);
-    const platform = typeof window !== 'undefined' ? window.slacordDesktop?.platform ?? '' : '';
+    const platform = typeof window !== 'undefined' ? (window.slacordDesktop?.platform ?? '') : '';
 
     useEffect(() => {
         if (!window.slacordDesktop?.isDesktop) return;
-        void window.slacordDesktop.getUpdateStatus().then(setStatus);
-        return window.slacordDesktop.onUpdateStatus((nextStatus) => {
+        void window.slacordDesktop
+            .getUpdateStatus?.()
+            .then(setStatus)
+            .catch(() => undefined);
+        return window.slacordDesktop.onUpdateStatus?.((nextStatus) => {
             setStatus(nextStatus);
             if (nextStatus.stage !== 'downloaded') setInstalling(false);
             if (nextStatus.stage !== 'downloading') setDownloading(false);

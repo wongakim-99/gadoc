@@ -1,6 +1,6 @@
 'use client';
 
-import { type RefObject, useEffect } from 'react';
+import { type RefObject, useEffect, useRef } from 'react';
 
 const FOCUSABLE_SELECTOR = [
     'a[href]',
@@ -26,6 +26,8 @@ function getFocusableElements(surface: HTMLElement) {
 }
 
 export function useDialogFocusTrap({ initialFocusRef, onEscape, open, restoreFocusRef, surfaceRef }: Options) {
+    const onEscapeRef = useRef(onEscape);
+    onEscapeRef.current = onEscape;
     useEffect(() => {
         if (!open) return;
 
@@ -34,15 +36,13 @@ export function useDialogFocusTrap({ initialFocusRef, onEscape, open, restoreFoc
 
         const previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
-        const frame = window.requestAnimationFrame(() => {
-            const focusTarget = initialFocusRef?.current ?? getFocusableElements(surface)[0] ?? surface;
-            focusTarget.focus();
-        });
+        const focusTarget = initialFocusRef?.current ?? getFocusableElements(surface)[0] ?? surface;
+        focusTarget.focus();
 
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
                 event.preventDefault();
-                onEscape?.();
+                onEscapeRef.current?.();
                 return;
             }
 
@@ -73,11 +73,10 @@ export function useDialogFocusTrap({ initialFocusRef, onEscape, open, restoreFoc
         document.addEventListener('keydown', handleKeyDown);
 
         return () => {
-            window.cancelAnimationFrame(frame);
             document.removeEventListener('keydown', handleKeyDown);
 
             const restoreTarget = restoreFocusRef?.current ?? previousActiveElement;
             restoreTarget?.focus();
         };
-    }, [initialFocusRef, onEscape, open, restoreFocusRef, surfaceRef]);
+    }, [initialFocusRef, open, restoreFocusRef, surfaceRef]);
 }

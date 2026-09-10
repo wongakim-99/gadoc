@@ -37,7 +37,7 @@ export default function ChannelPage({ params }: Props) {
     const persistAnchorRef = useRef(false);
     const restoreInitializedRef = useRef(false);
 
-    const huddle = useHuddle(room.currentUserId);
+    const huddle = useHuddle(room.currentUserId, channelId);
     const huddleActive = huddle.activeChannelId === channelId;
 
     const handleStartHuddle = () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { notificationApi, unwrapApiArray, unwrapApiData } from '@/lib/api-client';
 import type { AppNotification } from '@/src/entities/notification/types';
 import { getNotificationSocket } from '@/lib/socket';
@@ -9,75 +9,111 @@ import {
     applyNotificationReadAll,
     prependNotification,
 } from '@/src/entities/notification/lib/syncNotifications';
+import { setDesktopUnreadCount } from '@/src/shared/lib/desktop-badge';
 import { notifyAppNotification } from './notifyAppNotification';
 
 export function useNotifications(teamId: string) {
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const sequence = useRef(0);
 
     const load = useCallback(async () => {
-        const [listRes, countRes] = await Promise.all([
-            notificationApi.getNotifications(teamId),
-            notificationApi.getUnreadCount(teamId),
-        ]);
-        if (listRes.success) setNotifications(unwrapApiArray<AppNotification>(listRes));
-        const countData = unwrapApiData<{ count: number }>(countRes);
-        if (countData) setUnreadCount(countData.count);
+        const request = ++sequence.current;
+        try {
+            const [listRes, countRes] = await Promise.all([
+                notificationApi.getNotifications(teamId),
+                notificationApi.getUnreadCount(teamId),
+            ]);
+            if (request !== sequence.current) return;
+            if (!listRes.success || !countRes.success) throw new Error('알림을 불러오지 못했습니다.');
+            setNotifications(unwrapApiArray<AppNotification>(listRes));
+            const count = unwrapApiData<{ count: number }>(countRes);
+            if (count) setUnreadCount(count.count);
+            setError(null);
+        } catch {
+            if (request === sequence.current) setError('알림을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+        } finally {
+            if (request === sequence.current) setLoading(false);
+        }
     }, [teamId]);
 
     useEffect(() => {
-        setLoading(true);
-        load().finally(() => setLoading(false));
-        const socket = getNotificationSocket();
+        setDesktopUnreadCount(`notifications:${teamId}`, unreadCount);
+    }, [teamId, unreadCount]);
 
+    useEffect(() => {
+        setNotifications([]);
+        setUnreadCount(0);
+        setLoading(true);
+        const socket = getNotificationSocket();
+        const seen = new Set<string>();
+        let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+        const scheduleRefresh = () => {
+            ++sequence.current; // An older HTTP snapshot must not erase a live event.
+            clearTimeout(refreshTimer);
+            refreshTimer = setTimeout(() => void load(), 150);
+        };
         const joinRoom = () => socket.emit('join_team_notifications', { teamId });
-        const handleNewNotification = (notification: AppNotification) => {
+        const handleJoined = (data: { teamId: string }) => {
+            if (data.teamId === teamId) void load();
+        };
+        const handleNew = (notification: AppNotification) => {
+            if (notification.teamId !== teamId || seen.has(notification.id)) return;
+            seen.add(notification.id);
+            if (seen.size > 1000) seen.delete(seen.values().next().value!);
             setNotifications((prev) => prependNotification(prev, notification));
-            setUnreadCount((count) => count + (notification.isRead ? 0 : 1));
             if (!notification.isRead) {
+                setUnreadCount((count) => count + 1);
                 void notifyAppNotification(notification);
             }
+            scheduleRefresh();
         };
-        const handleReadNotification = ({ id }: { id: string }) => {
+        const handleRead = ({ id }: { id: string }) => {
             setNotifications((prev) => applyNotificationRead(prev, id));
-            setUnreadCount((count) => Math.max(0, count - 1));
+            scheduleRefresh(); // Count comes from the server: repeated read events are idempotent.
         };
         const handleReadAll = () => {
             setNotifications((prev) => applyNotificationReadAll(prev));
             setUnreadCount(0);
+            scheduleRefresh();
         };
-
-        joinRoom();
         socket.on('connect', joinRoom);
-        socket.on('notification:new', handleNewNotification);
-        socket.on('notification:read', handleReadNotification);
+        socket.on('joined_team_notifications', handleJoined);
+        socket.on('notification:new', handleNew);
+        socket.on('notification:read', handleRead);
         socket.on('notification:read_all', handleReadAll);
-
+        joinRoom();
+        void load();
         return () => {
+            ++sequence.current;
+            clearTimeout(refreshTimer);
+            setDesktopUnreadCount(`notifications:${teamId}`, 0);
             socket.emit('leave_team_notifications', { teamId });
             socket.off('connect', joinRoom);
-            socket.off('notification:new', handleNewNotification);
-            socket.off('notification:read', handleReadNotification);
+            socket.off('joined_team_notifications', handleJoined);
+            socket.off('notification:new', handleNew);
+            socket.off('notification:read', handleRead);
             socket.off('notification:read_all', handleReadAll);
         };
-    }, [load]);
+    }, [load, teamId]);
 
     const markAsRead = async (id: string) => {
-        await notificationApi.markAsRead(teamId, id);
-        if (!getNotificationSocket().connected) {
-            setNotifications((prev) => applyNotificationRead(prev, id));
-            setUnreadCount((count) => Math.max(0, count - 1));
-        }
+        const result = await notificationApi.markAsRead(teamId, id);
+        if (!result.success) throw new Error('알림을 읽음 처리하지 못했습니다.');
+        setNotifications((prev) => applyNotificationRead(prev, id));
+        await load();
     };
-
     const markAllAsRead = async () => {
-        await notificationApi.markAllAsRead(teamId);
-        if (!getNotificationSocket().connected) {
+        try {
+            const result = await notificationApi.markAllAsRead(teamId);
+            if (!result.success) throw new Error();
             setNotifications((prev) => applyNotificationReadAll(prev));
-            setUnreadCount(0);
+            await load();
+        } catch {
+            setError('알림을 읽음 처리하지 못했습니다. 다시 시도해주세요.');
         }
     };
-
-    return { notifications, unreadCount, loading, markAsRead, markAllAsRead, refresh: load };
+    return { notifications, unreadCount, loading, error, markAsRead, markAllAsRead, refresh: load };
 }

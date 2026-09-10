@@ -3,7 +3,6 @@
 import { useEffect, type MutableRefObject } from 'react';
 import type { Message } from '@/src/entities/message/types';
 import { getChatSocket } from './socket';
-import { notifyIncomingMessage } from './notifyIncomingMessage';
 
 interface ChatSocketActions {
     addMessage: (message: Message) => void;
@@ -56,15 +55,16 @@ export function useChannelRoomSocket({
         };
 
         const handleNewMessage = (message: Message) => {
-            addMessage(message);
-            void notifyIncomingMessage(message, channelLabelRef.current, currentUserIdRef.current);
+            if (message.channelId === channelId) addMessage(message);
         };
 
         const handleReactionUpdated = (message: Message) => updateMessage(message.id, message);
         const handlePinnedUpdated = (message: Message) => updateMessage(message.id, message);
         const handleMessageDeleted = ({ messageId }: { messageId: string }) => removeMessage(messageId);
 
-        socket.emit('join_channel', { channelId });
+        const joinRoom = () => socket.emit('join_channel', { channelId });
+        joinRoom();
+        socket.on('connect', joinRoom);
         socket.on('new_message', handleNewMessage);
         socket.on('reaction_updated', handleReactionUpdated);
         socket.on('pinned_message_updated', handlePinnedUpdated);
@@ -74,6 +74,7 @@ export function useChannelRoomSocket({
         return () => {
             typingMap.forEach((entry) => clearTimeout(entry.timer));
             socket.emit('leave_channel', { channelId });
+            socket.off('connect', joinRoom);
             socket.off('new_message', handleNewMessage);
             socket.off('reaction_updated', handleReactionUpdated);
             socket.off('pinned_message_updated', handlePinnedUpdated);

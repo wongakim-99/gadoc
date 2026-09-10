@@ -56,12 +56,22 @@ async function apiFetch<T = any>(url: string, options?: RequestInit): Promise<Ap
         },
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-        throw new Error(data.message || '요청에 실패했습니다.');
+    if (response.status === 204) return { success: true };
+    let data: ApiResponse<T>;
+    try {
+        data = await response.json();
+    } catch {
+        throw new Error(
+            response.status >= 500
+                ? '서버에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.'
+                : '서버 응답을 처리하지 못했습니다. 다시 시도해주세요.',
+        );
     }
-
+    if (!response.ok) {
+        const message = Array.isArray(data?.message) ? data.message.join(' ') : data?.message;
+        throw new Error(message || '요청에 실패했습니다.');
+    }
+    if (!data || typeof data !== 'object') throw new Error('서버 응답을 처리하지 못했습니다.');
     return data;
 }
 
@@ -332,10 +342,16 @@ export const documentApi = {
     async getDocument(teamId: string, documentId: string) {
         return apiFetch(`/api/team/${teamId}/document/${documentId}`);
     },
-    async getDocumentComments(teamId: string, documentId: string, options: { status?: 'all' | 'open' | 'resolved' } = {}) {
+    async getDocumentComments(
+        teamId: string,
+        documentId: string,
+        options: { status?: 'all' | 'open' | 'resolved' } = {},
+    ) {
         const params = new URLSearchParams();
         if (options.status && options.status !== 'all') params.set('status', options.status);
-        return apiFetch<DocumentComment[]>(`/api/team/${teamId}/document/${documentId}/comment${params.toString() ? `?${params.toString()}` : ''}`);
+        return apiFetch<DocumentComment[]>(
+            `/api/team/${teamId}/document/${documentId}/comment${params.toString() ? `?${params.toString()}` : ''}`,
+        );
     },
     async createDocument(
         teamId: string,
@@ -369,12 +385,7 @@ export const documentApi = {
             body: JSON.stringify(data),
         });
     },
-    async updateDocumentComment(
-        teamId: string,
-        documentId: string,
-        commentId: string,
-        data: { content: string },
-    ) {
+    async updateDocumentComment(teamId: string, documentId: string, commentId: string, data: { content: string }) {
         return apiFetch<DocumentComment>(`/api/team/${teamId}/document/${documentId}/comment/${commentId}/content`, {
             method: 'PATCH',
             body: JSON.stringify(data),

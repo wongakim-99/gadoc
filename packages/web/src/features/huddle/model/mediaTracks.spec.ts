@@ -1,4 +1,10 @@
-import { shouldShowHuddleVideoGrid, syncPeerVideoTrackSenders, type VideoPeerConnection, type VideoTrackSender } from './mediaTracks';
+import { describe, expect, it, vi } from 'vitest';
+import {
+    shouldShowHuddleVideoGrid,
+    syncPeerVideoTrackSenders,
+    type VideoPeerConnection,
+    type VideoTrackSender,
+} from './mediaTracks';
 
 function makeSender() {
     return {

@@ -182,8 +182,23 @@ export function useTeamWorkspaceData(teamId: string, options: UseTeamWorkspaceDa
     const ensureSettings = useTeamWorkspaceStore((state) => state.ensureSettings);
 
     useEffect(() => {
-        void ensureBase(teamId);
+        const refresh = () => {
+            void ensureBase(teamId);
+        };
+        refresh();
+        window.addEventListener('online', refresh);
+        window.addEventListener('focus', refresh);
+        return () => {
+            window.removeEventListener('online', refresh);
+            window.removeEventListener('focus', refresh);
+        };
     }, [ensureBase, teamId]);
+
+    useEffect(() => {
+        if (!entry.error || entry.loading) return;
+        const retry = setTimeout(() => void ensureBase(teamId, { force: true }), 5000);
+        return () => clearTimeout(retry);
+    }, [ensureBase, entry.error, entry.loading, teamId]);
 
     const currentMember = useMemo(
         () => resolveCurrentTeamMember(entry.members, entry.me?.id ?? ''),

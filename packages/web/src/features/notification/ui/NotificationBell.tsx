@@ -13,7 +13,7 @@ interface Props {
 
 export function NotificationBell({ teamId }: Props) {
     const router = useRouter();
-    const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(teamId);
+    const { notifications, unreadCount, error, markAsRead, markAllAsRead } = useNotifications(teamId);
     const [open, setOpen] = useState(false);
     const triggerRef = useRef<HTMLButtonElement>(null);
     const panelRef = useRef<HTMLElement>(null);
@@ -79,6 +79,7 @@ export function NotificationBell({ teamId }: Props) {
                         id={panelId}
                         open={open}
                         notifications={notifications}
+                        error={error}
                         onClose={() => setOpen(false)}
                         onMarkAsRead={markAsRead}
                         onMarkAllAsRead={markAllAsRead}

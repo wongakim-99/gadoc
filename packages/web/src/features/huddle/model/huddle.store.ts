@@ -36,22 +36,36 @@ export const useHuddleStore = create<HuddleState>((set) => ({
     sharingScreen: false,
     error: null,
     join: (channelId) => set({ activeChannelId: channelId, error: null }),
-    leave: () => set({ activeChannelId: null, participants: [], localStream: null, localAudio: true, localVideo: false, sharingScreen: false, error: null }),
-    setParticipants: (participants) => set((state) => ({
-        participants: participants.map((p) => {
-            const existing = state.participants.find((e) => e.userId === p.userId);
-            return existing ? { ...p, stream: existing.stream } : p;
+    leave: () =>
+        set({
+            activeChannelId: null,
+            participants: [],
+            localStream: null,
+            localAudio: true,
+            localVideo: false,
+            sharingScreen: false,
+            error: null,
         }),
-    })),
+    setParticipants: (participants) =>
+        set((state) => ({
+            participants: participants.map((p) => {
+                const existing = state.participants.find((e) => e.userId === p.userId);
+                return existing ? { ...p, stream: existing.stream } : p;
+            }),
+        })),
     setLocalStream: (stream) => set({ localStream: stream }),
     setLocalAudio: (on) => set({ localAudio: on }),
     setLocalVideo: (on) => set({ localVideo: on }),
     setSharingScreen: (on) => set({ sharingScreen: on }),
-    setParticipantStream: (userId, stream) => set((state) => ({
-        participants: state.participants.map((p) => p.userId === userId ? { ...p, stream } : p),
-    })),
-    removeParticipant: (userId) => set((state) => ({
-        participants: state.participants.filter((p) => p.userId !== userId),
-    })),
+    setParticipantStream: (userId, stream) =>
+        set((state) => ({
+            participants: state.participants.some((p) => p.userId === userId)
+                ? state.participants.map((p) => (p.userId === userId ? { ...p, stream } : p))
+                : [...state.participants, { userId, audio: true, video: false, stream }],
+        })),
+    removeParticipant: (userId) =>
+        set((state) => ({
+            participants: state.participants.filter((p) => p.userId !== userId),
+        })),
     setError: (error) => set({ error }),
 }));

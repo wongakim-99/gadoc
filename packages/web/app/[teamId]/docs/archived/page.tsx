@@ -14,23 +14,47 @@ export default function ArchivedDocsPage({ params }: Props) {
     const { teamId } = use(params);
     const [docs, setDocs] = useState<DocumentNode[]>([]);
     const [deleteError, setDeleteError] = useState('');
+    const [loadError, setLoadError] = useState('');
+    const [retry, setRetry] = useState(0);
+    const [restoring, setRestoring] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [loading, setLoading] = useState(true);
     const [pendingDeleteDoc, setPendingDeleteDoc] = useState<DocumentNode | null>(null);
 
-    const fetchArchived = async () => {
-        const res = await documentApi.getArchivedDocuments(teamId);
-        if (res.success && Array.isArray(res.data)) setDocs(res.data as DocumentNode[]);
-        setLoading(false);
-    };
-
     useEffect(() => {
-        fetchArchived();
-    }, [teamId]);
+        let active = true;
+        setLoading(true);
+        setLoadError('');
+        setDocs([]);
+        documentApi
+            .getArchivedDocuments(teamId)
+            .then((res) => {
+                if (active && res.success && Array.isArray(res.data)) setDocs(res.data as DocumentNode[]);
+            })
+            .catch((error) => {
+                if (active) setLoadError(error instanceof Error ? error.message : '휴지통을 불러오지 못했습니다.');
+            })
+            .finally(() => {
+                if (active) setLoading(false);
+            });
+        return () => {
+            active = false;
+        };
+    }, [teamId, retry]);
 
     const handleRestore = async (docId: string) => {
-        const res = await documentApi.restoreDocument(teamId, docId);
-        if (res.success) setDocs((prev) => prev.filter((d) => d.id !== docId));
+        if (restoring) return;
+        setRestoring(docId);
+        setDeleteError('');
+        try {
+            const res = await documentApi.restoreDocument(teamId, docId);
+            if (!res.success) throw new Error('문서를 복원하지 못했습니다.');
+            setDocs((prev) => prev.filter((doc) => doc.id !== docId));
+        } catch (error) {
+            setDeleteError(error instanceof Error ? error.message : '문서를 복원하지 못했습니다.');
+        } finally {
+            setRestoring(null);
+        }
     };
 
     const handleDelete = (doc: DocumentNode) => {
@@ -79,7 +103,17 @@ export default function ArchivedDocsPage({ params }: Props) {
                 </div>
             ) : null}
 
-            {docs.length === 0 ? (
+            {loadError ? (
+                <div role="alert" className="rounded-xl border border-border-primary bg-bg-secondary p-5">
+                    <p className="text-sm text-text-secondary">{loadError}</p>
+                    <p className="mt-2 text-xs text-text-tertiary">
+                        휴지통 조회와 복원은 워크스페이스 관리자 또는 소유자만 이용할 수 있습니다.
+                    </p>
+                    <button onClick={() => setRetry((value) => value + 1)} className="mt-4 text-sm text-brand-200">
+                        다시 시도
+                    </button>
+                </div>
+            ) : docs.length === 0 ? (
                 <p className="text-sm text-text-tertiary">삭제된 문서가 없어요.</p>
             ) : (
                 <div className="space-y-3">
@@ -96,10 +130,11 @@ export default function ArchivedDocsPage({ params }: Props) {
                             </div>
                             <div className="flex gap-2">
                                 <button
-                                    onClick={() => handleRestore(doc.id)}
+                                    disabled={Boolean(restoring)}
+                                    onClick={() => void handleRestore(doc.id)}
                                     className="px-3 py-1.5 rounded-lg bg-slack-green text-white text-sm font-medium hover:bg-slack-green/90 transition-colors"
                                 >
-                                    복원
+                                    {restoring === doc.id ? '복원 중…' : '복원'}
                                 </button>
                                 <button
                                     onClick={() => handleDelete(doc)}

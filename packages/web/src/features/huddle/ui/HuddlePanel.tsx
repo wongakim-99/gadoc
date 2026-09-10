@@ -4,6 +4,7 @@ import { shouldShowHuddleVideoGrid } from '../model/mediaTracks';
 import type { HuddleParticipant } from '../model/huddle.store';
 import { HuddleControls } from './HuddleControls';
 import { HuddleVideoGrid } from './HuddleVideoGrid';
+import { HuddleAudio } from './HuddleAudio';
 
 interface Props {
     activeChannelId: string | null;
@@ -50,17 +51,33 @@ export function HuddlePanel({
             {error && (
                 <div className="flex items-center justify-between border-b border-red-500/20 bg-red-500/10 px-4 py-3">
                     <div className="flex items-center gap-2">
-                        <svg className="h-4 w-4 shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        <svg
+                            className="h-4 w-4 shrink-0 text-red-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                            />
                         </svg>
                         <span className="text-sm text-red-300">{error}</span>
                     </div>
-                    <button onClick={clearError} className="shrink-0 text-xs text-red-400 transition hover:text-red-300">닫기</button>
+                    <button
+                        onClick={clearError}
+                        className="shrink-0 text-xs text-red-400 transition hover:text-red-300"
+                    >
+                        닫기
+                    </button>
                 </div>
             )}
 
             {isActive && (
                 <>
+                    <HuddleAudio participants={participants} />
                     {showVideoGrid && (
                         <div className="px-4 pt-3">
                             <HuddleVideoGrid
@@ -80,7 +97,9 @@ export function HuddlePanel({
                             </div>
                             <div className="min-w-0">
                                 <p className="truncate text-[13px] font-medium text-white">허들</p>
-                                <p className="truncate text-[11px] text-text-tertiary">#{channelName} · {participants.length + 1}명{sharingScreen ? ' · 화면 공유 중' : ''}</p>
+                                <p className="truncate text-[11px] text-text-tertiary">
+                                    #{channelName} · {participants.length + 1}명{sharingScreen ? ' · 화면 공유 중' : ''}
+                                </p>
                             </div>
                         </div>
                         <HuddleControls

@@ -6,6 +6,10 @@ import { showDesktopMessageNotification } from '@/src/shared/lib/desktop-notific
 export async function notifyAppNotification(notification: AppNotification) {
     const copy = buildNotificationCopy(notification);
     await showDesktopMessageNotification({
+        id:
+            notification.resourceType === 'message'
+                ? `message:${notification.resourceId}`
+                : `notification:${notification.id}`,
         title: copy.title,
         body: copy.body,
         force: typeof window !== 'undefined' && !!window.slacordDesktop?.isDesktop,

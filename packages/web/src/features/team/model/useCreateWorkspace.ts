@@ -3,10 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { channelApi, teamApi } from '@/lib/api-client';
-
-function slugify(value: string) {
-    return value.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-}
+import { workspaceSlug } from './workspaceSlug';
 
 export function useCreateWorkspace() {
     const router = useRouter();
@@ -17,7 +14,11 @@ export function useCreateWorkspace() {
         setError('');
         setLoading(true);
         try {
-            const created = await teamApi.createTeam({ name, slug: slugify(name), description });
+            const created = await teamApi.createTeam({
+                name,
+                slug: workspaceSlug(name, crypto.randomUUID()),
+                description,
+            });
             const teamId = created.data?.id;
             if (!created.success || !teamId) throw new Error('워크스페이스 생성에 실패했습니다.');
             const channel = await channelApi.createChannel(teamId, { name: 'general', description: '기본 대화 채널' });

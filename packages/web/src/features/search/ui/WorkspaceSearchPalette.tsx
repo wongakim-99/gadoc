@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { startTransition, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { channelApi, documentApi, issueApi, unwrapApiArray, unwrapApiData } from '@/lib/api-client';
@@ -11,8 +10,6 @@ import type { Issue } from '@/src/entities/issue/types';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
 import { useDashboardMessages } from '@/src/features/dashboard/model/useDashboardMessages';
 import { useDialogFocusTrap } from '@/src/shared/ui/useDialogFocusTrap';
-import { SearchResultList } from '@/src/widgets/dashboard/ui/search/SearchResultList';
-import { SearchInput } from '@/src/widgets/dashboard/ui/search/SearchInput';
 
 interface WorkspacePaletteContext {
     canWrite: boolean;
@@ -41,17 +38,18 @@ export function WorkspaceSearchPalette({ onClose, open, restoreFocusRef, workspa
     const search = useDashboardMessages();
     const surfaceRef = useRef<HTMLDivElement>(null);
     const titleId = useId();
-    const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const resultsRef = useRef<HTMLDivElement>(null);
+    const [selectedIndex, setSelectedIndex] = useState(0);
     const [documents, setDocuments] = useState<DocumentNode[]>([]);
     const [issues, setIssues] = useState<Issue[]>([]);
     const [resourceError, setResourceError] = useState('');
     const [resourceLoading, setResourceLoading] = useState(false);
-    const [resourcesTeamId, setResourcesTeamId] = useState('');
     const [actionError, setActionError] = useState('');
     const [busyActionId, setBusyActionId] = useState<string | null>(null);
 
     useDialogFocusTrap({
-        initialFocusRef: closeButtonRef,
+        initialFocusRef: inputRef,
         onEscape: onClose,
         open,
         restoreFocusRef,
@@ -60,7 +58,6 @@ export function WorkspaceSearchPalette({ onClose, open, restoreFocusRef, workspa
 
     useEffect(() => {
         if (!open || !workspace?.teamId) return;
-        if (resourcesTeamId === workspace.teamId) return;
 
         let active = true;
         setResourceLoading(true);
@@ -71,7 +68,6 @@ export function WorkspaceSearchPalette({ onClose, open, restoreFocusRef, workspa
                 if (!active) return;
                 setDocuments(unwrapApiArray<DocumentNode>(documentsResponse));
                 setIssues(unwrapApiArray<Issue>(issuesResponse));
-                setResourcesTeamId(workspace.teamId);
             })
             .catch((error: Error) => {
                 if (!active) return;
@@ -84,7 +80,7 @@ export function WorkspaceSearchPalette({ onClose, open, restoreFocusRef, workspa
         return () => {
             active = false;
         };
-    }, [open, resourcesTeamId, workspace?.teamId]);
+    }, [open, workspace?.teamId]);
 
     const trimmedQuery = search.query.trim();
     const normalizedQuery = trimmedQuery.toLowerCase();
@@ -206,7 +202,10 @@ export function WorkspaceSearchPalette({ onClose, open, restoreFocusRef, workspa
                         setBusyActionId('create-channel');
                         try {
                             const created = unwrapApiData<{ id: string }>(
-                                await channelApi.createChannel(workspace.teamId, { name: trimmedQuery, type: 'public' }),
+                                await channelApi.createChannel(workspace.teamId, {
+                                    name: trimmedQuery,
+                                    type: 'public',
+                                }),
                             );
                             if (created?.id) {
                                 startTransition(() => {
@@ -269,11 +268,74 @@ export function WorkspaceSearchPalette({ onClose, open, restoreFocusRef, workspa
         return filterCollection(actions, normalizedQuery, 8, ['label', 'description']);
     }, [normalizedQuery, onClose, router, trimmedQuery, workspace]);
 
-    if (!open) return null;
+    const entries = useMemo(() => {
+        const resources = [
+            ...channelTargets.map((target) => ({
+                id: target.href,
+                label: target.label,
+                detail: '채널',
+                run: () => navigateWithClose(router, onClose, target.href),
+            })),
+            ...documentTargets.map((target) => ({
+                id: target.href,
+                label: target.label,
+                detail: '문서',
+                run: () => navigateWithClose(router, onClose, target.href),
+            })),
+            ...issueTargets.map((target) => ({
+                id: target.href,
+                label: target.label,
+                detail: '이슈',
+                run: () => navigateWithClose(router, onClose, target.href),
+            })),
+        ];
+        const messages = (trimmedQuery ? search.results : search.recentResults).slice(0, 6).map((message) => ({
+            id: `message:${message.id}`,
+            label: message.content || '첨부 파일',
+            detail: `${message.authorName} · #${message.channelName}`,
+            run: () =>
+                navigateWithClose(
+                    router,
+                    onClose,
+                    `/${message.teamId}/channel/${message.channelId}?message=${message.id}&at=${encodeURIComponent(message.createdAt)}`,
+                ),
+        }));
+        return [
+            ...resources.map((entry) => ({ ...entry, group: '바로 이동' })),
+            ...messages.map((entry) => ({ ...entry, group: trimmedQuery ? '메시지' : '최근 메시지' })),
+            ...quickActions.map((action) => ({
+                ...action,
+                detail: action.id.startsWith('create-') ? '새로 만들기' : '열기',
+                group: '빠른 실행',
+            })),
+        ];
+    }, [
+        channelTargets,
+        documentTargets,
+        issueTargets,
+        onClose,
+        quickActions,
+        router,
+        search.recentResults,
+        search.results,
+        trimmedQuery,
+    ]);
 
+    useEffect(() => {
+        setSelectedIndex(0);
+    }, [search.query, open]);
+    useEffect(() => {
+        resultsRef.current?.querySelector(`[data-index="${selectedIndex}"]`)?.scrollIntoView({ block: 'nearest' });
+    }, [selectedIndex]);
+    const activeIndex = Math.min(selectedIndex, Math.max(0, entries.length - 1));
+    const runEntry = (index: number) => {
+        if (!busyActionId) void entries[index]?.run();
+    };
+
+    if (!open) return null;
     return (
         <div
-            className="fixed inset-0 z-[90] flex items-start justify-center bg-black/70 px-4 py-8 backdrop-blur-sm"
+            className="fixed inset-0 z-[90] flex items-start justify-center bg-black/60 px-4 pt-[10vh] backdrop-blur-sm"
             onClick={onClose}
         >
             <div
@@ -282,239 +344,120 @@ export function WorkspaceSearchPalette({ onClose, open, restoreFocusRef, workspa
                 aria-modal="true"
                 aria-labelledby={titleId}
                 tabIndex={-1}
-                className="flex w-full max-w-5xl max-h-[min(88vh,920px)] flex-col overflow-hidden rounded-[32px] border border-white/10 bg-bg-primary shadow-2xl outline-none"
+                className="flex max-h-[75vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border-primary bg-bg-secondary shadow-2xl outline-none"
                 onClick={(event) => event.stopPropagation()}
             >
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4 sm:px-6">
-                    <div className="min-w-0">
-                        <p className="text-xs uppercase tracking-[0.24em] text-brand-200">Quick Search</p>
-                        <h2 id={titleId} className="mt-2 text-2xl font-bold text-white">
-                            워크스페이스 빠른 검색
-                        </h2>
-                        <p className="mt-2 text-sm leading-6 text-text-secondary">
-                            메시지 검색 위에 채널, 문서, 이슈 이동과 빠른 생성 동작을 함께 묶었습니다.
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Link
-                            href="/dashboard/messages"
-                            onClick={onClose}
-                            className="rounded-full border border-white/10 px-3 py-2 text-xs text-text-secondary transition hover:bg-white/6 hover:text-white"
-                        >
-                            전체 검색 화면
-                        </Link>
-                        <button
-                            ref={closeButtonRef}
-                            type="button"
-                            onClick={onClose}
-                            className="rounded-full border border-white/10 px-3 py-2 text-xs text-text-secondary transition hover:bg-white/6 hover:text-white"
-                        >
-                            닫기
-                        </button>
-                    </div>
-                </div>
-
-                <div className="border-b border-white/10 px-5 py-4 sm:px-6">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-text-tertiary">
-                        <span className="rounded-full border border-white/10 px-2.5 py-1 text-white">
-                            {typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? '⌘K' : 'Ctrl+K'}
-                        </span>
-                        <span>메시지 검색과 quick action을 한 번에 여는 전역 팔레트입니다.</span>
-                    </div>
-                    <div className="mt-4">
-                        <SearchInput
-                            ariaLabel="명령 팔레트 검색"
-                            autoFocus
-                            placeholder="메시지, 문서, 이슈, 채널, 동작으로 검색..."
-                            query={search.query}
-                            onChange={search.setQuery}
-                        />
-                    </div>
-                    {search.error ? <p className="mt-3 text-sm text-red-400">{search.error}</p> : null}
-                    {resourceError ? <p className="mt-3 text-sm text-red-400">{resourceError}</p> : null}
-                    {actionError ? <p className="mt-3 text-sm text-red-400">{actionError}</p> : null}
-                </div>
-
-                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
-                    <section>
-                        <SectionHeader
-                            eyebrow="Quick Actions"
-                            title={workspace ? '채널, 문서, 이슈 quick action' : '대시보드 quick action'}
-                            description={
-                                workspace
-                                    ? '현재 워크스페이스 맥락에서 자주 여는 화면과 생성 동작을 먼저 배치했습니다.'
-                                    : '대시보드 화면에서 바로 열 수 있는 공용 동작입니다.'
-                            }
-                        />
-                        <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                            {quickActions.map((action) => (
-                                <ActionCard
-                                    key={action.id}
-                                    action={action}
-                                    busy={busyActionId === action.id}
-                                />
-                            ))}
-                            {quickActions.length === 0 ? (
-                                <EmptyState copy="현재 검색어에 맞는 quick action을 찾지 못했습니다." />
-                            ) : null}
-                        </div>
-                    </section>
-
-                    {workspace ? (
-                        <>
-                            <section className="mt-8">
-                                <SectionHeader
-                                    eyebrow="Workspace"
-                                    title="채널, 문서, 이슈로 바로 이동"
-                                    description="최근 업데이트나 검색어에 맞는 워크스페이스 리소스를 빠르게 엽니다."
-                                />
-                                {resourceLoading ? (
-                                    <div className="mt-4 rounded-[28px] border border-border-primary bg-bg-secondary px-6 py-10 text-center text-sm text-text-secondary">
-                                        채널, 문서, 이슈 목록을 불러오는 중...
-                                    </div>
-                                ) : (
-                                    <div className="mt-4 grid gap-4 xl:grid-cols-3">
-                                        <ResourceSection
-                                            items={channelTargets.map((target) => ({
-                                                href: target.href,
-                                                label: target.label,
-                                                meta:
-                                                    target.channel.type === 'public'
-                                                        ? '공개 채널'
-                                                        : target.channel.type === 'private'
-                                                          ? '비공개 채널'
-                                                          : target.channel.type === 'voice'
-                                                            ? '음성 채널'
-                                                            : '직접 대화',
-                                            }))}
-                                            title="채널"
-                                            onClose={onClose}
-                                            emptyCopy="조건에 맞는 채널이 없습니다."
-                                        />
-                                        <ResourceSection
-                                            items={documentTargets.map((target) => ({
-                                                href: target.href,
-                                                label: target.label,
-                                                meta: formatTimestamp(target.document.updatedAt),
-                                            }))}
-                                            title="문서"
-                                            onClose={onClose}
-                                            emptyCopy="조건에 맞는 문서를 찾지 못했습니다."
-                                        />
-                                        <ResourceSection
-                                            items={issueTargets.map((target) => ({
-                                                href: target.href,
-                                                label: target.label,
-                                                meta: formatTimestamp(target.issue.updatedAt),
-                                            }))}
-                                            title="이슈"
-                                            onClose={onClose}
-                                            emptyCopy="조건에 맞는 이슈가 없습니다."
-                                        />
-                                    </div>
-                                )}
-                            </section>
-                        </>
-                    ) : null}
-
-                    <section className="mt-8">
-                        <SectionHeader
-                            eyebrow="Messages"
-                            title="메시지 검색 결과"
-                            description="최근 메시지, 고정 메시지, 검색 결과를 그대로 이어서 확인할 수 있습니다."
-                        />
-                        <div className="mt-4">
-                            {search.booting ? (
-                                <div className="rounded-[28px] border border-border-primary bg-bg-secondary px-6 py-16 text-center text-sm text-text-secondary">
-                                    검색에 필요한 워크스페이스 정보를 불러오는 중...
-                                </div>
-                            ) : (
-                                <SearchResultList
-                                    indexing={search.indexing}
-                                    onSelectResult={onClose}
-                                    pinnedResults={search.pinnedResults}
-                                    query={search.query}
-                                    recentResults={search.recentResults}
-                                    results={search.results}
-                                    teamCount={search.teamCount}
-                                />
-                            )}
-                        </div>
-                    </section>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function SectionHeader({
-    description,
-    eyebrow,
-    title,
-}: {
-    description: string;
-    eyebrow: string;
-    title: string;
-}) {
-    return (
-        <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-brand-200">{eyebrow}</p>
-            <h3 className="mt-2 text-lg font-semibold text-white">{title}</h3>
-            <p className="mt-2 text-sm leading-6 text-text-secondary">{description}</p>
-        </div>
-    );
-}
-
-function ActionCard({ action, busy }: { action: PaletteAction; busy: boolean }) {
-    return (
-        <button
-            type="button"
-            onClick={() => void action.run()}
-            disabled={busy}
-            className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4 text-left transition hover:border-brand-400/30 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-            <p className="text-sm font-semibold text-white">{busy ? '처리 중...' : action.label}</p>
-            <p className="mt-2 text-sm leading-6 text-text-secondary">{action.description}</p>
-        </button>
-    );
-}
-
-function ResourceSection({
-    emptyCopy,
-    items,
-    onClose,
-    title,
-}: {
-    emptyCopy: string;
-    items: Array<{ href: string; label: string; meta: string }>;
-    onClose: () => void;
-    title: string;
-}) {
-    return (
-        <article className="rounded-[28px] border border-white/10 bg-bg-secondary p-4">
-            <p className="text-sm font-semibold text-white">{title}</p>
-            {items.length === 0 ? <p className="mt-3 text-sm text-text-secondary">{emptyCopy}</p> : null}
-            <div className="mt-3 space-y-2">
-                {items.map((item) => (
-                    <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={onClose}
-                        className="block rounded-2xl border border-white/8 bg-black/20 px-3 py-3 transition hover:bg-black/30"
+                <h2 id={titleId} className="sr-only">
+                    워크스페이스 검색
+                </h2>
+                <div className="flex items-center gap-3 border-b border-border-primary px-4 py-4">
+                    <svg
+                        aria-hidden="true"
+                        className="h-5 w-5 shrink-0 text-text-tertiary"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                     >
-                        <p className="truncate text-sm font-medium text-white">{item.label}</p>
-                        <p className="mt-1 text-xs text-text-tertiary">{item.meta}</p>
-                    </Link>
-                ))}
+                        <path strokeWidth={2} strokeLinecap="round" d="m21 21-5-5m2-6a7 7 0 1 1-14 0 7 7 0 0 1 14 0" />
+                    </svg>
+                    <input
+                        ref={inputRef}
+                        autoFocus
+                        role="combobox"
+                        aria-label="워크스페이스 검색"
+                        aria-autocomplete="list"
+                        aria-expanded="true"
+                        aria-controls={`${titleId}-results`}
+                        aria-activedescendant={entries.length ? `${titleId}-result-${activeIndex}` : undefined}
+                        placeholder="채널, 메시지, 문서, 이슈 검색"
+                        value={search.query}
+                        onChange={(event) => search.setQuery(event.target.value)}
+                        onKeyDown={(event) => {
+                            if (event.nativeEvent.isComposing) return;
+                            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                                event.preventDefault();
+                                if (entries.length)
+                                    setSelectedIndex(
+                                        (activeIndex + (event.key === 'ArrowDown' ? 1 : -1) + entries.length) %
+                                            entries.length,
+                                    );
+                            } else if (event.key === 'Enter') {
+                                event.preventDefault();
+                                runEntry(activeIndex);
+                            }
+                        }}
+                        className="min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-text-tertiary"
+                    />
+                    <button
+                        type="button"
+                        aria-label="검색 닫기"
+                        onClick={onClose}
+                        className="rounded border border-border-primary px-2 py-1 text-xs text-text-tertiary hover:text-white"
+                    >
+                        Esc
+                    </button>
+                </div>
+                {(search.error || resourceError || actionError) && (
+                    <p role="alert" className="px-4 py-2 text-sm text-red-300">
+                        {actionError || search.error || resourceError}
+                    </p>
+                )}
+                {(search.booting || search.indexing || resourceLoading) && (
+                    <p role="status" className="px-4 py-2 text-xs text-text-tertiary">
+                        검색 중…
+                    </p>
+                )}
+                <div
+                    ref={resultsRef}
+                    id={`${titleId}-results`}
+                    role="listbox"
+                    aria-label="검색 결과"
+                    className="min-h-0 overflow-y-auto p-2"
+                >
+                    {entries.map((entry, index) => (
+                        <div key={entry.id} role="presentation">
+                            {(index === 0 || entries[index - 1].group !== entry.group) && (
+                                <p
+                                    role="presentation"
+                                    className="px-3 pb-1 pt-3 text-[11px] font-semibold text-text-tertiary"
+                                >
+                                    {entry.group}
+                                </p>
+                            )}
+                            <button
+                                id={`${titleId}-result-${index}`}
+                                data-index={index}
+                                type="button"
+                                role="option"
+                                aria-selected={activeIndex === index}
+                                disabled={Boolean(busyActionId)}
+                                tabIndex={-1}
+                                onMouseMove={() => setSelectedIndex(index)}
+                                onClick={() => runEntry(index)}
+                                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors disabled:opacity-50 ${activeIndex === index ? 'bg-brand-500/15 text-white' : 'text-text-secondary hover:bg-bg-hover'}`}
+                            >
+                                <span className="min-w-0 flex-1 truncate">
+                                    {busyActionId === entry.id ? '처리 중…' : entry.label}
+                                </span>
+                                <span className="max-w-[40%] truncate text-xs text-text-tertiary">{entry.detail}</span>
+                            </button>
+                        </div>
+                    ))}
+                    {!entries.length && !search.indexing && (
+                        <p className="px-3 py-10 text-center text-sm text-text-tertiary">검색 결과가 없습니다.</p>
+                    )}
+                </div>
+                <div className="flex items-center justify-between border-t border-border-primary px-4 py-2.5 text-[11px] text-text-tertiary">
+                    <span>↑↓ 이동 · Enter 열기 · Esc 닫기</span>
+                    <button
+                        type="button"
+                        onClick={() => navigateWithClose(router, onClose, '/dashboard/messages')}
+                        className="hover:text-white"
+                    >
+                        전체 메시지 검색 ↗
+                    </button>
+                </div>
             </div>
-        </article>
-    );
-}
-
-function EmptyState({ copy }: { copy: string }) {
-    return (
-        <div className="rounded-[24px] border border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-text-secondary">
-            {copy}
         </div>
     );
 }
@@ -535,15 +478,6 @@ function filterCollection<T>(
           )
         : items;
     return filtered.slice(0, limit);
-}
-
-function formatTimestamp(value: string) {
-    return new Intl.DateTimeFormat('ko-KR', {
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(new Date(value));
 }
 
 function navigateWithClose(router: ReturnType<typeof useRouter>, onClose: () => void, href: string) {

@@ -3,6 +3,7 @@ import { Geist } from 'next/font/google';
 import { siteConfig } from '@/src/shared/config/site';
 import { DesktopRuntimeBadge } from '@/src/widgets/desktop/ui/DesktopRuntimeBadge';
 import { DesktopDragBar } from '@/src/widgets/desktop/ui/DesktopDragBar';
+import { DesktopNavigation } from '@/src/widgets/desktop/ui/DesktopNavigation';
 import './globals.css';
 
 const geist = Geist({
@@ -34,8 +35,9 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="ko" className={geist.className}>
+        <html lang="ko" className={geist.className} data-scroll-behavior="smooth">
             <body>
+                <DesktopNavigation />
                 <DesktopDragBar />
                 <DesktopRuntimeBadge />
                 {children}

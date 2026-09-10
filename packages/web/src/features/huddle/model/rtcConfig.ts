@@ -9,7 +9,11 @@ interface HuddleRtcEnv {
 }
 
 export function resolveHuddleRtcConfig(env?: HuddleRtcEnv): RTCConfiguration {
-    const resolvedEnv = env ?? (process.env as HuddleRtcEnv);
+    // Next.js only inlines literal NEXT_PUBLIC references into browser bundles.
+    const resolvedEnv = env ?? {
+        NEXT_PUBLIC_WEBRTC_ICE_SERVERS: process.env.NEXT_PUBLIC_WEBRTC_ICE_SERVERS,
+        NEXT_PUBLIC_WEBRTC_ICE_TRANSPORT_POLICY: process.env.NEXT_PUBLIC_WEBRTC_ICE_TRANSPORT_POLICY,
+    };
     const configuredServers = parseConfiguredIceServers(resolvedEnv.NEXT_PUBLIC_WEBRTC_ICE_SERVERS);
 
     return {
@@ -70,7 +74,9 @@ function normalizeUrls(value: unknown): string | string[] | null {
     }
 
     if (Array.isArray(value)) {
-        const urls = value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).map((item) => item.trim());
+        const urls = value
+            .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+            .map((item) => item.trim());
         if (urls.length === 0) return null;
         return urls.length === 1 ? urls[0] : urls;
     }

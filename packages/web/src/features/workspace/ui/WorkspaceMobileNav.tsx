@@ -12,6 +12,7 @@ import { SidebarSection } from './SidebarSection';
 interface Props {
     active: (href: string) => boolean;
     canWrite?: boolean;
+    canAdmin?: boolean;
     channels: Channel[];
     currentUserId: string;
     members: TeamMemberSummary[];
@@ -25,6 +26,7 @@ interface Props {
 export function WorkspaceMobileNav({
     active,
     canWrite = true,
+    canAdmin = false,
     channels,
     currentUserId,
     members,
@@ -35,7 +37,9 @@ export function WorkspaceMobileNav({
     username,
 }: Props) {
     const [open, setOpen] = useState(false);
-    const workspaceChannels = channels.filter((channel) => channel.type === 'public' || channel.type === 'private');
+    const workspaceChannels = channels.filter(
+        (channel) => channel.type === 'public' || channel.type === 'private' || channel.type === 'voice',
+    );
     const directChannels = channels.filter((channel) => channel.type === 'dm' || channel.type === 'group');
     const firstChannel = workspaceChannels[0];
 
@@ -132,11 +136,13 @@ export function WorkspaceMobileNav({
                                 label="워크스페이스 설정"
                                 active={active(`/${teamId}/settings`)}
                             />
-                            <SidebarNavLink
-                                href={`/${teamId}/docs/archived`}
-                                label="휴지통"
-                                active={active(`/${teamId}/docs/archived`)}
-                            />
+                            {canAdmin && (
+                                <SidebarNavLink
+                                    href={`/${teamId}/docs/archived`}
+                                    label="휴지통"
+                                    active={active(`/${teamId}/docs/archived`)}
+                                />
+                            )}
                         </SidebarSection>
                         <div className="flex items-center justify-between border-t border-border-primary px-3 pt-4">
                             <span className="truncate text-sm font-medium text-white">{username || '...'}</span>
