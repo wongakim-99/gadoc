@@ -28,13 +28,10 @@ describe('MessageSearchController', () => {
             limit: 24,
         });
         expect(result).toEqual({
-            success: true,
-            data: {
-                teamCount: 1,
-                results: [],
-                recentResults: [],
-                pinnedResults: [],
-            },
+            teamCount: 1,
+            results: [],
+            recentResults: [],
+            pinnedResults: [],
         });
     });
 });

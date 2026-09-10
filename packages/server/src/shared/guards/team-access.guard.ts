@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { TEAM_ROLE_KEY, type TeamAccessLevel } from '../decorators/team-role.decorator';
 import type { TeamAccessContext } from '../decorators/team-access.decorator';
 import { TeamAccessService } from '../../modules/team/application/services/team-access.service';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 interface AuthenticatedRequest {
     user?: { userId?: string; sub?: string };
@@ -20,11 +21,13 @@ interface AuthenticatedRequest {
  * `teamId`는 라우트 파라미터에서 추출한다 (:teamId).
  */
 @Injectable()
-export class TeamAccessGuard implements CanActivate {
+export class TeamAccessGuard extends JwtAuthGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
         private readonly teamAccessService: TeamAccessService,
-    ) {}
+    ) {
+        super();
+    }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const level = this.reflector.getAllAndOverride<TeamAccessLevel | undefined>(TEAM_ROLE_KEY, [
@@ -32,6 +35,10 @@ export class TeamAccessGuard implements CanActivate {
             context.getClass(),
         ]);
         if (!level) return true;
+
+        // Global guards run before controller guards. Populate request.user
+        // through Passport before evaluating membership on @TeamRole routes.
+        await super.canActivate(context);
 
         const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
         const userId = request.user?.userId ?? request.user?.sub;

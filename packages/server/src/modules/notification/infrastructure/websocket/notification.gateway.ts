@@ -1,3 +1,4 @@
+import type { NotificationPublisher } from '../../application/ports/notification-publisher.port';
 import {
     ConnectedSocket,
     MessageBody,
@@ -15,7 +16,7 @@ import type { NotificationEntity } from '../../domain/notification.entity';
 import { authenticateSocketUser, type SocketUser } from '../../../../shared/lib/socket-auth';
 
 @WebSocketGateway({ namespace: '/notification', cors: { origin: '*' } })
-export class NotificationGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class NotificationGateway implements OnGatewayConnection, OnGatewayDisconnect, NotificationPublisher {
     @WebSocketServer()
     server: Server;
 
@@ -42,10 +43,7 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
     }
 
     @SubscribeMessage('join_team_notifications')
-    async handleJoinTeam(
-        @MessageBody() data: { teamId: string },
-        @ConnectedSocket() client: Socket,
-    ) {
+    async handleJoinTeam(@MessageBody() data: { teamId: string }, @ConnectedSocket() client: Socket) {
         const user = this.getUser(client);
         const team = await this.teamRepo.findById(data.teamId);
         if (!team?.isMember(user.userId)) {
@@ -56,10 +54,7 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
     }
 
     @SubscribeMessage('leave_team_notifications')
-    handleLeaveTeam(
-        @MessageBody() data: { teamId: string },
-        @ConnectedSocket() client: Socket,
-    ) {
+    handleLeaveTeam(@MessageBody() data: { teamId: string }, @ConnectedSocket() client: Socket) {
         const user = this.getUser(client);
         client.leave(this.getRoomKey(data.teamId, user.userId));
     }
@@ -71,15 +66,11 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
     }
 
     emitNotificationRead(teamId: string, userId: string, notificationId: string) {
-        this.server
-            .to(this.getRoomKey(teamId, userId))
-            .emit('notification:read', { id: notificationId });
+        this.server.to(this.getRoomKey(teamId, userId)).emit('notification:read', { id: notificationId });
     }
 
     emitNotificationsReadAll(teamId: string, userId: string) {
-        this.server
-            .to(this.getRoomKey(teamId, userId))
-            .emit('notification:read_all');
+        this.server.to(this.getRoomKey(teamId, userId)).emit('notification:read_all');
     }
 
     private getRoomKey(teamId: string, userId: string) {

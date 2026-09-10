@@ -1,22 +1,24 @@
 import { DocumentEntity } from './document.entity';
 
-function createDoc(overrides: Partial<ConstructorParameters<typeof DocumentEntity>[0] & Record<string, unknown>> = {}): DocumentEntity {
+function createDoc(overrides: Partial<DocumentEntity> = {}): DocumentEntity {
     return new DocumentEntity(
-        overrides.id as string ?? 'doc-1',
-        overrides.teamId as string ?? 'team-1',
-        overrides.title as string ?? '테스트 문서',
-        overrides.content as string ?? '',
+        (overrides.id as string) ?? 'doc-1',
+        (overrides.teamId as string) ?? 'team-1',
+        (overrides.title as string) ?? '테스트 문서',
+        (overrides.content as string) ?? '',
         (overrides.contentFormat as 'plain' | 'html' | 'json') ?? 'plain',
-        overrides.parentId as string | null ?? null,
-        overrides.createdBy as string ?? 'user-owner',
-        overrides.updatedBy as string ?? 'user-owner',
-        null, null, null,
+        (overrides.parentId as string | null) ?? null,
+        (overrides.createdBy as string) ?? 'user-owner',
+        (overrides.updatedBy as string) ?? 'user-owner',
+        null,
+        null,
+        null,
         (overrides.visibility as 'team' | 'restricted') ?? 'team',
         (overrides.editPolicy as 'owner_admin' | 'all' | 'restricted') ?? 'owner_admin',
         (overrides.allowedViewerIds as string[]) ?? [],
         (overrides.allowedEditorIds as string[]) ?? [],
-        overrides.archivedAt as Date | null ?? null,
-        overrides.archivedBy as string | null ?? null,
+        (overrides.archivedAt as Date | null) ?? null,
+        (overrides.archivedBy as string | null) ?? null,
         new Date(),
         new Date(),
     );
@@ -71,7 +73,11 @@ describe('DocumentEntity', () => {
             expect(doc.canEdit('user-other', 'member')).toBe(false);
         });
         it('editPolicy=restricted이면 allowedEditorIds와 작성자만', () => {
-            const doc = createDoc({ editPolicy: 'restricted', allowedEditorIds: ['user-a'], createdBy: 'user-creator' });
+            const doc = createDoc({
+                editPolicy: 'restricted',
+                allowedEditorIds: ['user-a'],
+                createdBy: 'user-creator',
+            });
             expect(doc.canEdit('user-a', 'member')).toBe(true);
             expect(doc.canEdit('user-creator', 'member')).toBe(true);
             expect(doc.canEdit('user-b', 'member')).toBe(false);

@@ -37,7 +37,9 @@ describe('BridgeWorkerService', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        service = new BridgeWorkerService(mockBridgeJobRepo as any, mockWebhookClient as any);
+        service = new BridgeWorkerService(mockBridgeJobRepo as any, mockWebhookClient as any, {
+            now: () => new Date(),
+        });
     });
 
     it('대기 중인 job을 성공적으로 외부 webhook으로 전달한다', async () => {
@@ -56,11 +58,22 @@ describe('BridgeWorkerService', () => {
 
         await service.processPending();
 
-        expect(mockBridgeJobRepo.markRetry).toHaveBeenCalledWith(
-            'job-1',
-            'bridge down',
-            1,
-            expect.any(Date),
-        );
+        expect(mockBridgeJobRepo.markRetry).toHaveBeenCalledWith('job-1', 'bridge down', 1, expect.any(Date));
+    });
+    it('DB 연결 실패를 처리하고 다음 주기에 다시 조회한다', async () => {
+        jest.useFakeTimers();
+        const previousEnv = process.env.NODE_ENV;
+        process.env.NODE_ENV = 'development';
+        mockBridgeJobRepo.claimDueJobs.mockRejectedValueOnce(new Error('Mongo unavailable')).mockResolvedValue([]);
+        try {
+            service.onModuleInit();
+            await jest.advanceTimersByTimeAsync(3000);
+            expect(mockBridgeJobRepo.claimDueJobs).toHaveBeenCalledTimes(2);
+        } finally {
+            service.onModuleDestroy();
+            if (previousEnv === undefined) delete process.env.NODE_ENV;
+            else process.env.NODE_ENV = previousEnv;
+            jest.useRealTimers();
+        }
     });
 });

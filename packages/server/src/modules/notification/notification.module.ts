@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { NOTIFICATION_PUBLISHER } from './application/ports/notification-publisher.port';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Notification, NotificationSchema } from './infrastructure/persistence/notification.schema';
 import { NotificationRepository } from './infrastructure/persistence/notification.repository';
@@ -15,7 +16,11 @@ import { NotificationGateway } from './infrastructure/websocket/notification.gat
 import { NotificationEventListener } from './application/listeners/notification-event.listener';
 
 @Module({
-    imports: [AuthModule, TeamModule, MongooseModule.forFeature([{ name: Notification.name, schema: NotificationSchema }])],
+    imports: [
+        AuthModule,
+        TeamModule,
+        MongooseModule.forFeature([{ name: Notification.name, schema: NotificationSchema }]),
+    ],
     controllers: [NotificationController],
     providers: [
         { provide: NOTIFICATION_REPOSITORY, useClass: NotificationRepository },
@@ -25,6 +30,7 @@ import { NotificationEventListener } from './application/listeners/notification-
         MarkNotificationAsReadUseCase,
         MarkAllNotificationsAsReadUseCase,
         NotificationGateway,
+        { provide: NOTIFICATION_PUBLISHER, useExisting: NotificationGateway },
         NotificationEventListener,
     ],
 })

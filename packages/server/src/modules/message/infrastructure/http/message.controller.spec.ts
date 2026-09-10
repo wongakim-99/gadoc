@@ -19,9 +19,8 @@ describe('MessageController', () => {
         ensureMessageInChannel: jest.fn(),
         ensureMessageWriter: jest.fn(),
     };
-    const mockMessageGateway = {
-        emitPinnedUpdated: jest.fn(),
-        emitMessageDeleted: jest.fn(),
+    const mockEventEmitter = {
+        emit: jest.fn(),
     };
 
     let controller: MessageController;
@@ -36,7 +35,7 @@ describe('MessageController', () => {
             mockPinMessageUseCase as any,
             mockDeleteMessageUseCase as any,
             mockMessageAccessService as any,
-            mockMessageGateway as any,
+            mockEventEmitter as any,
         );
     });
 
@@ -52,19 +51,24 @@ describe('MessageController', () => {
             limit: 20,
             before: undefined,
         });
-        expect(result).toEqual({ success: true, data: [message.toPublic()] });
+        expect(result).toEqual([message]);
     });
 
     it('핀 변경 전에 메시지 접근 권한을 확인하고 소켓 이벤트를 보낸다', async () => {
         const message = makeMessage('message-1');
         mockPinMessageUseCase.execute.mockResolvedValue(message);
 
-        const result = await controller.pinMessage('channel-1', 'message-1', { userId: 'user-1' }, { isPinned: true } as any);
+        const result = await controller.pinMessage('channel-1', 'message-1', { userId: 'user-1' }, {
+            isPinned: true,
+        } as any);
 
         expect(mockMessageAccessService.ensureMessageWriter).toHaveBeenCalledWith('channel-1', 'message-1', 'user-1');
         expect(mockPinMessageUseCase.execute).toHaveBeenCalledWith('message-1', true);
-        expect(mockMessageGateway.emitPinnedUpdated).toHaveBeenCalledWith('channel-1', message.toPublic());
-        expect(result).toEqual({ success: true, data: message.toPublic() });
+        expect(mockEventEmitter.emit).toHaveBeenCalledWith('message.pinned', {
+            channelId: 'channel-1',
+            message: message.toPublic(),
+        });
+        expect(result).toEqual(message);
     });
 
     it('스레드 조회 전에 부모 메시지 접근 권한을 확인한다', async () => {
@@ -73,8 +77,12 @@ describe('MessageController', () => {
 
         const result = await controller.getThreadMessages('channel-1', 'message-1', { userId: 'user-1' });
 
-        expect(mockMessageAccessService.ensureMessageInChannel).toHaveBeenCalledWith('channel-1', 'message-1', 'user-1');
+        expect(mockMessageAccessService.ensureMessageInChannel).toHaveBeenCalledWith(
+            'channel-1',
+            'message-1',
+            'user-1',
+        );
         expect(mockGetThreadMessagesUseCase.execute).toHaveBeenCalledWith('message-1');
-        expect(result).toEqual({ success: true, data: [reply.toPublic()] });
+        expect(result).toEqual([reply]);
     });
 });

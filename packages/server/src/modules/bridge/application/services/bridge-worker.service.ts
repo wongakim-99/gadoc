@@ -21,7 +21,13 @@ export class BridgeWorkerService implements OnModuleInit, OnModuleDestroy {
     onModuleInit() {
         if (process.env.NODE_ENV === 'test') return;
         this.timer = setInterval(() => {
-            void this.processPending();
+            void this.processPending().catch((error: unknown) => {
+                // A transient database outage must not become an unhandled
+                // rejection that terminates the HTTP/WebSocket server.
+                this.logger.warn(
+                    `Bridge poll failed; retrying next interval: ${error instanceof Error ? error.message : String(error)}`,
+                );
+            });
         }, POLL_INTERVAL_MS);
         this.timer.unref?.();
     }
@@ -49,11 +55,15 @@ export class BridgeWorkerService implements OnModuleInit, OnModuleDestroy {
 
                     if (attemptCount >= MAX_ATTEMPTS) {
                         await this.bridgeJobRepo.markFailed(job.id, errorMessage, attemptCount);
-                        this.logger.warn(`Bridge relay permanently failed: ${job.platform} ${job.eventType} jobId=${job.id}`);
+                        this.logger.warn(
+                            `Bridge relay permanently failed: ${job.platform} ${job.eventType} jobId=${job.id}`,
+                        );
                     } else {
                         const availableAt = new Date(this.clock.now().getTime() + attemptCount * 2000);
                         await this.bridgeJobRepo.markRetry(job.id, errorMessage, attemptCount, availableAt);
-                        this.logger.warn(`Bridge relay retry scheduled: ${job.platform} ${job.eventType} jobId=${job.id}`);
+                        this.logger.warn(
+                            `Bridge relay retry scheduled: ${job.platform} ${job.eventType} jobId=${job.id}`,
+                        );
                     }
                 }
             }

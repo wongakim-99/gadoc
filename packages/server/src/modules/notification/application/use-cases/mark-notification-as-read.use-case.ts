@@ -1,13 +1,13 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { INotificationRepository } from '../../domain/notification.port';
 import { NOTIFICATION_REPOSITORY } from '../../domain/notification.port';
-import { NotificationGateway } from '../../infrastructure/websocket/notification.gateway';
+import { NOTIFICATION_PUBLISHER, type NotificationPublisher } from '../ports/notification-publisher.port';
 
 @Injectable()
 export class MarkNotificationAsReadUseCase {
     constructor(
         @Inject(NOTIFICATION_REPOSITORY) private readonly repo: INotificationRepository,
-        private readonly notificationGateway: NotificationGateway,
+        @Inject(NOTIFICATION_PUBLISHER) private readonly notificationPublisher: NotificationPublisher,
     ) {}
 
     async execute(id: string, recipientId: string) {
@@ -15,7 +15,7 @@ export class MarkNotificationAsReadUseCase {
         if (!notification) {
             throw new BadRequestException('읽음 처리할 알림을 찾을 수 없습니다.');
         }
-        this.notificationGateway.emitNotificationRead(notification.teamId, notification.recipientId, notification.id);
+        this.notificationPublisher.emitNotificationRead(notification.teamId, notification.recipientId, notification.id);
         return notification;
     }
 }

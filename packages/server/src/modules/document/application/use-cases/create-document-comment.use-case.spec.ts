@@ -5,7 +5,15 @@ import { DocumentCommentEntity } from '../../domain/document-comment.entity';
 import { DocumentEntity } from '../../domain/document.entity';
 import { CreateDocumentCommentUseCase } from './create-document-comment.use-case';
 
-function makeDocument(overrides: Partial<{ id: string; teamId: string; createdBy: string; visibility: 'team' | 'restricted'; allowedViewerIds: string[] }> = {}) {
+function makeDocument(
+    overrides: Partial<{
+        id: string;
+        teamId: string;
+        createdBy: string;
+        visibility: 'team' | 'restricted';
+        allowedViewerIds: string[];
+    }> = {},
+) {
     return new DocumentEntity(
         overrides.id ?? 'doc-1',
         overrides.teamId ?? 'team-1',
@@ -29,7 +37,16 @@ function makeDocument(overrides: Partial<{ id: string; teamId: string; createdBy
     );
 }
 
-function makeComment(overrides: Partial<{ id: string; teamId: string; documentId: string; parentId: string | null; createdBy: string; resolvedAt: Date | null }> = {}) {
+function makeComment(
+    overrides: Partial<{
+        id: string;
+        teamId: string;
+        documentId: string;
+        parentId: string | null;
+        createdBy: string;
+        resolvedAt: Date | null;
+    }> = {},
+) {
     return new DocumentCommentEntity(
         overrides.id ?? 'comment-1',
         overrides.teamId ?? 'team-1',
@@ -67,7 +84,10 @@ function makeTeam() {
         ],
         [],
         null,
-        { slack: { enabled: false, webhookUrl: '', relayAnnouncements: false, relayGithub: false }, discord: { enabled: false, webhookUrl: '', relayAnnouncements: false, relayGithub: false } },
+        {
+            slack: { enabled: false, webhookUrl: '', relayAnnouncements: false, relayGithub: false },
+            discord: { enabled: false, webhookUrl: '', relayAnnouncements: false, relayGithub: false },
+        },
         new Date(),
     );
 }
@@ -114,8 +134,7 @@ describe('CreateDocumentCommentUseCase', () => {
         existsByEmail: jest.fn(),
     };
     const mockNotification = {
-        execute: jest.fn(),
-        executeBulk: jest.fn(),
+        emit: jest.fn(),
     };
 
     let useCase: CreateDocumentCommentUseCase;
@@ -157,10 +176,14 @@ describe('CreateDocumentCommentUseCase', () => {
         });
 
         expect(result).toBe(savedComment);
-        expect(mockNotification.executeBulk).toHaveBeenCalledWith([
-            expect.objectContaining({ recipientId: 'user-visible', resourceType: 'document', resourceId: 'doc-1' }),
-            expect.objectContaining({ recipientId: 'user-owner', resourceType: 'document', resourceId: 'doc-1' }),
-        ]);
+        expect(mockNotification.emit).toHaveBeenCalledWith(
+            'notification.mentioned',
+            expect.objectContaining({
+                recipientIds: ['user-visible', 'user-owner'],
+                resourceType: 'document',
+                resourceId: 'doc-1',
+            }),
+        );
     });
 
     it('답글은 부모 작성자에게 문서 스레드 알림을 보낸다', async () => {
@@ -182,10 +205,10 @@ describe('CreateDocumentCommentUseCase', () => {
             createdBy: 'user-author',
         });
 
-        expect(mockNotification.execute).toHaveBeenCalledWith(
+        expect(mockNotification.emit).toHaveBeenCalledWith(
+            'notification.thread_replied',
             expect.objectContaining({
                 recipientId: 'user-owner',
-                type: 'thread_reply',
                 resourceType: 'document',
                 resourceId: 'doc-1',
             }),

@@ -29,10 +29,7 @@ describe('SendMessageUseCase', () => {
         save: jest.fn(),
         findById: jest.fn(),
     };
-    const mockCreateNotification = {
-        execute: jest.fn(),
-        executeBulk: jest.fn(),
-    };
+    const mockEventEmitter = { emit: jest.fn() };
     const mockTeamRepo = {
         findById: jest.fn(),
     };
@@ -46,9 +43,9 @@ describe('SendMessageUseCase', () => {
         jest.clearAllMocks();
         useCase = new SendMessageUseCase(
             mockMessageRepo as any,
-            mockCreateNotification as any,
             mockTeamRepo as any,
             mockUserRepo as any,
+            mockEventEmitter as any,
         );
     });
 
@@ -77,10 +74,14 @@ describe('SendMessageUseCase', () => {
                 mentions: ['user-2', 'user-3'],
             }),
         );
-        expect(mockCreateNotification.executeBulk).toHaveBeenCalledWith([
-            expect.objectContaining({ recipientId: 'user-2', type: 'mention' }),
-            expect.objectContaining({ recipientId: 'user-3', type: 'mention' }),
-        ]);
+        expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+            'notification.mentioned',
+            expect.objectContaining({
+                recipientIds: ['user-2', 'user-3'],
+                resourceId: 'message-1',
+                resourceType: 'message',
+            }),
+        );
         expect(result).toBe(savedMessage);
     });
 });

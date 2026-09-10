@@ -51,6 +51,7 @@ describe('GetChannelsUseCase', () => {
             mockTeamRepo as any,
             mockChannelReadRepo as any,
             mockMessageModel as any,
+            { now: () => new Date() },
         );
     });
 
