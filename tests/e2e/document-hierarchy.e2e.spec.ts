@@ -69,6 +69,7 @@ test("create nested pages, preserve parent edits, retry failures and navigate th
     await expect(
       sidebar.getByRole("link", { name: parent.title, exact: true }),
     ).toBeVisible();
+  await title.blur();
   await page.screenshot({
     path: testInfo.outputPath("document-hierarchy.png"),
   });

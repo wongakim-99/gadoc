@@ -118,7 +118,7 @@ export function DocumentWorkspace({
 
     return (
         <div className="document-workspace min-h-[calc(100dvh-3rem)] lg:min-h-full">
-            <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-2 border-b border-border-primary bg-bg-primary px-4 py-2">
+            <header className="workspace-topbar sticky top-0 z-20 flex-wrap">
                 <nav
                     aria-label="페이지 경로"
                     className="flex min-w-0 max-w-full items-center gap-2 overflow-x-auto whitespace-nowrap text-xs text-text-secondary"
@@ -175,7 +175,7 @@ export function DocumentWorkspace({
             </header>
             <div className="flex flex-col xl:flex-row">
                 <article
-                    className={`mx-auto min-w-0 flex-1 px-6 pb-24 pt-12 sm:px-12 ${fullWidth ? 'max-w-none' : 'max-w-3xl'}`}
+                    className={`mx-auto min-w-0 flex-1 px-6 pb-24 pt-10 sm:px-12 sm:pt-14 ${fullWidth ? 'max-w-none' : 'max-w-[880px]'}`}
                     inert={confirming || creatingChild}
                     onCompositionStart={() => autosave.setComposing(true)}
                     onCompositionEnd={() => autosave.setComposing(false)}
@@ -198,12 +198,10 @@ export function DocumentWorkspace({
                                             ?.focus();
                                     }
                                 }}
-                                className="w-full resize-none overflow-hidden border-0 bg-transparent text-4xl font-bold leading-tight text-text-primary outline-none placeholder:text-text-tertiary"
+                                className="document-title w-full resize-none overflow-hidden border-0 bg-transparent text-text-primary outline-none placeholder:text-text-tertiary"
                             />
                         ) : (
-                            <h1 className="break-words text-4xl font-bold leading-tight text-text-primary">
-                                {doc.title}
-                            </h1>
+                            <h1 className="document-title break-words text-text-primary">{doc.title}</h1>
                         )}
                         <p className="mt-3 text-xs text-text-tertiary">
                             마지막 수정 {new Date(autosave.updatedAt).toLocaleString('ko-KR')}

@@ -307,9 +307,11 @@
         --color-bg-active: #353535;
         --color-bg-hover: #2c2c2c;
         --color-text-primary: #eeeeec;
-        --color-text-secondary: #b7b7b2;
-        --color-text-tertiary: #93938e;
-        --color-border-primary: #333332;
+        --color-text-secondary: #bcbcb5;
+        --color-text-tertiary: #999991;
+        --color-border-primary: #30302e;
+        --workspace-accent: #d6b08a;
+        --workspace-header-height: 64px;
         background: var(--color-bg-primary);
         color: var(--color-text-primary);
     }
@@ -370,8 +372,7 @@
     .marketing-card {
         border: 1px solid rgba(201, 162, 114, 0.14);
         background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015)),
-            rgba(17, 13, 9, 0.8);
+            linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015)), rgba(17, 13, 9, 0.8);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
     }
 }
@@ -382,4 +383,80 @@
     padding: 1rem 0;
     line-height: 1.75;
     color: var(--color-text-primary);
+}
+
+/* One visual rhythm for every workspace area. */
+.workspace-shell {
+    letter-spacing: -0.012em;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+.workspace-topbar {
+    min-height: var(--workspace-header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--color-border-primary);
+    background: var(--color-bg-primary);
+    flex-shrink: 0;
+}
+.workspace-topbar h1,
+.workspace-topbar h2 {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 24px;
+    letter-spacing: -0.02em;
+}
+.workspace-sidebar-row {
+    min-height: 36px;
+    padding: 8px 10px;
+    gap: 10px;
+    font-size: 13px;
+    line-height: 20px;
+    border-radius: 6px;
+}
+.workspace-sidebar-row[aria-current='location'] {
+    background: #302b26;
+    color: #f0d5bb;
+    box-shadow: inset 2px 0 0 var(--workspace-accent);
+}
+.workspace-shell :is(button, a, input, textarea, select):focus-visible {
+    outline: 2px solid var(--workspace-accent);
+    outline-offset: 3px;
+}
+.workspace-shell .lucide {
+    stroke-width: 1.65;
+}
+.workspace-shell .document-title:focus-visible {
+    outline: none;
+    box-shadow: 0 1px 0 var(--color-border-primary);
+}
+.workspace-command-dialog input[role='combobox']:focus-visible {
+    outline: none;
+}
+.workspace-command-dialog:focus-within {
+    border-color: #5e554a;
+}
+.workspace-shell .document-title {
+    font-size: clamp(30px, 3vw, 40px);
+    font-weight: 650;
+    line-height: 1.25;
+    letter-spacing: -0.035em;
+}
+.document-workspace .slacord-blocknote .bn-editor {
+    font-size: 16px;
+    min-height: 16rem;
+}
+.workspace-shell .slacord-blocknote [data-color-scheme='dark'] {
+    --bn-colors-menu-background: var(--color-bg-secondary);
+    --bn-colors-tooltip-background: var(--color-bg-secondary);
+}
+@media (max-width: 639px) {
+    .workspace-topbar {
+        padding: 12px 16px;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
 }

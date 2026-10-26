@@ -69,7 +69,8 @@ export function WorkspaceSidebarShell({
             className={`flex shrink-0 flex-col border-b border-border-primary bg-bg-secondary lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r ${collapsed ? 'lg:w-16' : 'lg:w-64'}`}
         >
             <div
-                className={`flex min-h-14 shrink-0 items-center gap-2 border-b border-border-primary px-3 ${isDesktopMac ? 'lg:min-h-[92px] lg:pt-10 desktop-drag-region' : ''}`}
+                data-testid="workspace-brand-header"
+                className={`flex min-h-16 shrink-0 items-center gap-2.5 border-b border-border-primary px-4 ${isDesktopMac ? 'lg:min-h-[104px] lg:pt-10 desktop-drag-region' : ''}`}
             >
                 <Link
                     href="/dashboard"
@@ -86,8 +87,8 @@ export function WorkspaceSidebarShell({
                     className={`flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold ${hideCollapsed}`}
                 >
                     <span className="min-w-0">
-                        <span className="block text-[10px] font-medium tracking-wide text-text-tertiary">SLACORD</span>
-                        <span className="block truncate">{teamName}</span>
+                        <span className="block text-[11px] font-medium leading-4 text-text-tertiary">Slacord</span>
+                        <span className="block truncate text-[13px] leading-5">{teamName}</span>
                     </span>
                     <ChevronsUpDown size={14} className="shrink-0 text-text-tertiary" />
                 </Link>
@@ -116,7 +117,7 @@ export function WorkspaceSidebarShell({
                 id="workspace-navigation"
                 className={`${mobileOpen ? 'flex' : 'hidden'} max-h-[80dvh] min-h-0 flex-col overflow-auto lg:flex lg:max-h-none lg:flex-1 lg:overflow-hidden`}
             >
-                <div className="shrink-0 px-3 pt-2">
+                <div className="shrink-0 space-y-1 px-3 pb-1 pt-4">
                     <button
                         ref={searchButtonRef}
                         onClick={() => {
@@ -124,11 +125,13 @@ export function WorkspaceSidebarShell({
                             onSearch();
                         }}
                         aria-label="전체 검색"
-                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-sm text-text-secondary hover:bg-bg-hover"
+                        className="workspace-sidebar-row flex w-full items-center border border-border-primary bg-bg-primary text-text-secondary hover:bg-bg-hover"
                     >
                         <Search size={16} className="shrink-0" />
                         <span className={hideCollapsed}>전체 검색</span>
-                        <span className={`ml-auto text-[10px] ${hideCollapsed}`}>
+                        <span
+                            className={`ml-auto whitespace-nowrap rounded border border-border-primary px-1 text-[10px] text-text-tertiary ${hideCollapsed}`}
+                        >
                             {isDesktopMac ? '⌘ K' : 'Ctrl K'}
                         </span>
                     </button>
@@ -138,7 +141,7 @@ export function WorkspaceSidebarShell({
                 </div>
                 <nav
                     aria-label="워크스페이스 영역"
-                    className={`flex shrink-0 flex-col gap-0.5 border-b border-border-primary px-3 py-2 ${collapsed ? 'lg:px-2' : ''}`}
+                    className={`flex shrink-0 flex-col gap-0.5 border-b border-border-primary px-3 pb-4 pt-2 ${collapsed ? 'lg:px-2' : ''}`}
                 >
                     {sections.map(({ area: target, href, icon: Icon }) => (
                         <Link
@@ -147,7 +150,7 @@ export function WorkspaceSidebarShell({
                             title={workspaceAreaLabels[target]}
                             aria-label={workspaceAreaLabels[target]}
                             aria-current={area === target ? 'location' : undefined}
-                            className={`flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition hover:bg-bg-hover ${collapsed ? 'lg:justify-center' : ''} ${area === target ? 'bg-bg-active font-medium text-text-primary' : 'text-text-secondary'}`}
+                            className={`workspace-sidebar-row flex items-center transition-colors hover:bg-bg-hover ${collapsed ? 'lg:justify-center' : ''} ${area === target ? 'font-medium text-text-primary' : 'text-text-secondary'}`}
                         >
                             <Icon size={16} className="shrink-0" />
                             <span className={hideCollapsed}>{workspaceAreaLabels[target]}</span>

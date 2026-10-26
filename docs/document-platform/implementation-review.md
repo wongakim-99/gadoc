@@ -4,6 +4,8 @@
 
 ## 화면
 
+최신 디자인 변경은 [개별 레퍼런스 선정·적용 기록](design-reference-adoption.md)을 참고한다. 공개 Shimmer Loader를 실제 로딩에 도입하고, 트리 연결선/펼침과 검색 선택 전환을 적용했다. 상단 정렬선도 영역 전환 시험으로 확인했다.
+
 실제 Slacord 화면의 Playwright 캡처다. 아래 이미지의 팀과 문서는 합성 API 데이터다. 실제 로컬 서버와 MongoDB 저장도 별도로 검증했다.
 
 ![통합 사이드바와 바로 편집하는 페이지](assets/document-desktop.png)

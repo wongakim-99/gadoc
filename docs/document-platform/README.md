@@ -10,6 +10,8 @@
 
 ## 산출물
 
+- [개별 디자인 레퍼런스와 실제 적용](design-reference-adoption.md): App Shell Flat, File Tree, Command Menu, Shimmer Loader.
+
 - [하위 페이지 생성·계층 탐색·공통 사이드바](workspace-navigation.md): 본문 추가, 트리 행 추가, 브랜드와 워크스페이스 구분.
 
 - [전체 기능 지도와 인수 기준](notion-capability-matrix.md): 31개 기능군, M0–M5.

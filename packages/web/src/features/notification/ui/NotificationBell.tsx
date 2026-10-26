@@ -51,7 +51,7 @@ export function NotificationBell({ teamId }: Props) {
                 aria-controls={panelId}
                 aria-expanded={open}
                 aria-haspopup="dialog"
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-bg-hover hover:text-white"
+                className="workspace-sidebar-row flex w-full items-center text-text-secondary transition-colors hover:bg-bg-hover hover:text-white"
             >
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path

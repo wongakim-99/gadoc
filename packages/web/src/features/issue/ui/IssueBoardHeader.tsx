@@ -5,10 +5,12 @@ interface Props {
 
 export function IssueBoardHeader({ canWrite, onCreate }: Props) {
     return (
-        <div className="flex shrink-0 items-center justify-between border-b border-border-primary px-6 py-4">
+        <div className="workspace-topbar">
             <div>
                 <h2 className="text-xl font-bold text-white">이슈 트래커</h2>
-                {!canWrite ? <p className="mt-1 text-xs text-text-tertiary">guest는 이슈를 조회만 할 수 있습니다.</p> : null}
+                {!canWrite ? (
+                    <p className="text-[11px] leading-4 text-text-tertiary">guest는 이슈를 조회만 할 수 있습니다.</p>
+                ) : null}
             </div>
             {canWrite ? (
                 <button

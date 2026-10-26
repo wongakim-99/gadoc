@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { motion, useReducedMotion } from 'framer-motion';
 import { startTransition, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { channelApi, documentApi, issueApi, unwrapApiArray, unwrapApiData } from '@/lib/api-client';
 import { resolveChannelLabel } from '@/src/entities/channel/lib/resolveChannelLabel';
@@ -34,6 +35,7 @@ interface PaletteAction {
 }
 
 export function WorkspaceSearchPalette({ onClose, open, restoreFocusRef, workspace }: Props) {
+    const reduceMotion = useReducedMotion();
     const router = useRouter();
     const search = useDashboardMessages();
     const surfaceRef = useRef<HTMLDivElement>(null);
@@ -338,13 +340,16 @@ export function WorkspaceSearchPalette({ onClose, open, restoreFocusRef, workspa
             className="fixed inset-0 z-[90] flex items-start justify-center bg-black/60 px-4 pt-[10vh] backdrop-blur-sm"
             onClick={onClose}
         >
-            <div
+            <motion.div
                 ref={surfaceRef}
+                initial={{ opacity: 0, y: reduceMotion ? 0 : -8, scale: reduceMotion ? 1 : 0.985 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: reduceMotion ? 0 : 0.16 }}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
                 tabIndex={-1}
-                className="flex max-h-[75vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border-primary bg-bg-secondary shadow-2xl outline-none"
+                className="workspace-command-dialog flex max-h-[75vh] w-full max-w-[600px] flex-col overflow-hidden rounded-xl border border-border-primary bg-bg-secondary shadow-2xl outline-none"
                 onClick={(event) => event.stopPropagation()}
             >
                 <h2 id={titleId} className="sr-only">
@@ -434,8 +439,16 @@ export function WorkspaceSearchPalette({ onClose, open, restoreFocusRef, workspa
                                 tabIndex={-1}
                                 onMouseMove={() => setSelectedIndex(index)}
                                 onClick={() => runEntry(index)}
-                                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors disabled:opacity-50 ${activeIndex === index ? 'bg-brand-500/15 text-white' : 'text-text-secondary hover:bg-bg-hover'}`}
+                                className={`relative isolate flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm disabled:opacity-50 ${activeIndex === index ? 'text-white' : 'text-text-secondary'}`}
                             >
+                                {activeIndex === index && (
+                                    <motion.span
+                                        aria-hidden="true"
+                                        layoutId={`${titleId}-highlight`}
+                                        className="absolute inset-0 -z-10 rounded-md bg-brand-500/15"
+                                        transition={{ duration: reduceMotion ? 0 : 0.12 }}
+                                    />
+                                )}
                                 <span className="min-w-0 flex-1 truncate">
                                     {busyActionId === entry.id ? '처리 중…' : entry.label}
                                 </span>
@@ -457,7 +470,7 @@ export function WorkspaceSearchPalette({ onClose, open, restoreFocusRef, workspa
                         전체 메시지 검색 ↗
                     </button>
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
 }

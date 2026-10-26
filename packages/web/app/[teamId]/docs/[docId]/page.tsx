@@ -4,16 +4,12 @@ import { use } from 'react';
 import Link from 'next/link';
 import { useDocumentDetail } from '@/src/features/document/model/useDocumentDetail';
 import { DocumentWorkspace } from '@/src/features/document/ui/DocumentWorkspace';
+import { DocumentLoading } from '@/src/features/document/ui/DocumentLoading';
 
 export default function DocDetailPage({ params }: { params: Promise<{ teamId: string; docId: string }> }) {
     const { teamId, docId } = use(params);
     const { doc, setDoc, documents, children, loading, error } = useDocumentDetail(teamId, docId);
-    if (loading)
-        return (
-            <p role="status" className="p-8 text-sm text-text-tertiary">
-                페이지를 불러오는 중…
-            </p>
-        );
+    if (loading) return <DocumentLoading />;
     if (!doc || error)
         return (
             <div className="p-8">

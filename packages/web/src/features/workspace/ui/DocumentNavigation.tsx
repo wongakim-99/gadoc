@@ -6,6 +6,7 @@ import { Plus } from 'lucide-react';
 import { documentApi, unwrapApiArray } from '@/lib/api-client';
 import type { DocumentFull, DocumentNode } from '@/src/entities/document/types';
 import { DocumentTree } from '@/src/widgets/document/ui/DocumentTree';
+import { DocumentLoading } from '@/src/features/document/ui/DocumentLoading';
 export function DocumentNavigation({ teamId, canWrite }: { teamId: string; canWrite: boolean }) {
     const pathname = usePathname();
     const [documents, setDocuments] = useState<DocumentNode[]>([]);
@@ -61,11 +62,7 @@ export function DocumentNavigation({ teamId, canWrite }: { teamId: string; canWr
                     </Link>
                 )}
             </div>
-            {loading && (
-                <p role="status" className="text-xs text-neutral-400">
-                    페이지를 불러오는 중…
-                </p>
-            )}
+            {loading && <DocumentLoading compact />}
             {error && (
                 <p role="alert" className="text-xs text-red-300">
                     {error}

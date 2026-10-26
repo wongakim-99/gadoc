@@ -144,6 +144,16 @@ test("workspace shell stays mounted and aligned across every area", async ({
     ).toHaveAttribute("aria-current", "location");
     await expect(sidebar).toHaveAttribute("data-shell-probe", "retained");
     expect(await modules.boundingBox()).toEqual(initial);
+    const brandHeader = await page
+      .getByTestId("workspace-brand-header")
+      .boundingBox();
+    const contentHeader = await page
+      .locator("main .workspace-topbar")
+      .first()
+      .boundingBox();
+    expect(brandHeader?.height).toBe(64);
+    expect(contentHeader?.height).toBe(64);
+    expect(contentHeader?.y).toBe(brandHeader?.y);
     expect(
       await sidebar.evaluate(
         (element) => getComputedStyle(element).backgroundColor,
@@ -213,6 +223,63 @@ test("mobile workspace navigation closes on area changes and exposes contextual 
   ).toBe(true);
 });
 const saveStatus = (page: Page) => page.locator('header [role="status"]');
+
+test("reference interactions respect reduced motion, loading and keyboard input", async ({
+  page,
+}, testInfo) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await fixture(page);
+  await page.route("**/api/team/review-team/document/page-1", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await route.fallback();
+  });
+  await page.goto("/review-team/docs/page-1");
+  const skeleton = page.locator("main .ui-shm").first();
+  await expect(skeleton).toBeVisible();
+  expect(
+    await skeleton.evaluate(
+      (element) => getComputedStyle(element).animationName,
+    ),
+  ).toBe("none");
+  await page.screenshot({ path: testInfo.outputPath("document-loading.png") });
+  await expect(editor(page)).toBeVisible();
+  const sidebar = page.getByRole("complementary", {
+    name: "워크스페이스 사이드바",
+  });
+  const parent = sidebar.getByRole("link", { name: "팀 위키", exact: true });
+  await parent.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(
+    sidebar.getByRole("link", { name: "팀 시작 가이드", exact: true }),
+  ).toHaveCount(0);
+  await page.keyboard.press("ArrowRight");
+  await expect(
+    sidebar.getByRole("link", { name: "팀 시작 가이드", exact: true }),
+  ).toBeVisible();
+  await sidebar.getByRole("button", { name: "전체 검색", exact: true }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "워크스페이스 검색",
+    exact: true,
+  });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("option").first()).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await page.keyboard.press("ArrowDown");
+  await expect(dialog.getByRole("option").nth(1)).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await page.screenshot({
+    path: testInfo.outputPath("workspace-command-menu.png"),
+  });
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(
+    sidebar.getByRole("button", { name: "전체 검색", exact: true }),
+  ).toBeFocused();
+});
 
 async function open(page: Page) {
   await page.goto("/review-team/docs/page-1");
@@ -333,17 +400,29 @@ test("navigation flushes a pending edit before leaving", async ({ page }) => {
   expect(writes.at(-1)?.title).toBe("이동 전에 저장");
 });
 
-test('child creation stops when the parent cannot be saved', async ({ page }) => {
+test("child creation stops when the parent cannot be saved", async ({
+  page,
+}) => {
   await fixture(page, { failFirst: true });
   let creations = 0;
-  page.on('request', request => {
-    if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/team/review-team/document') creations++;
+  page.on("request", (request) => {
+    if (
+      request.method() === "POST" &&
+      new URL(request.url()).pathname === "/api/team/review-team/document"
+    )
+      creations++;
   });
   await open(page);
-  await page.getByRole('textbox', { name: '페이지 제목', exact: true }).fill('저장 실패 초안');
-  await page.getByRole('button', { name: '하위 페이지 추가', exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "페이지 제목", exact: true })
+    .fill("저장 실패 초안");
+  await page
+    .getByRole("button", { name: "하위 페이지 추가", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/docs\/page-1$/);
-  await expect(page.getByRole('button', { name: '다시 시도', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "다시 시도", exact: true }),
+  ).toBeVisible();
   expect(creations).toBe(0);
 });
 
@@ -380,7 +459,9 @@ test("mobile navigation and read-only page", async ({ page }, testInfo) => {
   await expect(
     page.getByRole("button", { name: "아카이브", exact: true }),
   ).toHaveCount(0);
-  await expect(page.getByRole('button', { name: '하위 페이지 추가', exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "하위 페이지 추가", exact: true }),
+  ).toHaveCount(0);
   await page
     .getByRole("button", { name: "워크스페이스 탐색", exact: true })
     .click();
