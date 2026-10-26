@@ -13,6 +13,7 @@ export function useWorkspaceSidebarState(teamId: string) {
     };
 
     return {
+        teamName: workspace.team?.name,
         currentMember: workspace.currentMember,
         currentUserId: workspace.currentUserId,
         currentUsername: workspace.currentUsername,

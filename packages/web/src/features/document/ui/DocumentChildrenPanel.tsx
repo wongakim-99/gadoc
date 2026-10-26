@@ -1,28 +1,49 @@
 import Link from 'next/link';
+import { FileText, Plus } from 'lucide-react';
 import type { DocumentNode } from '@/src/entities/document/types';
 
 interface Props {
     teamId: string;
     children: DocumentNode[];
+    onCreate?: () => void;
+    creating?: boolean;
 }
 
-export function DocumentChildrenPanel({ teamId, children }: Props) {
-    if (children.length === 0) return null;
+export function DocumentChildrenPanel({ teamId, children, onCreate, creating }: Props) {
+    if (children.length === 0 && !onCreate) return null;
     return (
-        <section className="mb-6 rounded-3xl border border-border-primary bg-black/10 p-5">
+        <section aria-label="하위 페이지" className="mt-10 border-t border-border-primary pt-5">
             <div className="mb-4 flex items-center justify-between">
                 <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-brand-200">Children</p>
-                    <h3 className="mt-2 text-lg font-semibold text-white">하위 문서 {children.length}개</h3>
+                    <h2 className="text-xs font-medium text-text-tertiary">
+                        하위 페이지 {children.length > 0 ? children.length : ''}
+                    </h2>
                 </div>
-                <p className="text-xs text-text-tertiary">카테고리 문서면 아래에서 실제 문서를 바로 열 수 있음</p>
             </div>
-            <div className="grid gap-3">
+            <div className="space-y-1">
                 {children.map((child) => (
-                    <Link key={child.id} href={`/${teamId}/docs/${child.id}`} className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm text-white transition hover:border-brand-300/40 hover:bg-white/[0.06]">
-                        {child.title}
+                    <Link
+                        key={child.id}
+                        href={`/${teamId}/docs/${child.id}`}
+                        className="flex items-center gap-2 rounded px-2 py-2 text-sm text-text-primary hover:bg-bg-hover"
+                    >
+                        <FileText size={16} className="shrink-0 text-text-tertiary" />
+                        <span className="truncate underline decoration-border-primary underline-offset-4">
+                            {child.title}
+                        </span>
                     </Link>
                 ))}
+                {onCreate && (
+                    <button
+                        type="button"
+                        disabled={creating}
+                        onClick={onCreate}
+                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-sm text-text-secondary hover:bg-bg-hover disabled:opacity-50"
+                    >
+                        <Plus size={16} />
+                        {creating ? '하위 페이지 생성 중…' : '하위 페이지 추가'}
+                    </button>
+                )}
             </div>
         </section>
     );

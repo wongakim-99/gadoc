@@ -5,7 +5,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { MessageSquare, History, Maximize2 } from 'lucide-react';
-import { documentApi } from '@/lib/api-client';
+import { documentApi, unwrapApiData } from '@/lib/api-client';
 import type { DocumentFull, DocumentNode } from '@/src/entities/document/types';
 import { getDocumentAncestors } from '@/src/entities/document/lib/getDocumentAncestors';
 import { useTeamWorkspaceData } from '@/src/features/team/model/useTeamWorkspaceData';
@@ -42,9 +42,17 @@ export function DocumentWorkspace({
     const [selectedQuote, setSelectedQuote] = useState<string | null>(null);
     const [actionError, setActionError] = useState('');
     const [confirming, setConfirming] = useState(false);
+    const [creatingChild, setCreatingChild] = useState(false);
+    const creatingChildRef = useRef(false);
     const [pending, setPending] = useState<{ kind: 'archive' } | { kind: 'restore'; id: string } | null>(null);
     const titleInput = useRef<HTMLTextAreaElement>(null);
     const editorContainer = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (ready && new URLSearchParams(window.location.search).get('new') === '1') {
+            titleInput.current?.focus();
+            titleInput.current?.select();
+        }
+    }, [ready]);
     useEffect(() => {
         const input = titleInput.current;
         if (!input) return;
@@ -83,13 +91,41 @@ export function DocumentWorkspace({
     const button =
         'rounded p-2 text-text-secondary hover:bg-bg-hover aria-expanded:bg-bg-hover aria-pressed:bg-bg-hover';
 
+    const createChild = async () => {
+        if (!ready || !workspace.canWrite || doc.canEdit === false || creatingChildRef.current) return;
+        creatingChildRef.current = true;
+        setCreatingChild(true);
+        setActionError('');
+        try {
+            if (!(await autosave.flush())) return;
+            const response = await documentApi.createDocument(doc.teamId, {
+                title: '제목 없음',
+                parentId: doc.id,
+                content: '[]',
+                contentFormat: 'json',
+            });
+            const child = unwrapApiData<DocumentFull>(response);
+            if (!response.success || !child?.id) throw new Error('하위 페이지를 만들지 못했습니다.');
+            window.dispatchEvent(new CustomEvent('slacord:documents-refresh'));
+            router.push(`/${doc.teamId}/docs/${child.id}?new=1`);
+        } catch (error) {
+            setActionError(error instanceof Error ? error.message : '하위 페이지 생성 실패');
+        } finally {
+            creatingChildRef.current = false;
+            setCreatingChild(false);
+        }
+    };
+
     return (
         <div className="document-workspace min-h-[calc(100dvh-3rem)] lg:min-h-full">
             <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-2 border-b border-border-primary bg-bg-primary px-4 py-2">
-                <nav aria-label="페이지 경로" className="flex min-w-0 items-center gap-2 text-xs text-text-secondary">
+                <nav
+                    aria-label="페이지 경로"
+                    className="flex min-w-0 max-w-full items-center gap-2 overflow-x-auto whitespace-nowrap text-xs text-text-secondary"
+                >
                     <Link href={`/${doc.teamId}/docs`}>문서</Link>
                     {getDocumentAncestors(documents, doc.id).map((parent) => (
-                        <span key={parent.id} className="hidden items-center gap-2 sm:flex">
+                        <span key={parent.id} className="flex shrink-0 items-center gap-2">
                             <span>/</span>
                             <Link
                                 className="max-w-28 truncate hover:underline"
@@ -140,7 +176,7 @@ export function DocumentWorkspace({
             <div className="flex flex-col xl:flex-row">
                 <article
                     className={`mx-auto min-w-0 flex-1 px-6 pb-24 pt-12 sm:px-12 ${fullWidth ? 'max-w-none' : 'max-w-3xl'}`}
-                    inert={confirming}
+                    inert={confirming || creatingChild}
                     onCompositionStart={() => autosave.setComposing(true)}
                     onCompositionEnd={() => autosave.setComposing(false)}
                 >
@@ -216,7 +252,12 @@ export function DocumentWorkspace({
                             }}
                         />
                     )}
-                    <DocumentChildrenPanel teamId={doc.teamId} children={children} />
+                    <DocumentChildrenPanel
+                        teamId={doc.teamId}
+                        children={children}
+                        onCreate={workspace.canWrite && doc.canEdit !== false ? () => void createChild() : undefined}
+                        creating={creatingChild || !ready}
+                    />
                 </article>
                 {panel && (
                     <aside

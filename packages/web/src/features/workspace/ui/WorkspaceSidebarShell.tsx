@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode, type RefObject } from 'react';
 import {
@@ -72,11 +73,22 @@ export function WorkspaceSidebarShell({
             >
                 <Link
                     href="/dashboard"
+                    aria-label="Slacord 홈"
+                    title="Slacord · 워크스페이스 목록"
+                    className={`shrink-0 rounded-md ${collapsed ? 'lg:hidden' : ''}`}
+                >
+                    <Image src="/logo.svg" alt="Slacord" width={32} height={32} />
+                </Link>
+                <Link
+                    href="/dashboard"
                     title="워크스페이스 전환"
                     aria-label={`${teamName} · 워크스페이스 전환`}
                     className={`flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold ${hideCollapsed}`}
                 >
-                    <span className="truncate">{teamName}</span>
+                    <span className="min-w-0">
+                        <span className="block text-[10px] font-medium tracking-wide text-text-tertiary">SLACORD</span>
+                        <span className="block truncate">{teamName}</span>
+                    </span>
                     <ChevronsUpDown size={14} className="shrink-0 text-text-tertiary" />
                 </Link>
                 <button
@@ -126,7 +138,7 @@ export function WorkspaceSidebarShell({
                 </div>
                 <nav
                     aria-label="워크스페이스 영역"
-                    className={`grid shrink-0 grid-cols-3 gap-1 border-b border-border-primary px-3 py-3 ${collapsed ? 'lg:flex lg:flex-col lg:px-2' : ''}`}
+                    className={`flex shrink-0 flex-col gap-0.5 border-b border-border-primary px-3 py-2 ${collapsed ? 'lg:px-2' : ''}`}
                 >
                     {sections.map(({ area: target, href, icon: Icon }) => (
                         <Link
@@ -135,7 +147,7 @@ export function WorkspaceSidebarShell({
                             title={workspaceAreaLabels[target]}
                             aria-label={workspaceAreaLabels[target]}
                             aria-current={area === target ? 'location' : undefined}
-                            className={`flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs transition hover:bg-bg-hover ${area === target ? 'bg-bg-active text-text-primary' : 'text-text-secondary'}`}
+                            className={`flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition hover:bg-bg-hover ${collapsed ? 'lg:justify-center' : ''} ${area === target ? 'bg-bg-active font-medium text-text-primary' : 'text-text-secondary'}`}
                         >
                             <Icon size={16} className="shrink-0" />
                             <span className={hideCollapsed}>{workspaceAreaLabels[target]}</span>

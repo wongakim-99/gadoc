@@ -333,6 +333,20 @@ test("navigation flushes a pending edit before leaving", async ({ page }) => {
   expect(writes.at(-1)?.title).toBe("이동 전에 저장");
 });
 
+test('child creation stops when the parent cannot be saved', async ({ page }) => {
+  await fixture(page, { failFirst: true });
+  let creations = 0;
+  page.on('request', request => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/team/review-team/document') creations++;
+  });
+  await open(page);
+  await page.getByRole('textbox', { name: '페이지 제목', exact: true }).fill('저장 실패 초안');
+  await page.getByRole('button', { name: '하위 페이지 추가', exact: true }).click();
+  await expect(page).toHaveURL(/\/docs\/page-1$/);
+  await expect(page.getByRole('button', { name: '다시 시도', exact: true })).toBeVisible();
+  expect(creations).toBe(0);
+});
+
 test("malformed JSON cannot be autosaved over the stored document", async ({
   page,
 }) => {
@@ -366,6 +380,7 @@ test("mobile navigation and read-only page", async ({ page }, testInfo) => {
   await expect(
     page.getByRole("button", { name: "아카이브", exact: true }),
   ).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '하위 페이지 추가', exact: true })).toHaveCount(0);
   await page
     .getByRole("button", { name: "워크스페이스 탐색", exact: true })
     .click();

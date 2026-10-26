@@ -71,7 +71,7 @@ export function DocumentNavigation({ teamId, canWrite }: { teamId: string; canWr
                     {error}
                 </p>
             )}
-            {!loading && !error && <DocumentTree documents={documents} teamId={teamId} />}
+            {!loading && !error && <DocumentTree documents={documents} teamId={teamId} canCreate={canWrite} />}
         </>
     );
     return tree;

@@ -12,9 +12,10 @@ import { DocumentTreeSearch } from './DocumentTreeSearch';
 interface Props {
     documents: DocumentNode[];
     teamId: string;
+    canCreate?: boolean;
 }
 
-export function DocumentTree({ documents, teamId }: Props) {
+export function DocumentTree({ documents, teamId, canCreate = false }: Props) {
     const roots = useMemo(() => buildDocumentTree(documents), [documents]);
     const pathname = usePathname();
     const [query, setQuery] = useState('');
@@ -54,6 +55,7 @@ export function DocumentTree({ documents, teamId }: Props) {
                             node={node}
                             onToggle={(id) => setExpandedIds((prev) => toggleExpanded(prev, id))}
                             teamId={teamId}
+                            canCreate={canCreate}
                         />
                     ))}
                 </div>

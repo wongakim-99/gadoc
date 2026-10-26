@@ -31,8 +31,15 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
     const isDesktopMac = useDesktopMac();
     const [searchOpen, setSearchOpen] = useState(false);
     const searchButtonRef = useRef<HTMLButtonElement>(null);
-    const { canWrite, currentMember, currentUserId, currentUsername, logout, members } =
-        useWorkspaceSidebarState(teamId);
+    const {
+        canWrite,
+        currentMember,
+        currentUserId,
+        currentUsername,
+        logout,
+        members,
+        teamName: loadedTeamName,
+    } = useWorkspaceSidebarState(teamId);
     const activeChannelId = pathname.startsWith(`/${teamId}/channel/`) ? (pathname.split('/')[3] ?? null) : null;
     const { channels: sidebarChannels } = useWorkspaceChannels({
         teamId,
@@ -217,7 +224,7 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
         <>
             <WorkspaceSidebarShell
                 teamId={teamId}
-                teamName={teamName}
+                teamName={loadedTeamName || teamName}
                 area={area}
                 context={context}
                 channelId={activeChannelId ?? workspaceChannels[0]?.id}

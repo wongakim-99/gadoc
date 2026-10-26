@@ -10,6 +10,8 @@
 
 ## 산출물
 
+- [하위 페이지 생성·계층 탐색·공통 사이드바](workspace-navigation.md): 본문 추가, 트리 행 추가, 브랜드와 워크스페이스 구분.
+
 - [전체 기능 지도와 인수 기준](notion-capability-matrix.md): 31개 기능군, M0–M5.
 - [현재 구현과 목표 구조](architecture.md): 코드 근거, 설계 선택, 권한·저장·이관 경계.
 - [REA 관찰 기록](rea-investigation.md): 실제 캡처와 로그인 후 미확인 사항.

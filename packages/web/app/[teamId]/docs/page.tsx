@@ -17,7 +17,9 @@ export default function DocsPage({ params }: Props) {
     const { teamId } = use(params);
     const router = useRouter();
     const searchParams = useSearchParams();
+    const parentId = searchParams.get('parentId');
     const [docs, setDocs] = useState<DocumentNode[]>([]);
+    const parent = docs.find((doc) => doc.id === parentId);
     const [canWrite, setCanWrite] = useState(false);
     const [showCreate, setShowCreate] = useState(searchParams.get('create') === '1');
     useEffect(() => {
@@ -73,7 +75,10 @@ export default function DocsPage({ params }: Props) {
         setSaving(true);
         setError('');
         try {
+            if (parentId && (!parent || loading))
+                throw new Error('상위 페이지를 확인할 수 없습니다. 페이지 목록에서 다시 선택해 주세요.');
             const res = await documentApi.createDocument(teamId, {
+                parentId,
                 title: newTitle.trim(),
                 content: '',
                 contentFormat: 'json',
@@ -83,6 +88,7 @@ export default function DocsPage({ params }: Props) {
             setDocs((prev) => [...prev, nextDoc]);
             setNewTitle('');
             setShowCreate(false);
+            window.dispatchEvent(new CustomEvent('slacord:documents-refresh'));
             router.push(`/${teamId}/docs/${nextDoc.id}?edit=1`);
         } catch (caught) {
             setError(caught instanceof Error ? caught.message : '문서를 생성하지 못했습니다.');
@@ -118,7 +124,10 @@ export default function DocsPage({ params }: Props) {
                 </p>
             )}
             {showCreate && (
-                <form onSubmit={handleCreate} className="mb-6 flex flex-col gap-3 sm:flex-row">
+                <form onSubmit={handleCreate} className="mb-6 flex flex-wrap gap-3">
+                    <p className="w-full text-sm text-text-secondary">
+                        생성 위치: {parentId ? `${parent?.title ?? '상위 페이지'} / 하위 페이지` : '최상위 페이지'}
+                    </p>
                     <input
                         value={newTitle}
                         onChange={(e) => setNewTitle(e.target.value)}
@@ -147,7 +156,7 @@ export default function DocsPage({ params }: Props) {
             {loading ? (
                 <p role="status">문서를 불러오는 중입니다.</p>
             ) : (
-                !error && <DocumentTree documents={docs} teamId={teamId} />
+                !error && <DocumentTree documents={docs} teamId={teamId} canCreate={canWrite} />
             )}
         </div>
     );
