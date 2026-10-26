@@ -298,9 +298,13 @@
         color: var(--color-text-primary);
     }
 
+    body:has(.workspace-shell),
+    .workspace-shell,
     .document-workspace {
         --color-bg-primary: #191919;
         --color-bg-secondary: #202020;
+        --color-bg-tertiary: #262626;
+        --color-bg-active: #353535;
         --color-bg-hover: #2c2c2c;
         --color-text-primary: #eeeeec;
         --color-text-secondary: #b7b7b2;

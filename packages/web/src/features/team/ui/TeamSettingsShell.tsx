@@ -80,7 +80,7 @@ export function TeamSettingsShell({ teamId }: Props) {
 
     return (
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-            <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,rgba(214,176,138,0.16)_0%,rgba(14,12,10,0.96)_56%,rgba(14,12,10,0.92)_100%)] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.24)] sm:p-7">
+            <section className="rounded-2xl border border-border-primary bg-bg-secondary p-5 shadow-[0_24px_80px_rgba(0,0,0,0.24)] sm:p-7">
                 <div className="flex flex-wrap items-start justify-between gap-6">
                     <div className="max-w-3xl">
                         <p className="text-xs uppercase tracking-[0.24em] text-brand-200">Team Settings</p>

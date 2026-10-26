@@ -97,7 +97,7 @@ export function IssueModal(props: Props) {
             <form
                 onClick={(e) => e.stopPropagation()}
                 onSubmit={handleSubmit}
-                className="bg-[#1e1814] border border-[rgba(201,162,114,0.25)] rounded-2xl p-6 w-full max-w-md shadow-2xl max-h-[85vh] overflow-y-auto"
+                className="bg-bg-secondary border border-[rgba(201,162,114,0.25)] rounded-2xl p-6 w-full max-w-md shadow-2xl max-h-[85vh] overflow-y-auto"
             >
                 <h3 className="text-lg font-bold text-white mb-4">
                     {readOnly ? '이슈 보기' : isEdit ? '이슈 수정' : '이슈 생성'}

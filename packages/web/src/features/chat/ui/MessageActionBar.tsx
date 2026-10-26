@@ -22,7 +22,7 @@ export function MessageActionBar({ isOwn, message, onDelete, onEdit, onOpenThrea
     if (!visible) return null;
 
     return (
-        <div className="absolute right-5 -top-3.5 z-20 flex items-center gap-px rounded-lg border border-border-primary bg-[#1e1814] shadow-lg">
+        <div className="absolute right-5 -top-3.5 z-20 flex items-center gap-px rounded-lg border border-border-primary bg-bg-secondary shadow-lg">
             {onOpenThread && !message.replyToId ? (
                 <IconButton onClick={onOpenThread} title="스레드">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />

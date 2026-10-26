@@ -12,7 +12,7 @@ function HelpSection({ title, children }: { title: string; children: React.React
 export function DiscordImportHelpModal({ onClose }: { onClose: () => void }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md" onClick={onClose}>
-            <div onClick={(event) => event.stopPropagation()} className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[rgba(201,162,114,0.25)] bg-[#1e1814] p-6 shadow-2xl">
+            <div onClick={(event) => event.stopPropagation()} className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[rgba(201,162,114,0.25)] bg-bg-secondary p-6 shadow-2xl">
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-bold text-white">Discord 임포트 가이드</h3>
                     <button onClick={onClose} className="text-text-tertiary transition-colors hover:text-white">

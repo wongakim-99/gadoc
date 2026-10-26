@@ -83,8 +83,26 @@ async function fixture(
           role: canEdit ? "owner" : "guest",
         },
       ];
-    } else if (path === "/api/team/review-team") {
-      data = { id: "review-team", name: "검토 워크스페이스" };
+    } else if (
+      path === "/api/team/review-team" ||
+      path === "/api/team/review-team/settings"
+    ) {
+      const target = {
+        enabled: false,
+        relayAnnouncements: false,
+        relayGithub: false,
+        hasWebhookUrl: false,
+        webhookUrl: "",
+      };
+      data = {
+        id: "review-team",
+        name: "검토 워크스페이스",
+        slug: "review-team",
+        memberCount: 1,
+        activeInviteCount: 0,
+        githubConfig: null,
+        bridgeConfig: { slack: target, discord: target },
+      };
     }
     await route.fulfill({ json: { success: true, data } });
   });
@@ -93,6 +111,107 @@ async function fixture(
 
 const editor = (page: Page) =>
   page.locator('.bn-editor[contenteditable="true"]');
+
+test("workspace shell stays mounted and aligned across every area", async ({
+  page,
+}, testInfo) => {
+  await fixture(page);
+  await open(page);
+  const sidebar = page.getByRole("complementary", {
+    name: "워크스페이스 사이드바",
+  });
+  const modules = sidebar.getByRole("navigation", {
+    name: "워크스페이스 영역",
+    exact: true,
+  });
+  await sidebar.evaluate((element) =>
+    element.setAttribute("data-shell-probe", "retained"),
+  );
+  const initial = await modules.boundingBox();
+  for (const [label, path] of [
+    ["이슈", "issues"],
+    ["공지", "announcements"],
+    ["채팅", "channel"],
+    ["홈", ""],
+    ["문서", "docs"],
+  ]) {
+    await modules.getByRole("link", { name: label, exact: true }).click();
+    await expect(page).toHaveURL(
+      new RegExp(`/review-team${path ? "/" + path : ""}$`),
+    );
+    await expect(
+      modules.getByRole("link", { name: label, exact: true }),
+    ).toHaveAttribute("aria-current", "location");
+    await expect(sidebar).toHaveAttribute("data-shell-probe", "retained");
+    expect(await modules.boundingBox()).toEqual(initial);
+    expect(
+      await sidebar.evaluate(
+        (element) => getComputedStyle(element).backgroundColor,
+      ),
+    ).toBe("rgb(32, 32, 32)");
+    expect(
+      await page
+        .locator("main")
+        .evaluate(
+          (element) => getComputedStyle(element.parentElement!).backgroundColor,
+        ),
+    ).toBe("rgb(25, 25, 25)");
+    if (path === "channel")
+      await expect(sidebar.getByText("아직 채널이 없습니다.")).toBeVisible();
+    if (path === "issues")
+      await page.screenshot({
+        path: testInfo.outputPath("workspace-issues.png"),
+      });
+  }
+  await sidebar.getByRole("link", { name: "설정", exact: true }).click();
+  await expect(
+    sidebar.getByRole("link", { name: "설정", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+  expect(await modules.boundingBox()).toEqual(initial);
+  await sidebar
+    .getByRole("button", { name: "사이드바 접기", exact: true })
+    .click();
+  expect((await sidebar.boundingBox())?.width).toBe(64);
+  await modules.getByRole("link", { name: "이슈", exact: true }).click();
+  await expect(page).toHaveURL(/\/issues$/);
+  expect((await sidebar.boundingBox())?.width).toBe(64);
+  await sidebar
+    .getByRole("button", { name: "사이드바 펼치기", exact: true })
+    .click();
+  expect((await sidebar.boundingBox())?.width).toBe(256);
+});
+
+test("mobile workspace navigation closes on area changes and exposes contextual actions", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fixture(page);
+  await open(page);
+  const toggle = page.getByRole("button", {
+    name: "워크스페이스 탐색",
+    exact: true,
+  });
+  const navigation = page.locator("#workspace-navigation");
+  await toggle.click();
+  await navigation.getByRole("link", { name: "채팅", exact: true }).click();
+  await expect(page).toHaveURL(/\/channel$/);
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await toggle.click();
+  await expect(
+    navigation.getByRole("button", { name: "+ DM / 소그룹 열기", exact: true }),
+  ).toBeVisible();
+  await navigation.getByRole("link", { name: "이슈", exact: true }).click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await toggle.click();
+  await expect(
+    navigation.getByRole("link", { name: "+ 이슈 만들기", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
 const saveStatus = (page: Page) => page.locator('header [role="status"]');
 
 async function open(page: Page) {
@@ -120,7 +239,9 @@ test("immediate editing, autosave failure/retry, sidebar title and reload", asyn
   // Observe beyond the debounce to ensure normalizing/loading blocks does not create a version.
   await page.waitForTimeout(900);
   expect(writes).toHaveLength(0);
-  const sidebar = page.getByRole("complementary", { name: "문서 사이드바" });
+  const sidebar = page.getByRole("complementary", {
+    name: "워크스페이스 사이드바",
+  });
   await expect(sidebar.locator('a[aria-current="page"]')).toContainText(
     "팀 시작 가이드",
   );
@@ -245,13 +366,17 @@ test("mobile navigation and read-only page", async ({ page }, testInfo) => {
   await expect(
     page.getByRole("button", { name: "아카이브", exact: true }),
   ).toHaveCount(0);
-  await page.locator("summary").click();
+  await page
+    .getByRole("button", { name: "워크스페이스 탐색", exact: true })
+    .click();
   await expect(
     page
-      .locator("details[open]")
+      .locator("#workspace-navigation")
       .getByRole("link", { name: "문서", exact: true }),
   ).toBeVisible();
-  await page.locator("summary").click();
+  await page
+    .getByRole("button", { name: "워크스페이스 탐색", exact: true })
+    .click();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

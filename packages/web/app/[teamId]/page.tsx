@@ -55,5 +55,5 @@ function QuickPanel({ description, disabled, href, label, title }: { description
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {
-    return <div className="rounded-2xl border border-border-primary bg-[#120f0b] px-4 py-4"><p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{label}</p><p className="mt-3 text-2xl font-bold text-white">{value}</p></div>;
+    return <div className="rounded-2xl border border-border-primary bg-bg-primary px-4 py-4"><p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{label}</p><p className="mt-3 text-2xl font-bold text-white">{value}</p></div>;
 }

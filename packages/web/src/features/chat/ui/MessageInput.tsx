@@ -50,7 +50,7 @@ export function MessageInput({ channelName, readOnly = false, readOnlyMessage, m
                 onChange={(event) => readOnly ? undefined : void composer.handleFileChange(event.target.files)}
             />
             <div
-                className={`relative overflow-hidden rounded-2xl border bg-[#1e1814] transition-colors ${
+                className={`relative overflow-hidden rounded-2xl border bg-bg-secondary transition-colors ${
                     composer.isDraggingFiles
                         ? 'border-[#d6b08a] bg-[#2a1d12]'
                         : 'border-border-primary focus-within:border-[#d6b08a]/60'
@@ -62,7 +62,7 @@ export function MessageInput({ channelName, readOnly = false, readOnlyMessage, m
             >
                 {composer.isDraggingFiles ? (
                     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/55 backdrop-blur-sm">
-                        <div className="rounded-full border border-[#d6b08a]/40 bg-[#1e1814]/90 px-4 py-2 text-sm font-medium text-white">
+                        <div className="rounded-full border border-[#d6b08a]/40 bg-bg-secondary/90 px-4 py-2 text-sm font-medium text-white">
                             파일을 놓아서 업로드 큐에 추가
                         </div>
                     </div>

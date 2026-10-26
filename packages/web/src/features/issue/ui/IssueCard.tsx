@@ -33,7 +33,7 @@ export function IssueCard({ draggable = true, issue, index, members, onClick }: 
             <button
                 type="button"
                 onClick={() => onClick(issue)}
-                className="w-full rounded-lg border border-border-primary bg-[#1e1814] p-3 text-left transition-colors hover:bg-bg-hover"
+                className="w-full rounded-lg border border-border-primary bg-bg-secondary p-3 text-left transition-colors hover:bg-bg-hover"
             >
                 <IssueCardBody assignees={assignees} issue={issue} priorityClass={priorityClass} />
             </button>
@@ -48,7 +48,7 @@ export function IssueCard({ draggable = true, issue, index, members, onClick }: 
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
                     onClick={() => onClick(issue)}
-                    className={`w-full text-left bg-[#1e1814] hover:bg-bg-hover border border-border-primary rounded-lg p-3 transition-colors cursor-grab active:cursor-grabbing ${snapshot.isDragging ? 'shadow-xl rotate-[2deg] border-[rgba(201,162,114,0.35)]' : ''}`}
+                    className={`w-full text-left bg-bg-secondary hover:bg-bg-hover border border-border-primary rounded-lg p-3 transition-colors cursor-grab active:cursor-grabbing ${snapshot.isDragging ? 'shadow-xl rotate-[2deg] border-[rgba(201,162,114,0.35)]' : ''}`}
                 >
                     <IssueCardBody assignees={assignees} issue={issue} priorityClass={priorityClass} />
                 </div>
@@ -85,7 +85,7 @@ function IssueCardBody({ assignees, issue, priorityClass }: { assignees: TeamMem
                                 <div
                                     key={member.userId}
                                     title={name}
-                                    className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#1e1814] text-[9px] font-bold text-white"
+                                    className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-bg-secondary text-[9px] font-bold text-white"
                                     style={{ backgroundColor: getAvatarColor(member.userId) }}
                                 >
                                     {name.slice(0, 1).toUpperCase()}
@@ -93,7 +93,7 @@ function IssueCardBody({ assignees, issue, priorityClass }: { assignees: TeamMem
                             );
                         })}
                         {assignees.length > 3 ? (
-                            <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#1e1814] bg-bg-tertiary text-[9px] font-bold text-text-tertiary">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-bg-secondary bg-bg-tertiary text-[9px] font-bold text-text-tertiary">
                                 +{assignees.length - 3}
                             </div>
                         ) : null}

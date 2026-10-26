@@ -51,7 +51,7 @@ export function PendingAttachmentTray({ files, onRemove }: Props) {
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {previews.map((preview) => (
                     <div key={`${preview.file.name}-${preview.file.size}-${preview.index}`} className="overflow-hidden rounded-2xl border border-border-primary bg-black/20">
-                        <div className="relative aspect-[4/3] bg-[#120f0b]">
+                        <div className="relative aspect-[4/3] bg-bg-primary">
                             {preview.kind === 'image' && preview.url ? (
                                 <img src={preview.url} alt={preview.file.name} className="h-full w-full object-cover" />
                             ) : preview.kind === 'video' && preview.url ? (
