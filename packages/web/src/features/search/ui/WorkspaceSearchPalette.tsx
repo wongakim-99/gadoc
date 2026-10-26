@@ -337,7 +337,7 @@ export function WorkspaceSearchPalette({ onClose, open, restoreFocusRef, workspa
     if (!open) return null;
     return (
         <div
-            className="fixed inset-0 z-[90] flex items-start justify-center bg-black/60 px-4 pt-[10vh] backdrop-blur-sm"
+            className="fixed inset-0 z-[90] flex items-start justify-center bg-overlay px-4 pt-[10vh] backdrop-blur-sm"
             onClick={onClose}
         >
             <motion.div

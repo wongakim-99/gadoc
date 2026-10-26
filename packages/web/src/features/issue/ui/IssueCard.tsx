@@ -48,7 +48,7 @@ export function IssueCard({ draggable = true, issue, index, members, onClick }: 
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
                     onClick={() => onClick(issue)}
-                    className={`w-full text-left bg-bg-secondary hover:bg-bg-hover border border-border-primary rounded-lg p-3 transition-colors cursor-grab active:cursor-grabbing ${snapshot.isDragging ? 'shadow-xl rotate-[2deg] border-[rgba(201,162,114,0.35)]' : ''}`}
+                    className={`w-full text-left bg-bg-secondary hover:bg-bg-hover border border-border-primary rounded-lg p-3 transition-colors cursor-grab active:cursor-grabbing ${snapshot.isDragging ? 'shadow-xl rotate-[2deg] border-action-text' : ''}`}
                 >
                     <IssueCardBody assignees={assignees} issue={issue} priorityClass={priorityClass} />
                 </div>

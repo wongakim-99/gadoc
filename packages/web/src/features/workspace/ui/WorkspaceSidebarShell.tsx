@@ -78,7 +78,7 @@ export function WorkspaceSidebarShell({
                     title="Slacord · 워크스페이스 목록"
                     className={`shrink-0 rounded-md ${collapsed ? 'lg:hidden' : ''}`}
                 >
-                    <Image src="/logo.svg" alt="Slacord" width={32} height={32} />
+                    <Image src="/logo-workspace.svg" alt="Slacord" width={32} height={32} />
                 </Link>
                 <Link
                     href="/dashboard"

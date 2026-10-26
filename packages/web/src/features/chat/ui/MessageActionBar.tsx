@@ -73,7 +73,7 @@ function IconButton({
     const accentClass = accent === 'danger'
         ? 'hover:bg-red-500/10 hover:text-red-400'
         : accent === 'pin'
-          ? 'hover:bg-white/5 hover:text-[#e5c07b]'
+          ? 'hover:bg-white/5 hover:text-warning'
           : 'hover:bg-white/5 hover:text-white';
     return (
         <button onClick={onClick} className={`px-2 py-1.5 text-text-tertiary transition-colors ${accentClass}`} title={title}>

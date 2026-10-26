@@ -145,7 +145,7 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
                                     <button
                                         key={t}
                                         onClick={() => setChannelType(t)}
-                                        className={`rounded-full px-2 py-0.5 text-[11px] transition ${channelType === t ? 'bg-slack-green text-white' : 'border border-border-primary text-text-tertiary hover:text-white'}`}
+                                        className={`rounded-full px-2 py-0.5 text-[11px] transition ${channelType === t ? 'bg-action text-white' : 'border border-border-primary text-text-tertiary hover:text-white'}`}
                                     >
                                         {t === 'public' ? '공개' : t === 'private' ? '비공개' : '음성'}
                                     </button>
@@ -161,7 +161,7 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
                                 <button
                                     onClick={() => void handleCreateChannel()}
                                     disabled={channelLoading || !channelName.trim()}
-                                    className="flex-1 rounded-lg bg-slack-green px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
+                                    className="flex-1 rounded-lg bg-action px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
                                 >
                                     {channelLoading ? '...' : '만들기'}
                                 </button>

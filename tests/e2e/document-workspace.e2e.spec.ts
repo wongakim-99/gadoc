@@ -112,6 +112,47 @@ async function fixture(
 const editor = (page: Page) =>
   page.locator('.bn-editor[contenteditable="true"]');
 
+test("workspace design tokens keep readable text and primary actions across surfaces", async ({ page }, testInfo) => {
+  await fixture(page);
+  await open(page);
+  const ratios = await page.locator('.workspace-shell').evaluate((shell) => {
+    const probe = document.createElement('span');
+    shell.appendChild(probe);
+    const rgb = (token: string) => {
+      probe.style.color = `var(${token})`;
+      return getComputedStyle(probe).color.match(/[\d.]+/g)!.slice(0, 3).map(Number);
+    };
+    const luminance = (value: number[]) => value.map(c => c / 255)
+      .map(c => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+      .reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+    const contrast = (a: number[], b: number[]) => {
+      const values = [luminance(a), luminance(b)].sort((x, y) => y - x);
+      return (values[0] + 0.05) / (values[1] + 0.05);
+    };
+    const results: { name: string; ratio: number }[] = [];
+    for (const surface of ['--color-bg-primary', '--color-bg-secondary']) {
+      for (const text of ['--color-text-primary', '--color-text-secondary', '--color-text-tertiary', '--color-text-muted', '--color-info', '--color-success', '--color-warning', '--color-error']) {
+        results.push({ name: `${text} on ${surface}`, ratio: contrast(rgb(text), rgb(surface)) });
+      }
+    }
+    results.push({ name: 'selected label', ratio: contrast(rgb('--color-action-text'), rgb('--color-selection')) });
+    for (const action of ['--color-action', '--color-action-hover']) results.push({ name: `white on ${action}`, ratio: contrast([255, 255, 255], rgb(action)) });
+    probe.remove();
+    return results;
+  });
+  for (const result of ratios) expect(result.ratio, result.name).toBeGreaterThanOrEqual(4.5);
+  await testInfo.attach('token-contrast.json', { body: JSON.stringify(ratios, null, 2), contentType: 'application/json' });
+  await page.getByRole('navigation', { name: '워크스페이스 영역', exact: true }).getByRole('link', { name: '이슈', exact: true }).click();
+  await page.getByRole('button', { name: '이슈 생성', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '이슈 생성', exact: true })).toBeVisible();
+  const title = page.getByRole('textbox', { name: '이슈 제목', exact: true });
+  await title.focus();
+  await expect(title).toHaveCSS('outline-style', 'solid');
+  const submit = page.getByRole('button', { name: '생성', exact: true });
+  await expect(submit).toHaveCSS('background-color', 'rgb(70, 104, 217)');
+  await page.screenshot({ path: testInfo.outputPath('issue-modal.png') });
+});
+
 test("workspace shell stays mounted and aligned across every area", async ({
   page,
 }, testInfo) => {
@@ -158,14 +199,14 @@ test("workspace shell stays mounted and aligned across every area", async ({
       await sidebar.evaluate(
         (element) => getComputedStyle(element).backgroundColor,
       ),
-    ).toBe("rgb(32, 32, 32)");
+    ).toBe("rgb(32, 36, 43)");
     expect(
       await page
         .locator("main")
         .evaluate(
           (element) => getComputedStyle(element.parentElement!).backgroundColor,
         ),
-    ).toBe("rgb(25, 25, 25)");
+    ).toBe("rgb(24, 27, 32)");
     if (path === "channel")
       await expect(sidebar.getByText("아직 채널이 없습니다.")).toBeVisible();
     if (path === "issues")

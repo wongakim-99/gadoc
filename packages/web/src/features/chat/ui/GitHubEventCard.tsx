@@ -45,7 +45,7 @@ export function GitHubEventCard({ meta }: Props) {
                         href={meta.prUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="shrink-0 text-xs text-slack-green hover:underline"
+                        className="shrink-0 text-xs text-action-text hover:underline"
                     >
                         GitHub →
                     </a>

@@ -33,7 +33,7 @@ export function SidebarNavLink({ href, label, active, icon, unreadCount = 0, men
                 </span>
             ) : null}
             {showUnreadBadge ? (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#b97532] px-1.5 text-[11px] font-bold text-white">
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-action px-1.5 text-[11px] font-bold text-white">
                     {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
             ) : null}

@@ -91,13 +91,13 @@ export function IssueModal(props: Props) {
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm"
             onClick={props.onClose}
         >
             <form
                 onClick={(e) => e.stopPropagation()}
                 onSubmit={handleSubmit}
-                className="bg-bg-secondary border border-[rgba(201,162,114,0.25)] rounded-2xl p-6 w-full max-w-md shadow-2xl max-h-[85vh] overflow-y-auto"
+                className="bg-bg-secondary border border-border-primary rounded-panel p-6 w-full max-w-md shadow-2xl max-h-[85vh] overflow-y-auto"
             >
                 <h3 className="text-lg font-bold text-white mb-4">
                     {readOnly ? '이슈 보기' : isEdit ? '이슈 수정' : '이슈 생성'}
@@ -183,7 +183,7 @@ export function IssueModal(props: Props) {
                     {!readOnly ? (
                         <button
                             type="submit"
-                            className="flex-1 py-2 rounded-lg bg-slack-green text-white hover:bg-slack-green/90 transition-colors text-sm font-medium"
+                            className="flex-1 py-2 rounded-lg bg-action text-white hover:bg-action-hover transition-colors text-sm font-medium"
                         >
                             {isEdit ? '저장' : '생성'}
                         </button>

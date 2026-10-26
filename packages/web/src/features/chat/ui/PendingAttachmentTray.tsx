@@ -45,7 +45,7 @@ export function PendingAttachmentTray({ files, onRemove }: Props) {
     return (
         <div className="border-b border-border-primary/80 px-3 py-3">
             <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#d6b08a]">업로드 준비</p>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-action-text">업로드 준비</p>
                 <p className="text-xs text-text-tertiary">{previews.length}개 파일</p>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">

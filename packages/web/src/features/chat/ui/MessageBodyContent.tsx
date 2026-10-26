@@ -42,7 +42,7 @@ export function MessageBodyContent({
                 </div>
             ) : null}
             {!message.replyToId && replyCount > 0 && onOpenThread ? (
-                <button onClick={() => onOpenThread(message)} className="mt-0.5 flex items-center gap-1 text-[13px] text-[#61afef] hover:underline">
+                <button onClick={() => onOpenThread(message)} className="mt-0.5 flex items-center gap-1 text-[13px] text-info hover:underline">
                     {replyCount}개의 답글
                 </button>
             ) : null}
