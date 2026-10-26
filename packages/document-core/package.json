@@ -1,0 +1,17 @@
+{
+  "name": "@slacord/document-core",
+  "version": "1.0.10",
+  "private": true,
+  "description": "Versioned document database domain contracts and validation",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.cjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\""
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

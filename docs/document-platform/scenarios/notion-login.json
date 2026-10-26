@@ -1,0 +1,12 @@
+{
+  "browser": {
+    "mode": "launch",
+    "executable_path": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "headless": true
+  },
+  "start_url": { "url": "https://www.notion.so/login", "query": [] },
+  "actions": [
+    { "step_id": "settle", "action": "wait_for_timeout", "duration_ms": 4000 }
+  ],
+  "capture": { "at_end": ["url", "accessibility"], "events": [] }
+}
