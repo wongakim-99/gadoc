@@ -51,6 +51,14 @@ export function useIssueBoardData({ teamId, filters }: Props) {
     }, [filters.query, loadIssues]);
 
     useEffect(() => {
+        const refresh = () => {
+            void loadIssues();
+        };
+        window.addEventListener('slacord:issues-refresh', refresh);
+        return () => window.removeEventListener('slacord:issues-refresh', refresh);
+    }, [loadIssues]);
+
+    useEffect(() => {
         const focusIssueId = searchParams.get('issue');
         if (focusIssueId) setSelectedIssueId(focusIssueId);
     }, [searchParams]);

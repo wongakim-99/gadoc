@@ -8,6 +8,7 @@ import '@blocknote/mantine/style.css';
 import { ko } from '@blocknote/core/locales';
 import { documentApi, unwrapApiData } from '@/lib/api-client';
 import { DocumentAttachmentButton } from './DocumentAttachmentButton';
+import { InsertWorkspaceReference } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
 
 interface Props {
     contentFormat: 'plain' | 'html' | 'json';
@@ -71,6 +72,21 @@ export function DocumentEditorPanel({
 
     return (
         <div className="space-y-3">
+            <InsertWorkspaceReference
+                onInsert={(reference) => {
+                    editor.insertBlocks(
+                        [
+                            {
+                                type: 'paragraph',
+                                content: [{ type: 'link', href: reference.href, content: reference.label }],
+                            },
+                        ],
+                        editor.getTextCursorPosition().block,
+                        'after',
+                    );
+                    onChangeRef.current(JSON.stringify(editor.document));
+                }}
+            />
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-xs text-text-tertiary">빈 줄에서 / 를 입력해 블록을 추가하세요.</p>
                 <DocumentAttachmentButton

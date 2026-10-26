@@ -5,6 +5,12 @@ import type { Issue, IssuePriority, IssueStatus } from '@/src/entities/issue/typ
 import type { TeamMemberSummary } from '@/src/entities/team/types';
 import { IssueAssigneePicker } from './IssueAssigneePicker';
 import { IssueModalFields } from './IssueModalFields';
+import {
+    ConnectedText,
+    InsertWorkspaceReference,
+    WorkspaceReferenceActions,
+} from '@/src/features/workspace/ui/WorkspaceReferenceActions';
+import { useWorkspaceLeaveGuard } from '@/src/features/workspace/model/useWorkspaceConnection';
 
 interface CreateProps {
     initialTitle?: string;
@@ -18,7 +24,7 @@ interface CreateProps {
         priority: IssuePriority;
         assigneeIds?: string[];
         labels?: string[];
-    }) => void;
+    }) => void | Promise<void>;
     onClose: () => void;
 }
 
@@ -27,7 +33,7 @@ interface EditProps {
     issue: Issue;
     readOnly?: boolean;
     members?: TeamMemberSummary[];
-    onSubmit: (data: Partial<Issue>) => void;
+    onSubmit: (data: Partial<Issue>) => void | Promise<void>;
     onClose: () => void;
 }
 
@@ -46,9 +52,22 @@ export function IssueModal(props: Props) {
     const labelInputRef = useRef<HTMLInputElement>(null);
     const members = props.members ?? [];
     const readOnly = props.readOnly ?? false;
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState('');
+    useWorkspaceLeaveGuard(
+        () =>
+            readOnly ||
+            (title === (isEdit ? props.issue.title : (props.initialTitle ?? '')) &&
+                description === (isEdit ? (props.issue.description ?? '') : '') &&
+                priority === (isEdit ? props.issue.priority : 'medium') &&
+                status === (isEdit ? props.issue.status : 'todo') &&
+                JSON.stringify(assigneeIds) === JSON.stringify(isEdit ? (props.issue.assigneeIds ?? []) : []) &&
+                JSON.stringify(labels) === JSON.stringify(isEdit ? (props.issue.labels ?? []) : [])) ||
+            window.confirm('저장하지 않은 이슈 변경이 있습니다. 이 화면을 닫을까요?'),
+    );
 
     const toggleAssignee = (userId: string) => {
-        setAssigneeIds((prev) => prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]);
+        setAssigneeIds((prev) => (prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]));
     };
 
     const addLabel = () => {
@@ -74,39 +93,73 @@ export function IssueModal(props: Props) {
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (readOnly) {
             props.onClose();
             return;
         }
-        if (!title.trim()) return;
-        if (isEdit) {
-            props.onSubmit({ title, description, priority, status, assigneeIds, labels });
-        } else {
-            props.onSubmit({ title, description, priority, assigneeIds, labels });
+        if (!title.trim() || saving) return;
+        setSaving(true);
+        setSaveError('');
+        try {
+            if (isEdit) {
+                await props.onSubmit({ title, description, priority, status, assigneeIds, labels });
+            } else {
+                await props.onSubmit({ title, description, priority, assigneeIds, labels });
+            }
+            props.onClose();
+        } catch (error) {
+            setSaveError(error instanceof Error ? error.message : '저장하지 못했습니다. 작성 내용은 유지됩니다.');
+        } finally {
+            setSaving(false);
         }
-        props.onClose();
     };
 
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm"
-            onClick={props.onClose}
+            onClick={() => {
+                if (!saving) props.onClose();
+            }}
         >
             <form
                 onClick={(e) => e.stopPropagation()}
                 onSubmit={handleSubmit}
+                aria-busy={saving}
                 className="bg-bg-secondary border border-border-primary rounded-panel p-6 w-full max-w-md shadow-2xl max-h-[85vh] overflow-y-auto"
             >
                 <h3 className="text-lg font-bold text-white mb-4">
                     {readOnly ? '이슈 보기' : isEdit ? '이슈 수정' : '이슈 생성'}
                 </h3>
+                {saveError && (
+                    <p role="alert" className="mb-3 text-sm text-error">
+                        {saveError}
+                    </p>
+                )}
+                {isEdit && (
+                    <WorkspaceReferenceActions
+                        reference={{
+                            kind: 'issues',
+                            href: `/${props.issue.teamId}/issues?issue=${props.issue.id}`,
+                            label: props.issue.title,
+                        }}
+                    />
+                )}
+                <InsertWorkspaceReference
+                    disabled={readOnly || saving}
+                    onInsert={(_, markdown) => setDescription((value) => [value, markdown].filter(Boolean).join('\n'))}
+                />
+                {description.includes('](') && (
+                    <div className="mb-3 whitespace-pre-wrap break-words rounded-control border border-border-primary p-3 text-xs text-text-secondary">
+                        <ConnectedText text={description} />
+                    </div>
+                )}
                 <IssueModalFields
                     description={description}
                     isEdit={isEdit}
                     priority={priority}
-                    readOnly={readOnly}
+                    readOnly={readOnly || saving}
                     setDescription={setDescription}
                     setPriority={setPriority}
                     setStatus={setStatus}
@@ -132,7 +185,10 @@ export function IssueModal(props: Props) {
                                 {!readOnly && (
                                     <button
                                         type="button"
-                                        onClick={(e) => { e.stopPropagation(); removeLabel(label); }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            removeLabel(label);
+                                        }}
                                         className="ml-0.5 text-slack-green/50 hover:text-slack-green transition-colors leading-none"
                                         aria-label={`${label} 라벨 제거`}
                                     >
@@ -176,6 +232,7 @@ export function IssueModal(props: Props) {
                     <button
                         type="button"
                         onClick={props.onClose}
+                        disabled={saving}
                         className="flex-1 py-2 rounded-lg border border-border-primary text-text-secondary hover:text-white hover:bg-bg-hover transition-colors text-sm"
                     >
                         {readOnly ? '닫기' : '취소'}
@@ -183,6 +240,7 @@ export function IssueModal(props: Props) {
                     {!readOnly ? (
                         <button
                             type="submit"
+                            disabled={saving}
                             className="flex-1 py-2 rounded-lg bg-action text-white hover:bg-action-hover transition-colors text-sm font-medium"
                         >
                             {isEdit ? '저장' : '생성'}

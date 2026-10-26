@@ -4,6 +4,34 @@
 @import 'tailwindcss' layer(base);
 @config '../tailwind.config.ts';
 
+.connection-toolbar { display: flex; min-height: 40px; align-items: center; gap: 16px; padding: 4px 16px; border-bottom: 1px solid var(--color-border-primary); background: var(--color-bg-secondary); }
+.connection-open, .connection-icon { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: var(--radius-control); padding: 6px; color: var(--color-text-secondary); font-size: 12px; }
+.connection-open:hover, .connection-icon:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }
+.connection-reference-tray { display: flex; align-items: center; gap: 8px; padding: 4px 16px; border-bottom: 1px solid var(--color-border-primary); background: var(--color-selection); color: var(--color-action-text); font-size: 12px; }
+.connection-insert { display: flex; max-width: 100%; align-items: center; gap: 6px; margin: 8px 0; border: 1px solid var(--color-border-glow); border-radius: var(--radius-control); padding: 6px 10px; background: var(--color-selection); color: var(--color-action-text); font-size: 12px; }
+.connection-link { color: var(--color-action-text); text-decoration: underline; text-underline-offset: 3px; }
+.connection-panes { display: flex; min-height: 0; flex: 1; }
+.connection-panes.is-split .connection-primary { contain: layout; }
+.connection-primary { min-width: 0; width: 100%; background: var(--color-bg-primary); }
+.connection-secondary { min-width: 0; flex: 1; background: var(--color-bg-primary); }
+.connection-divider { width: 7px; flex-shrink: 0; cursor: col-resize; background: var(--color-bg-secondary); border-inline: 1px solid var(--color-border-primary); touch-action: none; }
+.connection-divider:hover, .connection-divider:focus-visible { background: var(--color-selection); outline: 2px solid var(--color-action-text); outline-offset: -2px; }
+.connected-embedded .document-workspace { min-height: 100%; }
+.connected-embedded .workspace-topbar { padding-inline: 16px; }
+.connected-embedded .document-workspace article { padding: 28px 24px 80px; }
+.workspace-shell .slacord-blocknote a[href] { color: var(--color-action-text); text-decoration: underline; text-underline-offset: 3px; }
+@media (min-width: 1024px) {
+    .connected-body > aside { height: 100%; }
+    .connection-panes.is-split .connection-primary { width: var(--primary-width); flex-shrink: 0; }
+    .connection-panes.is-reversed { flex-direction: row-reverse; }
+}
+@media (max-width: 1023px) {
+    .connection-icon[aria-label='좌우 바꾸기'] { display: none; }
+    .connected-workspace { height: 100dvh; min-height: 0; overflow: hidden; }
+    .connection-panes .mobile-hidden { display: none; }
+    .connection-divider { display: none; }
+}
+
 @layer theme {
     :root {
         --color-action: var(--color-brand-500);

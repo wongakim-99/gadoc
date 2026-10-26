@@ -2,6 +2,7 @@ import { ReactionBar } from './ReactionBar';
 import { MessageAttachments } from './MessageAttachments';
 import { MessageEditForm } from './MessageEditForm';
 import type { Message } from '@/src/entities/message/types';
+import { ConnectedText } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
 
 interface Props {
     currentUserId: string;
@@ -31,10 +32,17 @@ export function MessageBodyContent({
     return (
         <>
             {editing ? (
-                <MessageEditForm editRef={editRef} onChange={onChangeEdit} onKeyDown={onEditKeyDown} value={editValue} />
-            ) : (
-                message.content ? <p className="break-words whitespace-pre-wrap text-[15px] leading-[22px] text-white/90">{message.content}</p> : null
-            )}
+                <MessageEditForm
+                    editRef={editRef}
+                    onChange={onChangeEdit}
+                    onKeyDown={onEditKeyDown}
+                    value={editValue}
+                />
+            ) : message.content ? (
+                <p className="break-words whitespace-pre-wrap text-[15px] leading-[22px] text-white/90">
+                    <ConnectedText text={message.content} />
+                </p>
+            ) : null}
             <MessageAttachments attachments={message.attachments} />
             {message.reactions.length > 0 ? (
                 <div className="mt-1">
@@ -42,7 +50,10 @@ export function MessageBodyContent({
                 </div>
             ) : null}
             {!message.replyToId && replyCount > 0 && onOpenThread ? (
-                <button onClick={() => onOpenThread(message)} className="mt-0.5 flex items-center gap-1 text-[13px] text-info hover:underline">
+                <button
+                    onClick={() => onOpenThread(message)}
+                    className="mt-0.5 flex items-center gap-1 text-[13px] text-info hover:underline"
+                >
                     {replyCount}개의 답글
                 </button>
             ) : null}

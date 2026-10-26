@@ -1,6 +1,7 @@
 import { TeamSidebar } from '@/src/features/workspace/ui/TeamSidebar';
 import { fetchWorkspaceLayoutData } from '@/lib/server-workspace-data';
 import type { Channel } from '@/src/entities/channel/types';
+import { ConnectedWorkspace } from '@/src/features/workspace/ui/ConnectedWorkspace';
 
 interface Props {
     children: React.ReactNode;
@@ -22,9 +23,12 @@ export default async function WorkspaceLayout({ children, params }: Props) {
     }
 
     return (
-        <div className="workspace-shell flex min-h-screen flex-col bg-bg-primary lg:h-screen lg:flex-row lg:overflow-hidden">
-            <TeamSidebar teamId={teamId} teamName={teamName} channels={channels} />
-            <main className="min-w-0 flex-1 overflow-auto">{children}</main>
-        </div>
+        <ConnectedWorkspace
+            key={teamId}
+            teamId={teamId}
+            sidebar={<TeamSidebar teamId={teamId} teamName={teamName} channels={channels} />}
+        >
+            {children}
+        </ConnectedWorkspace>
     );
 }

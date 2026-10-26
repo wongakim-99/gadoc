@@ -6,6 +6,13 @@ import { announcementApi, authApi, teamApi } from '@/lib/api-client';
 import { hasTeamWriteAccess, resolveCurrentTeamMember } from '@/src/entities/team/lib/access';
 import type { Announcement } from '@/src/entities/announcement/types';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
+import { useSearchParams } from 'next/navigation';
+import {
+    ConnectedText,
+    InsertWorkspaceReference,
+    WorkspaceReferenceActions,
+} from '@/src/features/workspace/ui/WorkspaceReferenceActions';
+import { useWorkspaceLeaveGuard } from '@/src/features/workspace/model/useWorkspaceConnection';
 
 interface Props {
     params: Promise<{ teamId: string }>;
@@ -14,15 +21,44 @@ interface Props {
 export default function AnnouncementsPage({ params }: Props) {
     const { teamId } = use(params);
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-    const [canWrite, setCanWrite] = useState(true);
+    const [canWrite, setCanWrite] = useState(false);
     const [showCreate, setShowCreate] = useState(false);
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
+    const [error, setError] = useState('');
+    const [saving, setSaving] = useState(false);
+    const searchParams = useSearchParams();
+    const focusedId = searchParams.get('announcement');
+    useWorkspaceLeaveGuard(
+        () =>
+            !showCreate ||
+            !(title.trim() || content.trim()) ||
+            window.confirm('게시하지 않은 공지가 있습니다. 이 화면을 닫을까요?'),
+    );
+    useEffect(() => {
+        if (focusedId) document.getElementById(`announcement-${focusedId}`)?.scrollIntoView({ block: 'center' });
+    }, [focusedId, announcements]);
 
     useEffect(() => {
-        announcementApi.getAnnouncements(teamId).then((res) => {
-            if (res.success && Array.isArray(res.data)) setAnnouncements(res.data as Announcement[]);
-        });
+        let active = true;
+        const refresh = () => {
+            void announcementApi
+                .getAnnouncements(teamId)
+                .then((res) => {
+                    if (!active) return;
+                    if (res.success && Array.isArray(res.data)) setAnnouncements(res.data as Announcement[]);
+                    else setError('공지를 불러오지 못했습니다.');
+                })
+                .catch(() => {
+                    if (active) setError('공지를 불러오지 못했습니다.');
+                });
+        };
+        refresh();
+        window.addEventListener('slacord:announcements-refresh', refresh);
+        return () => {
+            active = false;
+            window.removeEventListener('slacord:announcements-refresh', refresh);
+        };
     }, [teamId]);
 
     useEffect(() => {
@@ -45,12 +81,22 @@ export default function AnnouncementsPage({ params }: Props) {
         e.preventDefault();
         if (!canWrite) return;
         if (!title.trim() || !content.trim()) return;
-        const res = await announcementApi.createAnnouncement(teamId, { title, content });
-        if (res.success && res.data) {
-            setAnnouncements((prev) => [res.data as Announcement, ...prev]);
-            setTitle('');
-            setContent('');
-            setShowCreate(false);
+        if (saving) return;
+        setSaving(true);
+        setError('');
+        try {
+            const res = await announcementApi.createAnnouncement(teamId, { title, content });
+            if (res.success && res.data) {
+                setAnnouncements((prev) => [res.data as Announcement, ...prev]);
+                setTitle('');
+                setContent('');
+                setShowCreate(false);
+                window.dispatchEvent(new CustomEvent('slacord:announcements-refresh'));
+            } else setError('공지 게시에 실패했습니다. 작성 내용은 유지됩니다.');
+        } catch {
+            setError('공지 게시에 실패했습니다. 작성 내용은 유지됩니다.');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -59,6 +105,7 @@ export default function AnnouncementsPage({ params }: Props) {
         const res = await announcementApi.pinAnnouncement(teamId, id, !isPinned);
         if (res.success && res.data) {
             setAnnouncements((prev) => prev.map((a) => (a.id === id ? { ...a, isPinned: !isPinned } : a)));
+            window.dispatchEvent(new CustomEvent('slacord:announcements-refresh'));
         }
     };
 
@@ -74,7 +121,7 @@ export default function AnnouncementsPage({ params }: Props) {
                 {canWrite ? (
                     <button
                         onClick={() => setShowCreate(true)}
-                        className="px-4 py-2 rounded-lg bg-slack-green text-white text-sm font-medium hover:bg-slack-green/90 transition-colors"
+                        className="px-4 py-2 rounded-control bg-action text-white text-sm font-medium hover:bg-action-hover transition-colors"
                     >
                         공지 작성
                     </button>
@@ -82,11 +129,22 @@ export default function AnnouncementsPage({ params }: Props) {
             </div>
 
             <div className="mx-auto max-w-3xl p-6">
+                {error && (
+                    <p role="alert" className="mb-3 text-sm text-error">
+                        {error}
+                    </p>
+                )}
                 {showCreate && (
                     <form
                         onSubmit={handleCreate}
                         className="bg-bg-secondary rounded-xl border border-border-primary p-5 mb-6"
                     >
+                        <InsertWorkspaceReference
+                            disabled={!canWrite || saving}
+                            onInsert={(_, markdown) =>
+                                setContent((value) => [value, markdown].filter(Boolean).join('\n'))
+                            }
+                        />
                         <input
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
@@ -112,7 +170,8 @@ export default function AnnouncementsPage({ params }: Props) {
                             </button>
                             <button
                                 type="submit"
-                                className="flex-1 py-2 rounded-lg bg-slack-green text-white text-sm font-medium hover:bg-slack-green/90 transition-colors"
+                                disabled={saving}
+                                className="flex-1 py-2 rounded-control bg-action text-white text-sm font-medium hover:bg-action-hover disabled:opacity-50 transition-colors"
                             >
                                 등록
                             </button>
@@ -124,7 +183,8 @@ export default function AnnouncementsPage({ params }: Props) {
                     {announcements.map((a) => (
                         <div
                             key={a.id}
-                            className={`bg-bg-secondary rounded-xl border p-5 ${a.isPinned ? 'border-slack-green/40' : 'border-border-primary'}`}
+                            id={`announcement-${a.id}`}
+                            className={`bg-bg-secondary rounded-xl border p-5 ${focusedId === a.id ? 'border-action-text ring-1 ring-action-text' : a.isPinned ? 'border-slack-green/40' : 'border-border-primary'}`}
                         >
                             <div className="flex items-start justify-between gap-3 mb-2">
                                 <div className="flex items-center gap-2">
@@ -144,7 +204,16 @@ export default function AnnouncementsPage({ params }: Props) {
                                     </button>
                                 ) : null}
                             </div>
-                            <p className="text-sm text-text-secondary whitespace-pre-wrap">{a.content}</p>
+                            <WorkspaceReferenceActions
+                                reference={{
+                                    kind: 'announcements',
+                                    href: `/${teamId}/announcements?announcement=${a.id}`,
+                                    label: a.title,
+                                }}
+                            />
+                            <p className="text-sm text-text-secondary whitespace-pre-wrap break-words">
+                                <ConnectedText text={a.content} />
+                            </p>
                             <p className="text-xs text-text-tertiary mt-3">
                                 {new Date(a.createdAt).toLocaleDateString('ko-KR')}
                             </p>

@@ -17,6 +17,7 @@ import { DocumentCommentPanel } from './DocumentCommentPanel';
 import { DocumentVersionPanel } from './DocumentVersionPanel';
 import { DocumentContent } from './DocumentContent';
 import { ConfirmationDialog } from '@/src/shared/ui/ConfirmationDialog';
+import { WorkspaceReferenceActions } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
 
 const DocumentEditorPanel = dynamic(() => import('./DocumentEditorPanel').then((m) => m.DocumentEditorPanel), {
     ssr: false,
@@ -141,6 +142,13 @@ export function DocumentWorkspace({
                     </span>
                 </nav>
                 <div className="flex flex-wrap items-center gap-1">
+                    <WorkspaceReferenceActions
+                        reference={{
+                            kind: 'docs',
+                            href: `/${doc.teamId}/docs/${doc.id}`,
+                            label: autosave.title || '문서',
+                        }}
+                    />
                     <button
                         aria-label="전체 너비"
                         aria-pressed={fullWidth}
