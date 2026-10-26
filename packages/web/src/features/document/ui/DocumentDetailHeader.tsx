@@ -1,91 +1,66 @@
-'use client';
+﻿'use client';
 
 import type { DocumentFull } from '@/src/entities/document/types';
 
 interface Props {
     doc: DocumentFull;
     editing: boolean;
+    saving: boolean;
+    editorReady: boolean;
+    dirty: boolean;
     onArchive: () => void;
     onCancel: () => void;
     onEdit: () => void;
     onSave: () => Promise<void>;
-    onTitleChange: (value: string) => void;
-    title: string;
 }
 
 export function DocumentDetailHeader({
     doc,
     editing,
+    saving,
+    editorReady,
+    dirty,
     onArchive,
     onCancel,
     onEdit,
     onSave,
-    onTitleChange,
-    title,
 }: Props) {
+    const button =
+        'rounded-md px-2.5 py-1.5 text-xs text-text-secondary transition hover:bg-bg-hover hover:text-white disabled:opacity-50';
     return (
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-1">
+            <span role="status" className="mr-2 text-xs text-text-tertiary">
+                {saving ? '저장 중…' : dirty ? '저장하지 않은 변경' : '저장됨'}
+            </span>
+            {doc.visibility === 'restricted' && <span className="mr-2 text-xs text-warning">제한된 페이지</span>}
             {editing ? (
-                <input
-                    value={title}
-                    onChange={(event) => onTitleChange(event.target.value)}
-                    className="flex-1 border-b border-slack-green/50 bg-transparent text-2xl font-bold text-white focus:outline-none"
-                />
+                <>
+                    <button onClick={onCancel} disabled={saving} className={button}>
+                        취소
+                    </button>
+                    <button
+                        onClick={() => void onSave()}
+                        disabled={saving || !editorReady}
+                        className={`${button} bg-bg-hover`}
+                        title="Ctrl / ⌘ + S"
+                    >
+                        저장
+                    </button>
+                </>
             ) : (
-                <div className="min-w-0">
-                    <h2 className="text-2xl font-bold text-white">{doc.title}</h2>
-                    {doc.externalUrl ? (
-                        <a
-                            href={doc.externalUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-2 inline-flex text-xs text-brand-100 underline underline-offset-4"
-                        >
-                            Confluence 원본 열기
-                        </a>
-                    ) : null}
-                </div>
+                <>
+                    {doc.canEdit !== false && (
+                        <button onClick={onEdit} className={button}>
+                            편집
+                        </button>
+                    )}
+                    {doc.canDelete !== false && (
+                        <button onClick={onArchive} className={button}>
+                            아카이브
+                        </button>
+                    )}
+                </>
             )}
-            <div className="flex shrink-0 flex-wrap gap-2">
-                {editing ? (
-                    <>
-                        <button
-                            onClick={onCancel}
-                            className="rounded-lg border border-border-primary px-3 py-1.5 text-sm text-text-secondary transition hover:bg-bg-hover hover:text-white"
-                        >
-                            취소
-                        </button>
-                        <button
-                            onClick={() => void onSave()}
-                            className="rounded-lg bg-slack-green px-3 py-1.5 text-sm font-medium text-white transition hover:bg-slack-green/90"
-                        >
-                            저장
-                        </button>
-                    </>
-                ) : (
-                    <>
-                        {doc.canEdit !== false ? (
-                            <button
-                                onClick={onEdit}
-                                className="rounded-lg border border-border-primary px-3 py-1.5 text-sm text-text-secondary transition hover:bg-bg-hover hover:text-white"
-                            >
-                                편집
-                            </button>
-                        ) : null}
-                        {doc.canDelete !== false ? (
-                            <button
-                                onClick={onArchive}
-                                className="rounded-lg border border-error/30 px-3 py-1.5 text-sm text-error transition hover:bg-error/10"
-                            >
-                                아카이브
-                            </button>
-                        ) : null}
-                        {doc.visibility === 'restricted' ? (
-                            <span className="rounded-full bg-warning/20 px-2 py-1 text-xs text-warning">제한 문서</span>
-                        ) : null}
-                    </>
-                )}
-            </div>
         </div>
     );
 }

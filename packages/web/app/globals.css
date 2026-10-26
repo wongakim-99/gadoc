@@ -298,6 +298,23 @@
         color: var(--color-text-primary);
     }
 
+    .document-workspace {
+        --color-bg-primary: #191919;
+        --color-bg-secondary: #202020;
+        --color-bg-hover: #2c2c2c;
+        --color-text-primary: #eeeeec;
+        --color-text-secondary: #b7b7b2;
+        --color-text-tertiary: #93938e;
+        --color-border-primary: #333332;
+        background: var(--color-bg-primary);
+        color: var(--color-text-primary);
+    }
+
+    .document-workspace .bn-editor {
+        padding: 1rem 0;
+        line-height: 1.75;
+    }
+
     .slacord-blocknote .bn-editor {
         min-height: 22rem;
         padding: 1.25rem 1.35rem;
@@ -353,4 +370,12 @@
             rgba(17, 13, 9, 0.8);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
     }
+}
+
+/* Keep the document canvas continuous across the lazy-loaded editor stylesheet. */
+.document-workspace .slacord-blocknote .bn-editor {
+    background: transparent;
+    padding: 1rem 0;
+    line-height: 1.75;
+    color: var(--color-text-primary);
 }
