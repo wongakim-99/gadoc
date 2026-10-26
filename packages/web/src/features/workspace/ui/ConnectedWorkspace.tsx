@@ -6,6 +6,7 @@ import { ArrowLeftRight, Columns2, Link2, X } from 'lucide-react';
 import { WorkspaceConnection, canLeaveWorkspacePane } from '../model/useWorkspaceConnection';
 import { sameDocument, workspaceHref, type WorkspaceReference } from '../model/workspaceReference';
 import { WorkspaceResourcePicker } from './WorkspaceResourcePicker';
+import { hasReferenceDrag, readReferenceDrag, validDragReference } from '../model/workspaceDrag';
 
 const protocol = 'slacord-workspace-v1';
 const resourceEvents = [
@@ -30,6 +31,8 @@ export function ConnectedWorkspace({
     const [secondary, setSecondary] = useState<{ href: string; label: string } | null>(null);
     const [secondaryPath, setSecondaryPath] = useState('');
     const [pending, setPending] = useState<WorkspaceReference | null>(null);
+    const [dragging, setDragging] = useState<WorkspaceReference | null>(null);
+    const [edgeOver, setEdgeOver] = useState(false);
     const [picker, setPicker] = useState(false);
     const [ratio, setRatio] = useState(55);
     const [reversed, setReversed] = useState(false);
@@ -64,6 +67,30 @@ export function ConnectedWorkspace({
         },
         [embedded, post],
     );
+    const drag = useCallback(
+        (reference: WorkspaceReference | null) => {
+            setDragging(reference);
+            if (!reference) setEdgeOver(false);
+            post(embedded ? window.parent : (frame.current?.contentWindow ?? null), 'drag', reference);
+        },
+        [embedded, post],
+    );
+    useEffect(() => {
+        const clear = () => drag(null);
+        // Keep the target mounted until its React drop handler consumes the payload.
+        const afterDrop = () => window.setTimeout(clear, 0);
+        const escape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') clear();
+        };
+        window.addEventListener('dragend', clear);
+        window.addEventListener('drop', afterDrop, true);
+        window.addEventListener('keydown', escape);
+        return () => {
+            window.removeEventListener('dragend', clear);
+            window.removeEventListener('drop', afterDrop, true);
+            window.removeEventListener('keydown', escape);
+        };
+    }, [drag]);
     const mayClose = useCallback(
         () =>
             new Promise<boolean>((resolve) => {
@@ -87,11 +114,11 @@ export function ConnectedWorkspace({
         [post],
     );
     const open = useCallback(
-        async (raw: string, label = '관련 내용') => {
+        async (raw: string, label = '관련 내용', right = false) => {
             const href = workspaceHref(raw, teamId, window.location.origin);
             if (!href) return;
             if (embedded) {
-                post(window.parent, 'open', { href, label });
+                post(window.parent, 'open', { href, label, right });
                 return;
             }
             if (sameDocument(href, window.location.pathname)) {
@@ -106,6 +133,7 @@ export function ConnectedWorkspace({
                 if (latest.current.secondary?.href !== href && !(await mayClose())) return;
                 if (latest.current.secondary?.href !== href) frameReady.current = false;
                 setSecondary({ href, label });
+                if (right) setReversed(false);
                 setSecondaryPath(href);
                 setPicker(false);
                 setMobilePane('secondary');
@@ -142,6 +170,16 @@ export function ConnectedWorkspace({
                 ? event.source === window.parent
                 : Boolean(frame.current && event.source === frame.current.contentWindow);
             if (!trustedSource) return;
+            if (payload.type === 'drag') {
+                const reference =
+                    payload.data === null ? null : validDragReference(payload.data, teamId, window.location.origin);
+                if (payload.data !== null && !reference) return;
+                if (embedded) {
+                    setDragging(reference);
+                    if (!reference) setEdgeOver(false);
+                } else drag(reference);
+                return;
+            }
             if (payload.type === 'resource-event' && resourceEvents.includes(payload.data?.name)) {
                 relaying.current = true;
                 try {
@@ -178,7 +216,7 @@ export function ConnectedWorkspace({
                     offer(value);
                 }
                 if (payload.type === 'open' && typeof payload.data?.href === 'string')
-                    void open(payload.data.href, payload.data.label);
+                    void open(payload.data.href, payload.data.label, payload.data.right === true);
                 if (payload.type === 'leave-result') {
                     leaveRequests.current.get(payload.data?.id)?.(payload.data.allowed === true);
                     leaveRequests.current.delete(payload.data?.id);
@@ -188,7 +226,7 @@ export function ConnectedWorkspace({
         window.addEventListener('message', receive);
         if (embedded) post(window.parent, 'ready', window.location.pathname + window.location.search);
         return () => window.removeEventListener('message', receive);
-    }, [embedded, offer, open, post, teamId]);
+    }, [embedded, offer, open, post, teamId, drag]);
     useEffect(() => {
         const forward = (event: Event) => {
             if (relaying.current) return;
@@ -256,6 +294,8 @@ export function ConnectedWorkspace({
         teamId,
         embedded,
         pending,
+        dragging,
+        drag,
         offer,
         open: (href: string, label?: string) => {
             void open(href, label);
@@ -273,14 +313,19 @@ export function ConnectedWorkspace({
         <WorkspaceConnection.Provider value={value}>
             <div className="workspace-shell connected-workspace flex min-h-screen flex-col bg-bg-primary lg:h-screen lg:overflow-hidden">
                 <div className="connection-toolbar" aria-label="연결 작업 도구">
-                    <button className="connection-open" disabled={busy} onClick={() => setPicker(true)}>
-                        <Columns2 size={15} />
-                        {secondary ? '옆 화면 변경' : '나란히 보기'}
-                    </button>
                     <span className="hidden text-xs text-text-tertiary sm:block">
-                        {secondary ? '두 화면에서 이어지는 작업' : '문서 · 대화 · 이슈 · 공지'}
+                        {secondary ? '연결 작업' : '항목의 옆에 열기 버튼을 누르거나 오른쪽 가장자리로 끌어보세요'}
                     </span>
                     <div className="ml-auto flex min-w-0 items-center gap-1">
+                        <button
+                            className="connection-open"
+                            disabled={busy}
+                            onClick={() => setPicker(true)}
+                            title="목록에서 찾아 옆에 열기"
+                        >
+                            <Columns2 size={15} />
+                            찾아서 열기
+                        </button>
                         {secondary && (
                             <>
                                 <button
@@ -440,6 +485,33 @@ export function ConnectedWorkspace({
                         </div>
                     </div>
                 </div>
+                {dragging && (
+                    <div
+                        data-testid="workspace-edge-drop"
+                        className={`workspace-edge-drop ${edgeOver ? 'is-over' : ''}`}
+                        onDragOver={(event) => {
+                            if (!hasReferenceDrag(event.dataTransfer)) return;
+                            event.preventDefault();
+                            event.stopPropagation();
+                            event.dataTransfer.dropEffect = 'copy';
+                            setEdgeOver(true);
+                        }}
+                        onDragLeave={() => setEdgeOver(false)}
+                        onDrop={(event) => {
+                            if (!hasReferenceDrag(event.dataTransfer)) return;
+                            event.preventDefault();
+                            event.stopPropagation();
+                            const reference = readReferenceDrag(event.dataTransfer, teamId, window.location.origin);
+                            drag(null);
+                            if (reference) void open(reference.href, reference.label, true);
+                        }}
+                    >
+                        <Columns2 size={24} />
+                        <strong>오른쪽에 열기</strong>
+                        <span className="max-w-full truncate">{dragging.label}</span>
+                        <small>{secondary ? '옆 화면 교체 · 현재 작업 유지' : '현재 작업은 그대로 유지됩니다'}</small>
+                    </div>
+                )}
                 {picker && (
                     <WorkspaceResourcePicker
                         teamId={teamId}

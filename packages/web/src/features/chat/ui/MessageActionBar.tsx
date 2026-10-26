@@ -5,6 +5,7 @@ import type { Message } from '@/src/entities/message/types';
 import { EmojiPickerPopover } from './EmojiPickerPopover';
 import { useWorkspaceConnection } from '@/src/features/workspace/model/useWorkspaceConnection';
 import { Link2 } from 'lucide-react';
+import { useWorkspaceDragSource } from '@/src/features/workspace/model/useWorkspaceDragSource';
 
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '🎉', '🔥', '👀', '🙏', '😢'];
 
@@ -31,14 +32,21 @@ export function MessageActionBar({
 }: Props) {
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const connection = useWorkspaceConnection();
-    if (!visible) return null;
+    const reference = {
+        kind: 'channel' as const,
+        href: `/${connection?.teamId || message.teamId}/channel/${message.channelId}?message=${encodeURIComponent(message.id)}&at=${encodeURIComponent(message.createdAt)}`,
+        label: `대화 원문 · ${new Date(message.createdAt).toLocaleString('ko-KR')}`,
+    };
+    const dragSource = useWorkspaceDragSource(reference);
+    if (!visible && connection?.dragging?.href !== reference.href) return null;
 
     return (
         <div className="absolute right-5 -top-3.5 z-20 flex items-center gap-px rounded-lg border border-border-primary bg-bg-secondary shadow-lg">
             {connection && (
                 <button
                     type="button"
-                    title="메시지 참조 준비"
+                    title="끌어서 문서에 연결 · 클릭하면 참조 준비"
+                    {...dragSource}
                     aria-label="메시지 참조 준비"
                     className="connection-icon"
                     onClick={() =>

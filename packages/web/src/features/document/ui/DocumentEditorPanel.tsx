@@ -9,6 +9,8 @@ import { ko } from '@blocknote/core/locales';
 import { documentApi, unwrapApiData } from '@/lib/api-client';
 import { DocumentAttachmentButton } from './DocumentAttachmentButton';
 import { InsertWorkspaceReference } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
+import { WorkspaceReferenceDropZone } from '@/src/features/workspace/ui/WorkspaceReferenceDropZone';
+import type { WorkspaceReference } from '@/src/features/workspace/model/workspaceReference';
 
 interface Props {
     contentFormat: 'plain' | 'html' | 'json';
@@ -37,6 +39,7 @@ export function DocumentEditorPanel({
     const onReadyRef = useRef(onReady);
     onReadyRef.current = onReady;
     onChangeRef.current = onChange;
+    const dropTarget = useRef<HTMLElement | null>(null);
 
     const editor = useCreateBlockNote(
         {
@@ -63,6 +66,32 @@ export function DocumentEditorPanel({
         }
     }, [contentFormat, editor, initialContent, syncKey]);
 
+    const markDropTarget = (target: EventTarget | null) => {
+        dropTarget.current?.removeAttribute('data-reference-drop-target');
+        const block = target instanceof Element ? target.closest<HTMLElement>('[data-id]') : null;
+        dropTarget.current = block;
+        block?.setAttribute('data-reference-drop-target', 'true');
+    };
+    useEffect(
+        () => () => {
+            dropTarget.current?.removeAttribute('data-reference-drop-target');
+        },
+        [],
+    );
+    const insertReference = (reference: WorkspaceReference, target?: EventTarget | null) => {
+        const id = target instanceof Element ? target.closest<HTMLElement>('[data-id]')?.dataset.id : undefined;
+        const block =
+            target === undefined
+                ? editor.getTextCursorPosition().block
+                : ((id ? editor.getBlock(id) : undefined) ?? editor.document[editor.document.length - 1]);
+        editor.insertBlocks(
+            [{ type: 'paragraph', content: [{ type: 'link', href: reference.href, content: reference.label }] }],
+            block,
+            'after',
+        );
+        onChangeRef.current(JSON.stringify(editor.document));
+    };
+
     if (loadError)
         return (
             <p role="alert" className="text-sm text-red-300">
@@ -72,21 +101,7 @@ export function DocumentEditorPanel({
 
     return (
         <div className="space-y-3">
-            <InsertWorkspaceReference
-                onInsert={(reference) => {
-                    editor.insertBlocks(
-                        [
-                            {
-                                type: 'paragraph',
-                                content: [{ type: 'link', href: reference.href, content: reference.label }],
-                            },
-                        ],
-                        editor.getTextCursorPosition().block,
-                        'after',
-                    );
-                    onChangeRef.current(JSON.stringify(editor.document));
-                }}
-            />
+            <InsertWorkspaceReference onInsert={(reference) => insertReference(reference)} />
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-xs text-text-tertiary">빈 줄에서 / 를 입력해 블록을 추가하세요.</p>
                 <DocumentAttachmentButton
@@ -96,7 +111,11 @@ export function DocumentEditorPanel({
                     teamId={teamId}
                 />
             </div>
-            <div>
+            <WorkspaceReferenceDropZone
+                label="놓은 문단 아래에 참조 추가"
+                onHover={markDropTarget}
+                onInsert={(reference, _, event) => insertReference(reference, event.target)}
+            >
                 <BlockNoteView
                     editor={editor}
                     editable={!loadError}
@@ -110,7 +129,7 @@ export function DocumentEditorPanel({
                         if (initialized.current) onChangeRef.current(JSON.stringify(editor.document));
                     }}
                 />
-            </div>
+            </WorkspaceReferenceDropZone>
         </div>
     );
 }

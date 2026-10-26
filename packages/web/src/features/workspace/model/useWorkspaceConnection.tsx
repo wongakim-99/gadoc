@@ -7,6 +7,8 @@ export const WorkspaceConnection = createContext<{
     teamId: string;
     embedded: boolean;
     pending: WorkspaceReference | null;
+    dragging: WorkspaceReference | null;
+    drag: (reference: WorkspaceReference | null) => void;
     offer: (reference: WorkspaceReference | null) => void;
     open: (href: string, label?: string) => void;
 } | null>(null);

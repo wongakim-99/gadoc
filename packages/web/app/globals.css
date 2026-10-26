@@ -4,6 +4,19 @@
 @import 'tailwindcss' layer(base);
 @config '../tailwind.config.ts';
 
+.connected-workspace { position: relative; }
+.workspace-inline-open { flex-shrink: 0; opacity: .55; }
+.group:hover > .workspace-inline-open, .workspace-inline-open:focus-visible, .workspace-inline-open:hover { opacity: 1; }
+[draggable='true'].connection-icon { cursor: grab; }
+.reference-drop-zone { position: relative; min-width: 0; }
+.reference-drop-zone.is-drag-over { outline: 2px dashed var(--color-action-text); outline-offset: 4px; border-radius: var(--radius-control); }
+.reference-drop-hint { pointer-events: none; position: absolute; z-index: 25; left: 8px; top: -28px; display: flex; align-items: center; gap: 6px; max-width: calc(100% - 16px); padding: 5px 8px; border: 1px solid var(--color-border-glow); border-radius: var(--radius-control); background: var(--color-selection); color: var(--color-action-text); font-size: 11px; }
+[data-reference-drop-target='true'] { box-shadow: 0 2px 0 var(--color-action-text); }
+.workspace-edge-drop { position: absolute; z-index: 75; right: 8px; top: 48px; bottom: 8px; width: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; border: 2px dashed var(--color-border-glow); border-radius: var(--radius-panel); background: color-mix(in srgb, var(--color-selection) 92%, transparent); color: var(--color-action-text); text-align: center; font-size: 13px; }
+.workspace-edge-drop.is-over { border-style: solid; border-color: var(--color-action-text); box-shadow: -12px 0 40px rgb(0 0 0 / 20%); }
+.workspace-edge-drop > * { pointer-events: none; }
+@media (max-width: 1023px) { .workspace-edge-drop { display: none; } .workspace-inline-open { opacity: 1; } }
+
 .connection-toolbar { display: flex; min-height: 40px; align-items: center; gap: 16px; padding: 4px 16px; border-bottom: 1px solid var(--color-border-primary); background: var(--color-bg-secondary); }
 .connection-open, .connection-icon { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: var(--radius-control); padding: 6px; color: var(--color-text-secondary); font-size: 12px; }
 .connection-open:hover, .connection-icon:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }

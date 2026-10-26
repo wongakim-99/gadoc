@@ -73,9 +73,7 @@ test("issue references survive a failed save and persist after retry", async ({
 });
 
 async function choose(page: Page, kind: string, title: string) {
-  await page
-    .getByRole("button", { name: /^(나란히 보기|옆 화면 변경)$/ })
-    .click();
+  await page.getByRole("button", { name: "찾아서 열기", exact: true }).click();
   const picker = page.getByRole("dialog", { name: "옆에 열 내용 선택" });
   await picker.getByRole("button", { name: kind, exact: true }).click();
   await picker
@@ -237,6 +235,7 @@ test("issues and announcements connect through a published reference with mobile
     "서비스 배포 확인",
   );
   await page
+    .getByRole("dialog", { name: "이슈 수정" })
     .getByRole("button", { name: "서비스 배포 확인 참조 준비" })
     .click();
   // The pane picker can be opened after closing the existing issue dialog.

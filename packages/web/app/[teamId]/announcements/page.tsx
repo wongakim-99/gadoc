@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { WorkspaceReferenceDropZone } from '@/src/features/workspace/ui/WorkspaceReferenceDropZone';
+import { insertReferenceAtSelection } from '@/src/features/workspace/model/workspaceDrag';
 import { use } from 'react';
 import { announcementApi, authApi, teamApi } from '@/lib/api-client';
 import { hasTeamWriteAccess, resolveCurrentTeamMember } from '@/src/entities/team/lib/access';
@@ -25,6 +27,7 @@ export default function AnnouncementsPage({ params }: Props) {
     const [showCreate, setShowCreate] = useState(false);
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
+    const contentRef = useRef<HTMLTextAreaElement>(null);
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
     const searchParams = useSearchParams();
@@ -152,14 +155,23 @@ export default function AnnouncementsPage({ params }: Props) {
                             className="w-full bg-bg-primary border border-border-primary rounded-lg px-3 py-2 text-sm text-white mb-3 focus:outline-none focus:border-slack-green/50"
                             required
                         />
-                        <textarea
-                            value={content}
-                            onChange={(e) => setContent(e.target.value)}
-                            placeholder="공지 내용"
-                            rows={4}
-                            className="w-full bg-bg-primary border border-border-primary rounded-lg px-3 py-2 text-sm text-white mb-3 focus:outline-none focus:border-slack-green/50 resize-none"
-                            required
-                        />
+                        <WorkspaceReferenceDropZone
+                            disabled={!canWrite || saving}
+                            label="공지 내용에 참조 추가 · 게시는 직접 확인"
+                            onInsert={(_, markdown) =>
+                                setContent(insertReferenceAtSelection(content, markdown, contentRef.current))
+                            }
+                        >
+                            <textarea
+                                ref={contentRef}
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                placeholder="공지 내용"
+                                rows={4}
+                                className="w-full bg-bg-primary border border-border-primary rounded-lg px-3 py-2 text-sm text-white mb-3 focus:outline-none focus:border-slack-green/50 resize-none"
+                                required
+                            />
+                        </WorkspaceReferenceDropZone>
                         <div className="flex gap-3">
                             <button
                                 type="button"

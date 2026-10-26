@@ -124,6 +124,8 @@ export function IssueModal(props: Props) {
             }}
         >
             <form
+                role="dialog"
+                aria-label={readOnly ? '이슈 보기' : isEdit ? '이슈 수정' : '이슈 생성'}
                 onClick={(e) => e.stopPropagation()}
                 onSubmit={handleSubmit}
                 aria-busy={saving}
