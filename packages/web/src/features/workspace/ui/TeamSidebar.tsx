@@ -17,6 +17,7 @@ import { SidebarWorkspaceHeader } from './SidebarWorkspaceHeader';
 import { CreateChannelButton } from './CreateChannelButton';
 import { WorkspaceMobileNav } from './WorkspaceMobileNav';
 import { NotificationBell } from '@/src/features/notification/ui/NotificationBell';
+import { DocumentWorkspaceSidebar } from './DocumentWorkspaceSidebar';
 import { channelApi, unwrapApiData } from '@/lib/api-client';
 
 interface Props {
@@ -96,6 +97,29 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, []);
+
+    if (pathname === `/${teamId}/docs` || pathname.startsWith(`/${teamId}/docs/`)) {
+        return (
+            <>
+                <DocumentWorkspaceSidebar
+                    teamId={teamId}
+                    teamName={teamName}
+                    channelId={workspaceChannels[0]?.id}
+                    canWrite={canWrite}
+                    canAdmin={hasTeamAdminAccess(currentMember?.role)}
+                    username={currentUsername}
+                    onLogout={logout}
+                    onSearch={() => setSearchOpen(true)}
+                />
+                <WorkspaceSearchPalette
+                    onClose={() => setSearchOpen(false)}
+                    open={searchOpen}
+                    restoreFocusRef={searchButtonRef}
+                    workspace={{ canWrite, channels: sidebarChannels, currentUserId, members, teamId }}
+                />
+            </>
+        );
+    }
 
     return (
         <>

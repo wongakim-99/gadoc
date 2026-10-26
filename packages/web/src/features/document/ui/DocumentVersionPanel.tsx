@@ -7,9 +7,10 @@ interface Props {
     loading: boolean;
     onRestore: (versionId: string) => void;
     versions: DocumentVersion[];
+    canRestore?: boolean;
 }
 
-export function DocumentVersionPanel({ loading, onRestore, versions }: Props) {
+export function DocumentVersionPanel({ loading, onRestore, versions, canRestore = true }: Props) {
     return (
         <div className="mt-6 rounded-2xl border border-border-primary bg-bg-secondary p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -32,16 +33,17 @@ export function DocumentVersionPanel({ loading, onRestore, versions }: Props) {
                             <div>
                                 <p className="text-sm font-medium text-white">{version.title}</p>
                                 <p className="mt-1 text-xs text-text-tertiary">
-                                    {formatDateTime(version.createdAt)} ·{' '}
-                                    {version.contentFormat.toUpperCase()}
+                                    {formatDateTime(version.createdAt)} · {version.contentFormat.toUpperCase()}
                                 </p>
                             </div>
-                            <button
-                                onClick={() => onRestore(version.id)}
-                                className="rounded-lg border border-slack-green/30 px-3 py-1.5 text-xs font-medium text-slack-green transition hover:bg-slack-green/10"
-                            >
-                                이 버전으로 복원
-                            </button>
+                            {canRestore && (
+                                <button
+                                    onClick={() => onRestore(version.id)}
+                                    className="rounded-lg border border-slack-green/30 px-3 py-1.5 text-xs font-medium text-slack-green transition hover:bg-slack-green/10"
+                                >
+                                    이 버전으로 복원
+                                </button>
+                            )}
                         </div>
                     </div>
                 ))}

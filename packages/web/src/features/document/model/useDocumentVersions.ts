@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { documentApi, unwrapApiArray, unwrapApiData } from '@/lib/api-client';
 import type { DocumentFull, DocumentVersion } from '@/src/entities/document/types';
 
@@ -8,19 +8,21 @@ export function useDocumentVersions(teamId: string, docId: string) {
     const [loading, setLoading] = useState(true);
     const [versions, setVersions] = useState<DocumentVersion[]>([]);
 
-    const loadVersions = async () => {
+    const loadVersions = useCallback(async () => {
         setLoading(true);
         try {
             const response = await documentApi.getDocumentVersions(teamId, docId);
             setVersions(unwrapApiArray<DocumentVersion>(response));
+        } catch {
+            setVersions([]);
         } finally {
             setLoading(false);
         }
-    };
+    }, [docId, teamId]);
 
     useEffect(() => {
         void loadVersions();
-    }, [docId, teamId]);
+    }, [loadVersions]);
 
     const restoreVersion = async (versionId: string) => {
         const response = await documentApi.restoreDocumentVersion(teamId, docId, versionId);
@@ -30,5 +32,5 @@ export function useDocumentVersions(teamId: string, docId: string) {
         return restored;
     };
 
-    return { loading, restoreVersion, versions };
+    return { loading, restoreVersion, versions, refresh: loadVersions };
 }

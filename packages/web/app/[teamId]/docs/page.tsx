@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { authApi, documentApi, teamApi } from '@/lib/api-client';
 import { hasTeamWriteAccess, resolveCurrentTeamMember } from '@/src/entities/team/lib/access';
 import type { DocumentNode } from '@/src/entities/document/types';
@@ -16,9 +16,13 @@ interface Props {
 export default function DocsPage({ params }: Props) {
     const { teamId } = use(params);
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [docs, setDocs] = useState<DocumentNode[]>([]);
     const [canWrite, setCanWrite] = useState(false);
-    const [showCreate, setShowCreate] = useState(false);
+    const [showCreate, setShowCreate] = useState(searchParams.get('create') === '1');
+    useEffect(() => {
+        if (searchParams.get('create') === '1') setShowCreate(true);
+    }, [searchParams]);
     const [newTitle, setNewTitle] = useState('');
 
     const [error, setError] = useState('');
@@ -119,6 +123,7 @@ export default function DocsPage({ params }: Props) {
                         value={newTitle}
                         onChange={(e) => setNewTitle(e.target.value)}
                         placeholder="문서 제목"
+                        aria-label="문서 제목"
                         className="flex-1 bg-bg-secondary border border-border-primary rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-slack-green/50"
                         required
                     />

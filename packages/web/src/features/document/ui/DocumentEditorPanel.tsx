@@ -14,14 +14,27 @@ interface Props {
     documentId: string;
     initialContent: string;
     onChange: (content: string) => void;
+    onReady: (content: string) => void;
+    onQuoteSelection?: (quote: string | null) => void;
     syncKey: string;
     teamId: string;
 }
 
-export function DocumentEditorPanel({ contentFormat, documentId, initialContent, onChange, syncKey, teamId }: Props) {
+export function DocumentEditorPanel({
+    contentFormat,
+    documentId,
+    initialContent,
+    onChange,
+    onReady,
+    onQuoteSelection,
+    syncKey,
+    teamId,
+}: Props) {
     const onChangeRef = useRef(onChange);
     const [loadError, setLoadError] = useState('');
     const initialized = useRef(false);
+    const onReadyRef = useRef(onReady);
+    onReadyRef.current = onReady;
     onChangeRef.current = onChange;
 
     const editor = useCreateBlockNote(
@@ -43,15 +56,18 @@ export function DocumentEditorPanel({ contentFormat, documentId, initialContent,
         try {
             syncEditor(editor, initialContent, contentFormat);
             initialized.current = true;
-            onChangeRef.current(JSON.stringify(editor.document));
+            onReadyRef.current(JSON.stringify(editor.document));
         } catch {
-            setLoadError(
-                '본문을 편집기로 불러오지 못했습니다. 원본은 변경하지 않았습니다. 취소 후 버전 이력을 확인해 주세요.',
-            );
+            setLoadError('본문을 편집기로 불러오지 못했습니다. 원본은 변경하지 않았습니다. 버전 이력을 확인해 주세요.');
         }
     }, [contentFormat, editor, initialContent, syncKey]);
 
-    if (loadError) return <p role="alert" className="text-sm text-red-300">{loadError}</p>;
+    if (loadError)
+        return (
+            <p role="alert" className="text-sm text-red-300">
+                {loadError}
+            </p>
+        );
 
     return (
         <div className="space-y-3">
@@ -70,6 +86,10 @@ export function DocumentEditorPanel({ contentFormat, documentId, initialContent,
                     editable={!loadError}
                     className="slacord-blocknote"
                     theme="dark"
+                    onSelectionChange={() => {
+                        const quote = editor.getSelectedText().replace(/\s+/g, ' ').trim().slice(0, 280);
+                        if (quote) onQuoteSelection?.(quote);
+                    }}
                     onChange={() => {
                         if (initialized.current) onChangeRef.current(JSON.stringify(editor.document));
                     }}

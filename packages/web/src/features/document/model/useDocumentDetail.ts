@@ -11,6 +11,20 @@ export function useDocumentDetail(teamId: string, docId: string) {
     const [error, setError] = useState('');
 
     useEffect(() => {
+        const update = (event: Event) => {
+            const updated = (event as CustomEvent<DocumentFull>).detail;
+            if (updated.teamId === teamId)
+                setDocuments((current) =>
+                    current.map((item) =>
+                        item.id === updated.id ? { ...item, title: updated.title, updatedAt: updated.updatedAt } : item,
+                    ),
+                );
+        };
+        window.addEventListener('slacord:document-updated', update);
+        return () => window.removeEventListener('slacord:document-updated', update);
+    }, [teamId]);
+
+    useEffect(() => {
         let active = true;
         setLoading(true);
         setDoc(null);
