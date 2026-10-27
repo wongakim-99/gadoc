@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const repository = "kscold/slacord";
+const repository = "kscold/gadoc";
 const container = "ubuntu-slacord";
 const host = "kscold.com";
 const port = "2226";

@@ -6,6 +6,32 @@ afterEach(() => {
 });
 
 describe('desktop notification delivery', () => {
+    it('claims across independent renderers and suppresses the losing client', async () => {
+        const notify = vi.fn().mockResolvedValue(true);
+        vi.stubGlobal('window', { slacordDesktop: { isDesktop: true, notify } });
+        const fetcher = vi
+            .fn()
+            .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { deliver: true } }) })
+            .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { deliver: false } }) });
+        vi.stubGlobal('fetch', fetcher);
+        const first = await import('./desktop-notifications');
+        await first.showDesktopMessageNotification({
+            id: 'message:123',
+            teamId: 'team',
+            title: 'Test',
+            body: 'Message',
+        });
+        vi.resetModules();
+        const second = await import('./desktop-notifications');
+        await second.showDesktopMessageNotification({
+            id: 'message:123',
+            teamId: 'team',
+            title: 'Test',
+            body: 'Message',
+        });
+        expect(fetcher).toHaveBeenCalledTimes(2);
+        expect(notify).toHaveBeenCalledTimes(1);
+    });
     it('deduplicates message and mention delivery for the same message', async () => {
         const notify = vi.fn().mockResolvedValue(true);
         vi.stubGlobal('window', { slacordDesktop: { isDesktop: true, notify } });

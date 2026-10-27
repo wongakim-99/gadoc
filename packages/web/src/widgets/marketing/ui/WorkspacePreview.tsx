@@ -87,7 +87,7 @@ export function WorkspacePreview() {
                 <div className="gadoc-preview-topbar">
                     <Brand size={24} />
                     <span>
-                        스튜디오 가닥 <span className="gadoc-preview-slash">/</span> 웹사이트 리뉴얼
+                        스튜디오 가독 <span className="gadoc-preview-slash">/</span> 웹사이트 리뉴얼
                     </span>
                     <PanelLeft size={15} aria-hidden="true" />
                 </div>

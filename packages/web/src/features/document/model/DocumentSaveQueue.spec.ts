@@ -11,6 +11,16 @@ function deferred() {
 }
 
 describe('DocumentSaveQueue', () => {
+    it('accepts remote titles only while the local title is clean', async () => {
+        const queue = new DocumentSaveQueue(initial, vi.fn(), vi.fn());
+        expect(queue.receiveTitle('동료 제목')).toBe(true);
+        expect(queue.dirty).toBe(false);
+        queue.update({ ...initial, title: '내 초안' });
+        expect(queue.receiveTitle('다른 제목')).toBe(false);
+        expect(queue.dirty).toBe(true);
+        await queue.flush();
+        expect(queue.receiveTitle('저장 후 동료 제목')).toBe(true);
+    });
     it('does not save initialization or a reverted draft', async () => {
         const save = vi.fn();
         const queue = new DocumentSaveQueue(initial, save, vi.fn());

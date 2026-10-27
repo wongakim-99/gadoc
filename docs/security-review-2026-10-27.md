@@ -8,13 +8,15 @@ synthetic data and disposable local MongoDB/MinIO, not production workspaces.
 This is a targeted code review and regression suite, not a complete penetration
 test or a claim that every possible vulnerability has been eliminated.
 
-The changes below are implemented and locally verified. They are **not yet
-deployed**. Shared Docker/Colima I/O errors blocked earlier commands; the
-infrastructure owner recovered the VM at 16:18 KST with user approval and
-without replacing data volumes. The production `slacord` bucket still permits
-anonymous reads until the new authenticated application is active. The dedicated
-`gadoc-app` account and private backend override are staged, but are not used by
-the running backend yet.
+The original file-permission and pnpm security changes have been deployed.
+The infrastructure owner recovered Docker/Colima at 16:18 KST without replacing
+data volumes. The MinIO owner subsequently migrated and verified all 189 source
+objects to the private `gadoc` bucket, then deleted the old `slacord` bucket.
+The running backend uses the dedicated `gadoc-app` account. A compatibility
+policy temporarily permits old-prefix writes until the new upload-prefix code
+is deployed; tightening those old prefixes to read-only remains a release gate.
+MCP, document collaboration, cross-client notification claims and GaDoc 1.1.0
+installers are the next release candidate, not yet a claimed production release.
 
 Blog public access remains public, blog private documents remain private, and
 Pawpong is outside this change. No production MongoDB is split off or replaced.
@@ -25,7 +27,7 @@ Priorities below describe this review's assessment, not formal CVSS ratings.
 
 | Priority | Finding                                                                                                                         | Implemented remediation                                                                                                                                                                              |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| High     | Attachment URLs bypassed application permissions through a public bucket; upload initialization could restore public policy.    | Authenticated `/api/files` checks team, channel/DM, or document access on every read. Removed policy writes from the app. Production anonymous policy removal remains pending deployment.            |
+| High     | Attachment URLs bypassed application permissions through a public bucket; upload initialization could restore public policy.    | Authenticated `/api/files` checks team, channel/DM, or document access on every read. Removed policy writes from the app. Production anonymous policy removal has been verified.            |
 | High     | Root/default MinIO credentials gave the app excessive authority.                                                                | Production rejects missing/default credentials. `gadoc-app` only has GetObject/PutObject on the GaDoc chat/docs prefixes; no list, delete, bucket administration, or policy changes.                 |
 | High     | Old inline keys lacked a document identifier, making team-only or current-link matching unsafe.                                 | Startup snapshots current and historical references once in the existing DB. Reads require access to all original bound documents; copied links, missing originals, and orphans cannot grant access. |
 | High     | Regex-only HTML cleaning and Markdown attribute interpolation could permit stored XSS.                                          | Parser-based HTML allowlist, safe URL protocols, escaped attributes, and regression tests for active markup.                                                                                         |
@@ -42,9 +44,9 @@ Priorities below describe this review's assessment, not formal CVSS ratings.
 
 - `pnpm install --frozen-lockfile`: successful with pnpm 10.34.9 and Node 22.
 - `pnpm audit --audit-level high`: no known advisories across the installed workspace dependency graph at review time. Audit databases change; this is not a security guarantee.
-- Server: 41 suites, 144 passing tests. Web: 25 suites, 95 passing tests.
+- Latest local server: 47 suites, 172 passing tests. Web: 28 suites, 105 passing tests.
 - Document core: 17 passing tests. Desktop: 10 suites, 33 passing tests, including a real local Electron launch smoke test and packaging-version regression.
-- Browser E2E: 38 passing tests, including private attachment permissions, inline rendering, ranges, and mobile/desktop brand navigation.
+- Browser E2E: 77 passing tests, including two-user collaborative/offline merge, private attachments, database views/relations/rollups, real MCP clients, notification claim races and mobile/desktop navigation.
 - Live surface: 78 passing checks, no failures/skips; Discord import mock passed.
 - Actual isolated MongoDB migration test covers historical references, restarts, copied links, permission revocation, and deleted originals. Its temporary database is removed afterward.
 - Dedicated account against the existing MinIO: allowed-prefix Put/Head/Range Get succeeded; ListBuckets, ListObjects, out-of-prefix Put, DeleteObject, and PutBucketPolicy returned AccessDenied. Only a synthetic verification object was created and then removed by an administrator.
@@ -53,9 +55,12 @@ Priorities below describe this review's assessment, not formal CVSS ratings.
 ## Remaining Gates
 
 1. Confirm recovered runtime health and at least 15 GiB free on the Mac host before builds; remove only owned regenerable caches, never data volumes.
-2. Install the pnpm deployment handler and backend-only storage credentials before merging to main. Run the actual Actions pipeline and confirm the served revision.
-3. Verify an authorized production upload/read and legacy inline rendering, then remove anonymous access from `slacord` only. Confirm direct/proxy anonymous GET, HEAD, and LIST denial and unchanged blog behavior.
-4. Publish and validate a new signed desktop release separately. Existing downloaded installers are not upgraded merely by changing this branch.
+2. Run Actions for the new candidate and confirm the served SHA after main deployment.
+3. Verify new `gadoc/` prefix uploads and old links in production, then tighten
+   legacy `slacord/` object keys to read-only. Remove only recorded synthetic fixtures.
+4. Publish all new unsigned desktop assets with explicit SmartScreen/Gatekeeper
+   warnings and SHA256 checksums, as approved by the user. Existing downloaded
+   installers are not replaced merely by changing this branch.
 
 Production MongoDB exposure/authentication, host/container vulnerabilities, and
 physical multi-device/NAT WebRTC calls were not comprehensively validated here.
@@ -67,3 +72,20 @@ third-party delivery logs still require operational access controls.
 The Korean copy and visual design received a manual review, not an automated
 AI-generated-content score. Brand-name availability/trademark clearance was not
 part of this review.
+
+## AI And Collaboration Boundaries
+
+MCP keys are scoped to one user/team, stored as SHA256 digests, expire, can be
+revoked and are checked against current membership and document permissions.
+Tool audits exclude content and credentials. Streamable HTTP uses Bearer headers;
+OAuth is not implemented. Files use the same authenticated MinIO path.
+
+Document Yjs updates and canonical JSON share one MongoDB document and use
+compare-and-swap writes. REST/MCP body replacement requires the latest timestamp
+after collaboration is initialized. Join, update, presence and each outbound
+recipient recheck authorization. Presence names come from authenticated users,
+not arbitrary client labels. Private document data is not published to team-wide
+rooms. Pending offline edits are memory-only, not a durable offline store.
+
+Notification delivery claims use opaque per-user keys with unique MongoDB IDs
+and TTL cleanup. Claims affect OS alerts only, not inbox records or unread state.

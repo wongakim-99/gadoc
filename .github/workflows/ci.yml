@@ -40,7 +40,7 @@ jobs:
         run: pnpm audit --audit-level high
 
       - name: Test deployment safety
-        run: node --test scripts/test/deploy-ubuntu.test.mjs scripts/test/gadoc-storage-policy.test.mjs
+        run: node --test scripts/test/deploy-ubuntu.test.mjs scripts/test/gadoc-storage-policy.test.mjs scripts/test/desktop-artifacts.test.mjs
 
       - name: Build backend
         run: pnpm build:server

@@ -8,8 +8,15 @@ import { ExternalBridgeSettingsPanel } from './ExternalBridgeSettingsPanel';
 import { GitHubSettingsSection } from './GitHubSettingsSection';
 import { TeamAuditLogPanel } from './TeamAuditLogPanel';
 import { TeamInviteSettingsPanel } from './TeamInviteSettingsPanel';
+import { McpSettingsPanel } from './McpSettingsPanel';
 
 const SECTION_ITEMS = [
+    {
+        key: 'ai',
+        eyebrow: 'MCP',
+        label: 'AI 연결',
+        description: 'AI 도구로 문서를 찾고 작성하세요. 연결 키의 권한과 만료 기간을 직접 관리합니다.',
+    },
     {
         key: 'delivery',
         eyebrow: 'Delivery',
@@ -172,6 +179,7 @@ export function TeamSettingsShell({ teamId }: Props) {
                 ) : null}
 
                 {activeSection === 'access' ? <TeamInviteSettingsPanel teamId={teamId} /> : null}
+                {activeSection === 'ai' ? <McpSettingsPanel key={teamId} teamId={teamId} canWrite={workspace.canWrite} /> : null}
 
                 {activeSection === 'imports' ? (
                     <>

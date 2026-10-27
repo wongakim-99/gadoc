@@ -37,12 +37,14 @@ export interface IDocumentRepository {
             title?: string;
             content?: string;
             contentFormat?: 'plain' | 'html' | 'json';
+            parentId?: string | null;
             updatedBy: string;
             visibility?: 'team' | 'restricted';
             editPolicy?: 'owner_admin' | 'all' | 'restricted';
             allowedViewerIds?: string[];
             allowedEditorIds?: string[];
         },
+        expectedUpdatedAt?: Date,
     ): Promise<DocumentEntity | null>;
     archiveById(id: string, archivedBy: string): Promise<DocumentEntity | null>;
     restoreById(id: string): Promise<DocumentEntity | null>;

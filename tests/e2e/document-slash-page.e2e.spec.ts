@@ -5,6 +5,7 @@ import {
   createGuestSessionForTeam,
 } from "./support/slacord-api";
 import { loginWithSession } from "./support/slacord-session";
+import { failDocumentUpdates } from './support/document-socket';
 
 test.setTimeout(90000);
 async function slash(page: Page, query: string) {
@@ -57,6 +58,8 @@ test("slash creation stops on parent save failure and retries without losing con
   page,
 }) => {
   const f = await createWorkspaceFixture();
+  let failUpdates = true;
+  await failDocumentUpdates(page, () => failUpdates);
   await loginWithSession(page, f.owner);
   await page.goto(`/${f.teamId}/docs/${f.documentId}`);
   await expect(
@@ -82,6 +85,7 @@ test("slash creation stops on parent save failure and retries without losing con
     ))!.data!.filter((doc) => doc.parentId === f.documentId),
   ).toHaveLength(0);
   await page.unrouteAll({ behavior: "wait" });
+  failUpdates = false;
   await page.getByRole("button", { name: "다시 시도", exact: true }).click();
   await slash(page, "page");
   await page.keyboard.press("Enter");
@@ -117,6 +121,11 @@ test("a created child remains recoverable when saving its parent link fails", as
   page,
 }) => {
   const f = await createWorkspaceFixture();
+  let failUpdates = false;
+  await failDocumentUpdates(page, () => failUpdates);
+  page.on('response', (response) => {
+    if (response.ok() && response.request().method() === 'POST' && new URL(response.url()).pathname === `/api/team/${f.teamId}/document`) failUpdates = true;
+  });
   await loginWithSession(page, f.owner);
   await page.goto(`/${f.teamId}/docs/${f.documentId}`);
   await expect(
@@ -146,6 +155,7 @@ test("a created child remains recoverable when saving its parent link fails", as
   ))!.data!.filter((doc) => doc.parentId === f.documentId);
   expect(children).toHaveLength(1);
   await page.unrouteAll({ behavior: "wait" });
+  failUpdates = false;
   await page.getByRole("button", { name: "다시 시도", exact: true }).click();
   await expect
     .poll(

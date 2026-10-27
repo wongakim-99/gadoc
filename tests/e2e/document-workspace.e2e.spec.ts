@@ -1,6 +1,8 @@
 ﻿import { test, expect, type Page } from "playwright/test";
 
-// Synthetic API integration tests. Live MongoDB is verified separately.
+import { mockDocumentSocket } from './support/document-socket';
+
+// Synthetic transport integration tests. Live MongoDB is verified separately.
 async function fixture(
   page: Page,
   options: {
@@ -38,6 +40,11 @@ async function fixture(
   const writes: Record<string, unknown>[] = [];
   let inFlight = 0;
   let maxInFlight = 0;
+  await mockDocumentSocket(page, () => doc, async (content) => {
+    if (options.delayMs) await new Promise((resolve) => setTimeout(resolve, options.delayMs));
+    if (failNext) { failNext = false; throw new Error('시험용 저장 실패'); }
+    doc = { ...doc, content, contentFormat: 'json', updatedAt: new Date().toISOString() };
+  });
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     let data: unknown = [];
@@ -106,7 +113,7 @@ async function fixture(
     }
     await route.fulfill({ json: { success: true, data } });
   });
-  return { writes, concurrency: () => maxInFlight };
+  return { writes, concurrency: () => maxInFlight, savedDocument: () => doc };
 }
 
 const editor = (page: Page) =>
@@ -403,7 +410,7 @@ test("immediate editing, autosave failure/retry, sidebar title and reload", asyn
 test("typing during a slow save preserves the newest draft and editor instance", async ({
   page,
 }) => {
-  const { writes, concurrency } = await fixture(page, { delayMs: 1400 });
+  const { writes, concurrency, savedDocument } = await fixture(page, { delayMs: 1400 });
   await open(page);
   await page.getByRole("textbox", { name: "페이지 제목" }).fill("First title");
   await expect(saveStatus(page)).toHaveText("저장 중…");
@@ -424,7 +431,7 @@ test("typing during a slow save preserves the newest draft and editor instance",
   );
   expect(concurrency()).toBe(1);
   expect(writes.at(-1)?.title).toBe("Newest title");
-  expect(writes.at(-1)?.content).toContain("Latest body");
+  expect(savedDocument().content).toContain("Latest body");
 });
 
 test("navigation flushes a pending edit before leaving", async ({ page }) => {

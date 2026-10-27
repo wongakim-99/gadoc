@@ -29,7 +29,7 @@ export class UploadDocumentFileUseCase {
         const fileName = input.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-') || 'file';
         const datePath = this.clock.now().toISOString().slice(0, 10);
         const subPath = `doc/${input.documentId}`;
-        const objectName = `slacord/docs/${input.teamId}/${subPath}/${datePath}/${Date.now()}-${randomUUID()}-${fileName}`;
+        const objectName = `gadoc/docs/${input.teamId}/${subPath}/${datePath}/${Date.now()}-${randomUUID()}-${fileName}`;
 
         const stored = await this.fileStorage.upload({
             buffer: input.file.buffer,

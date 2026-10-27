@@ -15,7 +15,7 @@ import { DocumentDetailHeader } from './DocumentDetailHeader';
 import { DocumentChildrenPanel } from './DocumentChildrenPanel';
 import { DocumentCommentPanel } from './DocumentCommentPanel';
 import { DocumentVersionPanel } from './DocumentVersionPanel';
-import { DocumentContent } from './DocumentContent';
+import type { CollaborationState } from '../model/DocumentCollaborationProvider';
 import { ConfirmationDialog } from '@/src/shared/ui/ConfirmationDialog';
 import { WorkspaceReferenceActions } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
 import { DocumentDatabaseProperties } from '@/src/features/database/ui/DocumentDatabaseProperties';
@@ -37,7 +37,18 @@ export function DocumentWorkspace({
     onRestore: (doc: DocumentFull) => void;
 }) {
     const router = useRouter();
-    const autosave = useDocumentAutosave(doc);
+    const autosave = useDocumentAutosave(doc, true);
+    const [collaboration, setCollaboration] = useState<CollaborationState | null>(null);
+    const flushLive = useRef<() => Promise<boolean>>(async () => true);
+    const flush = async () => (await flushLive.current()) && (await autosave.flush());
+    const saveStatus =
+        collaboration?.status === 'error' || autosave.status === 'error'
+            ? 'error'
+            : collaboration?.status === 'saving' || autosave.status === 'saving'
+              ? 'saving'
+              : collaboration?.status === 'pending' || autosave.status === 'pending'
+                ? 'pending'
+                : 'saved';
     const workspace = useTeamWorkspaceData(doc.teamId);
     const [panel, setPanel] = useState<'comments' | 'history' | null>(null);
     const [fullWidth, setFullWidth] = useState(false);
@@ -77,7 +88,7 @@ export function DocumentWorkspace({
         setConfirming(true);
         setActionError('');
         try {
-            if (ready && doc.canEdit !== false && !(await autosave.flush())) return;
+            if (ready && doc.canEdit !== false && !(await flush())) return;
             if (pending.kind === 'archive') {
                 const response = await documentApi.archiveDocument(doc.teamId, doc.id);
                 if (!response.success) throw new Error('페이지를 아카이브하지 못했습니다.');
@@ -105,7 +116,7 @@ export function DocumentWorkspace({
         setCreatingChild(true);
         setActionError('');
         try {
-            if (!(await autosave.flush())) return;
+            if (!(await flush())) return;
             const response = await documentApi.createDocument(doc.teamId, {
                 title: '제목 없음',
                 parentId: doc.id,
@@ -117,7 +128,7 @@ export function DocumentWorkspace({
             window.dispatchEvent(new CustomEvent('slacord:documents-refresh'));
             if (insertLink) {
                 insertLink(child);
-                if (!(await autosave.flush())) {
+                if (!(await flush())) {
                     setActionError(
                         '하위 페이지는 생성됐지만 본문 링크 저장에 실패했습니다. 저장을 재시도한 뒤 하위 페이지를 열어 주세요.',
                     );
@@ -191,8 +202,8 @@ export function DocumentWorkspace({
                     </button>
                     <DocumentDetailHeader
                         doc={doc}
-                        status={autosave.status}
-                        onRetry={() => void autosave.flush()}
+                        status={saveStatus}
+                        onRetry={() => void flush()}
                         onArchive={() => setPending({ kind: 'archive' })}
                     />
                 </div>
@@ -212,7 +223,7 @@ export function DocumentWorkspace({
                                 aria-label="페이지 제목"
                                 placeholder="제목 없음"
                                 value={autosave.title}
-                                disabled={!ready}
+                                disabled={!ready || !collaboration?.canEdit}
                                 onChange={(event) => autosave.changeTitle(event.target.value)}
                                 onKeyDown={(event) => {
                                     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -225,7 +236,7 @@ export function DocumentWorkspace({
                                 className="document-title w-full resize-none overflow-hidden border-0 bg-transparent text-text-primary outline-none placeholder:text-text-tertiary"
                             />
                         ) : (
-                            <h1 className="document-title break-words text-text-primary">{doc.title}</h1>
+                            <h1 className="document-title break-words text-text-primary">{autosave.title}</h1>
                         )}
                         <p className="mt-3 text-xs text-text-tertiary">
                             마지막 수정 {new Date(autosave.updatedAt).toLocaleString('ko-KR')}
@@ -255,32 +266,27 @@ export function DocumentWorkspace({
                             {actionError || autosave.error} 작성한 내용은 이 페이지에 유지됩니다.
                         </p>
                     )}
-                    {doc.canEdit !== false ? (
-                        <div ref={editorContainer} data-testid="document-content">
-                            <DocumentEditorPanel
-                                contentFormat={doc.contentFormat ?? 'plain'}
-                                documentId={doc.id}
-                                initialContent={doc.content}
-                                onReady={(content) => {
-                                    autosave.onReady(content);
-                                    setReady(true);
-                                }}
-                                onChange={autosave.changeContent}
-                                onCreateChild={workspace.canWrite ? createChild : undefined}
-                                onQuoteSelection={setSelectedQuote}
-                                syncKey={doc.id}
-                                teamId={doc.teamId}
-                            />
-                        </div>
-                    ) : (
-                        <DocumentContent
-                            doc={doc}
-                            onQuoteSelection={(quote) => {
-                                setSelectedQuote(quote);
-                                if (quote) setPanel('comments');
+                    <div ref={editorContainer} data-testid="document-content">
+                        <DocumentEditorPanel
+                            contentFormat={doc.contentFormat ?? 'plain'}
+                            documentId={doc.id}
+                            initialContent={doc.content}
+                            onReady={(content) => {
+                                autosave.onReady(content);
+                                setReady(true);
                             }}
+                            onChange={autosave.changeContent}
+                            onCollaboration={(state, save) => {
+                                setCollaboration(state);
+                                flushLive.current = save;
+                                autosave.receiveRemote(state.title, state.updatedAt);
+                            }}
+                            onCreateChild={workspace.canWrite ? createChild : undefined}
+                            onQuoteSelection={setSelectedQuote}
+                            syncKey={doc.id}
+                            teamId={doc.teamId}
                         />
-                    )}
+                    </div>
                     <RelatedIssues
                         teamId={doc.teamId}
                         kind="document"

@@ -31,6 +31,8 @@ import { DocumentUploadController } from './infrastructure/http/document-upload.
 import { AuthModule } from '../auth/auth.module';
 import { TeamModule } from '../team/team.module';
 import { StorageModule } from '../../shared/storage/storage.module';
+import { DocumentCollaborationService } from './collaboration/document-collaboration.service';
+import { DocumentGateway } from './collaboration/document.gateway';
 
 @Module({
     imports: [
@@ -43,9 +45,11 @@ import { StorageModule } from '../../shared/storage/storage.module';
         TeamModule,
         StorageModule,
     ],
+    exports: [DOCUMENT_REPOSITORY, CreateDocumentUseCase, UpdateDocumentUseCase, UploadDocumentFileUseCase],
     controllers: [DocumentController, DocumentUploadController],
-    exports: [DOCUMENT_REPOSITORY, CreateDocumentUseCase],
     providers: [
+        DocumentCollaborationService,
+        DocumentGateway,
         ContentChangeInterceptor,
         { provide: DOCUMENT_REPOSITORY, useClass: DocumentRepository },
         { provide: DOCUMENT_COMMENT_REPOSITORY, useClass: DocumentCommentRepository },
