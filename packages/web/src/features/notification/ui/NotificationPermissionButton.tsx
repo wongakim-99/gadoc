@@ -54,6 +54,7 @@ export function NotificationPermissionButton() {
                     {busy ? '확인 중…' : mode === 'desktop' ? '시스템 알림 테스트' : '브라우저 알림 켜기'}
                 </button>
             )}
+            <p className="mt-1 leading-5">같은 알림은 접속 중인 앱이나 브라우저 한 곳에서만 표시합니다.</p>
             {feedback && (
                 <p role="status" className="mt-2 leading-5">
                     {feedback}

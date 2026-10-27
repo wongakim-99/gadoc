@@ -11,6 +11,7 @@ export async function notifyAppNotification(notification: AppNotification) {
                 ? `message:${notification.resourceId}`
                 : `notification:${notification.id}`,
         title: copy.title,
+        teamId: notification.teamId,
         body: copy.body,
         force: typeof window !== 'undefined' && !!window.slacordDesktop?.isDesktop,
         href: resolveNotificationHref(notification.teamId, notification),

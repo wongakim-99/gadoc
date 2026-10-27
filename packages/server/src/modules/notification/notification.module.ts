@@ -14,14 +14,23 @@ import { AuthModule } from '../auth/auth.module';
 import { TeamModule } from '../team/team.module';
 import { NotificationGateway } from './infrastructure/websocket/notification.gateway';
 import { NotificationEventListener } from './application/listeners/notification-event.listener';
+import {
+    NotificationDelivery,
+    NotificationDeliverySchema,
+    NotificationDeliveryController,
+    NotificationDeliveryService,
+} from './infrastructure/http/notification-delivery.controller';
 
 @Module({
     imports: [
         AuthModule,
         TeamModule,
-        MongooseModule.forFeature([{ name: Notification.name, schema: NotificationSchema }]),
+        MongooseModule.forFeature([
+            { name: Notification.name, schema: NotificationSchema },
+            { name: NotificationDelivery.name, schema: NotificationDeliverySchema },
+        ]),
     ],
-    controllers: [NotificationController],
+    controllers: [NotificationController, NotificationDeliveryController],
     providers: [
         { provide: NOTIFICATION_REPOSITORY, useClass: NotificationRepository },
         CreateNotificationUseCase,
@@ -32,6 +41,7 @@ import { NotificationEventListener } from './application/listeners/notification-
         NotificationGateway,
         { provide: NOTIFICATION_PUBLISHER, useExisting: NotificationGateway },
         NotificationEventListener,
+        NotificationDeliveryService,
     ],
 })
 export class NotificationModule {}
