@@ -22,7 +22,7 @@ export function ChannelHeader({
     const label = channelType === 'dm' ? 'Direct Message' : channelType === 'voice' ? 'Voice Channel' : 'Channel';
 
     return (
-        <header className="flex items-center justify-between border-b border-border-primary px-4 py-3 sm:px-6">
+        <header className="workspace-topbar">
             <div className="min-w-0">
                 <div className="flex items-center gap-2">
                     <h2 className="truncate text-lg font-bold text-white">
@@ -33,7 +33,7 @@ export function ChannelHeader({
                     </span>
                 </div>
                 {channelDescription && (
-                    <p className="mt-0.5 truncate text-xs text-text-tertiary">{channelDescription}</p>
+                    <p className="truncate text-[11px] leading-4 text-text-tertiary">{channelDescription}</p>
                 )}
             </div>
             <div className="flex items-center gap-1.5 shrink-0">

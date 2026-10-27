@@ -8,7 +8,7 @@ const EVENT_ITEMS = ['pull_request', 'pull_request_review', 'check_run'];
 
 export function GitHubWebhookGuide({ channelName, repoUrl, webhookUrl }: Props) {
     return (
-        <div className="rounded-[28px] border border-border-primary bg-[linear-gradient(180deg,#1e1711_0%,#120f0b_100%)] p-5 sm:p-6">
+        <div className="rounded-[28px] border border-border-primary bg-bg-secondary p-5 sm:p-6">
             <p className="text-xs uppercase tracking-[0.24em] text-brand-200">Webhook Guide</p>
             <h3 className="mt-3 text-lg font-semibold text-white sm:text-xl">GitHub에서 바로 붙이면 됨</h3>
             <div className="mt-5 space-y-4 text-sm text-text-secondary">

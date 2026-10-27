@@ -11,8 +11,8 @@ function HelpSection({ title, children }: { title: string; children: React.React
 
 export function DiscordImportHelpModal({ onClose }: { onClose: () => void }) {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md" onClick={onClose}>
-            <div onClick={(event) => event.stopPropagation()} className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[rgba(201,162,114,0.25)] bg-[#1e1814] p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" onClick={onClose}>
+            <div onClick={(event) => event.stopPropagation()} className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-panel border border-border-primary bg-bg-secondary p-6 shadow-2xl">
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-bold text-white">Discord 임포트 가이드</h3>
                     <button onClick={onClose} className="text-text-tertiary transition-colors hover:text-white">
@@ -23,7 +23,7 @@ export function DiscordImportHelpModal({ onClose }: { onClose: () => void }) {
                 <div className="space-y-5 text-sm leading-relaxed text-text-secondary">
                     <HelpSection title="1단계: Discord 봇 생성">
                         <ol className="list-decimal space-y-1.5 pl-5">
-                            <li><a href="https://discord.com/developers/applications" target="_blank" rel="noopener noreferrer" className="text-[#61afef] underline">Discord Developer Portal</a>에 접속해 주세요.</li>
+                            <li><a href="https://discord.com/developers/applications" target="_blank" rel="noopener noreferrer" className="text-info underline">Discord Developer Portal</a>에 접속해 주세요.</li>
                             <li><strong className="text-white">New Application</strong>을 누르고 앱 이름을 만든 뒤 저장해 주세요.</li>
                             <li>왼쪽 메뉴에서 <strong className="text-white">Bot</strong>을 선택해 주세요.</li>
                             <li><strong className="text-white">Reset Token</strong>을 눌러 토큰을 복사해 주세요.</li>
@@ -32,7 +32,7 @@ export function DiscordImportHelpModal({ onClose }: { onClose: () => void }) {
                     <HelpSection title="2단계: 봇 권한 설정">
                         <ol className="list-decimal space-y-1.5 pl-5">
                             <li><strong className="text-white">Privileged Gateway Intents</strong>에서 세 항목을 모두 켜 주세요.</li>
-                            <li><strong className="text-[#e5c07b]">Message Content Intent</strong>는 꼭 켜야 해요.</li>
+                            <li><strong className="text-warning">Message Content Intent</strong>는 꼭 켜야 해요.</li>
                             <li><strong className="text-white">Save Changes</strong>를 눌러 저장해 주세요.</li>
                         </ol>
                     </HelpSection>
@@ -58,8 +58,8 @@ export function DiscordImportHelpModal({ onClose }: { onClose: () => void }) {
                             <li><strong className="text-white">Discord 전체 가져오기</strong>를 눌러 주세요.</li>
                         </ol>
                     </HelpSection>
-                    <div className="rounded-xl border border-[rgba(201,162,114,0.2)] bg-black/20 p-3 text-xs text-text-tertiary">
-                        <p className="mb-1 font-medium text-[#e5c07b]">참고</p>
+                    <div className="rounded-xl border border-border-primary bg-black/20 p-3 text-xs text-text-tertiary">
+                        <p className="mb-1 font-medium text-warning">참고</p>
                         <ul className="space-y-0.5">
                             <li>• 텍스트, 뉴스, 스레드 채널만 가져와요.</li>
                             <li>• 봇 토큰은 저장하지 않고, 가져오는 동안에만 써요.</li>

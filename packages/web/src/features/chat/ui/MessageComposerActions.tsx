@@ -28,7 +28,7 @@ export function MessageComposerActions({ canSubmit, isUploading, onOpenFiles, re
                     onClick={onSubmit}
                     disabled={readOnly || !canSubmit}
                     aria-label="메시지 보내기"
-                    className="order-1 mb-2 mr-2 flex h-7 w-7 shrink-0 self-end items-center justify-center rounded-md bg-slack-green text-white transition-all disabled:opacity-20 hover:brightness-110"
+                    className="order-1 mb-2 mr-2 flex h-7 w-7 shrink-0 self-end items-center justify-center rounded-md bg-action text-white transition-all disabled:opacity-20 hover:brightness-110"
                 >
                     <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />

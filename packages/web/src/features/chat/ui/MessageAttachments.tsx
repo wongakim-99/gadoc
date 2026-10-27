@@ -47,7 +47,7 @@ function MediaAttachmentCard({ attachment }: { attachment: Attachment }) {
 
     return (
         <div className="overflow-hidden rounded-2xl border border-border-primary bg-black/20">
-            <a href={attachment.url} target="_blank" rel="noreferrer" className="block bg-[#120f0b]">
+            <a href={attachment.url} target="_blank" rel="noreferrer" className="block bg-bg-primary">
                 {kind === 'image' ? (
                     <img src={attachment.url} alt={attachment.name} className="h-56 w-full object-cover" loading="lazy" />
                 ) : kind === 'video' ? (
@@ -59,7 +59,7 @@ function MediaAttachmentCard({ attachment }: { attachment: Attachment }) {
                 ) : null}
             </a>
             <div className="flex items-center justify-between gap-3 px-3 py-2.5">
-                <a href={attachment.url} target="_blank" rel="noreferrer" className="truncate text-sm font-medium text-white hover:text-[#d6b08a]">
+                <a href={attachment.url} target="_blank" rel="noreferrer" className="truncate text-sm font-medium text-white hover:text-action-text">
                     {attachment.name}
                 </a>
                 <span className="shrink-0 text-xs text-text-tertiary">{formatAttachmentSize(attachment.size)}</span>

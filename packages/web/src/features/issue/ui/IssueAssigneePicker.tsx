@@ -22,7 +22,7 @@ export function IssueAssigneePicker({ assigneeIds, disabled = false, members, op
                 type="button"
                 onClick={onToggleOpen}
                 disabled={disabled}
-                className="flex w-full items-center gap-2 rounded-lg border border-border-primary bg-bg-primary px-3 py-2 text-left text-sm transition hover:border-[#d6b08a]/40 disabled:opacity-50"
+                className="flex w-full items-center gap-2 rounded-lg border border-border-primary bg-bg-primary px-3 py-2 text-left text-sm transition hover:border-action-text/40 disabled:opacity-50"
             >
                 {selectedMembers.length > 0 ? (
                     <div className="flex flex-wrap items-center gap-1.5">

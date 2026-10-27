@@ -45,13 +45,13 @@ export function PendingAttachmentTray({ files, onRemove }: Props) {
     return (
         <div className="border-b border-border-primary/80 px-3 py-3">
             <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#d6b08a]">업로드 준비</p>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-action-text">업로드 준비</p>
                 <p className="text-xs text-text-tertiary">{previews.length}개 파일</p>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {previews.map((preview) => (
                     <div key={`${preview.file.name}-${preview.file.size}-${preview.index}`} className="overflow-hidden rounded-2xl border border-border-primary bg-black/20">
-                        <div className="relative aspect-[4/3] bg-[#120f0b]">
+                        <div className="relative aspect-[4/3] bg-bg-primary">
                             {preview.kind === 'image' && preview.url ? (
                                 <img src={preview.url} alt={preview.file.name} className="h-full w-full object-cover" />
                             ) : preview.kind === 'video' && preview.url ? (

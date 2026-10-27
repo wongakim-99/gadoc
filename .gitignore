@@ -29,6 +29,8 @@ lerna-debug.log*
 /artifacts
 /playwright-report
 /test-results
+**/graphify-out/
+/.rea/
 
 # IDEs and editors
 /.idea

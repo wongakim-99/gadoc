@@ -26,6 +26,7 @@ async function main() {
 
   installSignalHandlers();
 
+  await runStep("Document core test", "yarn", ["test:document-core"], runtime.env);
   await runStep(
     "Playwright browser 준비",
     "yarn",

@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo } from 'react';
 import type { BlockNoteEditor } from '@blocknote/core';
-import { BlockNoteViewRaw, useCreateBlockNote } from '@blocknote/react';
+import { useCreateBlockNote } from '@blocknote/react';
+import { BlockNoteView } from '@blocknote/mantine';
+import '@blocknote/mantine/style.css';
+import { ko } from '@blocknote/core/locales';
 import { documentApi, unwrapApiData } from '@/lib/api-client';
 
 interface Props {
@@ -24,6 +27,7 @@ function parseBlocks(content: string) {
 export function BlockEditor({ teamId, initialContent, onChange, editable = true }: Props) {
     const initialBlocks = useMemo(() => parseBlocks(initialContent ?? ''), [initialContent]);
     const editor: BlockNoteEditor = useCreateBlockNote({
+        dictionary: ko,
         initialContent: initialBlocks,
         uploadFile: async (file: File) => {
             const res = await documentApi.uploadDocumentImage(teamId, file);
@@ -38,12 +42,12 @@ export function BlockEditor({ teamId, initialContent, onChange, editable = true 
         const handler = () => {
             onChange(JSON.stringify(editor.document));
         };
-        editor.onEditorContentChange(handler);
+        return editor.onChange(handler);
     }, [editor, editable, onChange]);
 
     return (
-        <div className="rounded-xl border border-border-primary bg-bg-secondary">
-            <BlockNoteViewRaw editor={editor} editable={editable} className="slacord-blocknote" theme="dark" />
+        <div>
+            <BlockNoteView editor={editor} editable={editable} className="slacord-blocknote" theme="dark" />
         </div>
     );
 }

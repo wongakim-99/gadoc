@@ -51,10 +51,10 @@ export function DirectRoomLauncher({ teamId, members }: Props) {
 
     const modal = open ? (
         <div
-            style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backgroundColor: 'var(--color-overlay)', backdropFilter: 'blur(4px)' }}
             onClick={(e) => { if (e.target === e.currentTarget) close(); }}
         >
-            <div className="w-full max-w-md rounded-2xl border border-[rgba(201,162,114,0.25)] bg-[#1e1814] p-5 shadow-2xl">
+            <div className="w-full max-w-md rounded-panel border border-border-primary bg-bg-secondary p-5 shadow-2xl">
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-white">새 DM / 소그룹</h3>
                     <button onClick={close} className="text-text-tertiary hover:text-white">닫기</button>
@@ -79,7 +79,7 @@ export function DirectRoomLauncher({ teamId, members }: Props) {
                 {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
                 <div className="mt-4 flex justify-end gap-2">
                     <button onClick={close} className="rounded-lg px-4 py-2 text-sm text-text-secondary hover:text-white">취소</button>
-                    <button onClick={createRoom} disabled={selectedIds.length === 0} className="rounded-lg bg-slack-green px-4 py-2 text-sm font-medium text-white disabled:opacity-40">
+                    <button onClick={createRoom} disabled={selectedIds.length === 0} className="rounded-lg bg-action px-4 py-2 text-sm font-medium text-white disabled:opacity-40">
                         만들기
                     </button>
                 </div>

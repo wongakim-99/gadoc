@@ -68,7 +68,7 @@ export function WorkspaceMobileNav({
                     </Link>
                     <button
                         onClick={() => setOpen((value) => !value)}
-                        className="rounded-full bg-[#b97532] px-3 py-2 text-xs font-semibold text-white"
+                        className="rounded-full bg-action px-3 py-2 text-xs font-semibold text-white"
                     >
                         {open ? '닫기' : '메뉴'}
                     </button>
@@ -161,7 +161,7 @@ export function WorkspaceMobileNav({
 }
 
 function QuickLink({ active, href, label }: { active: boolean; href: string; label: string }) {
-    const tone = active ? 'border-[#d6b08a]/45 bg-[#2a1d12] text-white' : 'border-border-primary text-text-secondary';
+    const tone = active ? 'border-action-text/45 bg-selection text-white' : 'border-border-primary text-text-secondary';
     return (
         <Link href={href} className={`shrink-0 rounded-full border px-3 py-2 text-xs ${tone}`}>
             {label}

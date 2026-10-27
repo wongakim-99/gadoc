@@ -4,8 +4,56 @@
 @import 'tailwindcss' layer(base);
 @config '../tailwind.config.ts';
 
+.connected-workspace { position: relative; }
+.workspace-inline-open { flex-shrink: 0; opacity: .55; }
+.group:hover > .workspace-inline-open, .workspace-inline-open:focus-visible, .workspace-inline-open:hover { opacity: 1; }
+[draggable='true'].connection-icon { cursor: grab; }
+.reference-drop-zone { position: relative; min-width: 0; }
+.reference-drop-zone.is-drag-over { outline: 2px dashed var(--color-action-text); outline-offset: 4px; border-radius: var(--radius-control); }
+.reference-drop-hint { pointer-events: none; position: absolute; z-index: 25; left: 8px; top: -28px; display: flex; align-items: center; gap: 6px; max-width: calc(100% - 16px); padding: 5px 8px; border: 1px solid var(--color-border-glow); border-radius: var(--radius-control); background: var(--color-selection); color: var(--color-action-text); font-size: 11px; }
+[data-reference-drop-target='true'] { box-shadow: 0 2px 0 var(--color-action-text); }
+.workspace-edge-drop { position: absolute; z-index: 75; right: 8px; top: 48px; bottom: 8px; width: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; border: 2px dashed var(--color-border-glow); border-radius: var(--radius-panel); background: color-mix(in srgb, var(--color-selection) 92%, transparent); color: var(--color-action-text); text-align: center; font-size: 13px; }
+.workspace-edge-drop.is-over { border-style: solid; border-color: var(--color-action-text); box-shadow: -12px 0 40px rgb(0 0 0 / 20%); }
+.workspace-edge-drop > * { pointer-events: none; }
+@media (max-width: 1023px) { .workspace-edge-drop { display: none; } .workspace-inline-open { opacity: 1; } }
+
+.connection-toolbar { display: flex; min-height: 40px; align-items: center; gap: 16px; padding: 4px 16px; border-bottom: 1px solid var(--color-border-primary); background: var(--color-bg-secondary); }
+.connection-open, .connection-icon { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: var(--radius-control); padding: 6px; color: var(--color-text-secondary); font-size: 12px; }
+.connection-open:hover, .connection-icon:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }
+.connection-reference-tray { display: flex; align-items: center; gap: 8px; padding: 4px 16px; border-bottom: 1px solid var(--color-border-primary); background: var(--color-selection); color: var(--color-action-text); font-size: 12px; }
+.connection-insert { display: flex; max-width: 100%; align-items: center; gap: 6px; margin: 8px 0; border: 1px solid var(--color-border-glow); border-radius: var(--radius-control); padding: 6px 10px; background: var(--color-selection); color: var(--color-action-text); font-size: 12px; }
+.connection-link { color: var(--color-action-text); text-decoration: underline; text-underline-offset: 3px; }
+.connection-panes { display: flex; min-height: 0; flex: 1; }
+.connection-panes.is-split .connection-primary { contain: layout; }
+.connection-primary { min-width: 0; width: 100%; background: var(--color-bg-primary); }
+.connection-secondary { min-width: 0; flex: 1; background: var(--color-bg-primary); }
+.connection-divider { width: 7px; flex-shrink: 0; cursor: col-resize; background: var(--color-bg-secondary); border-inline: 1px solid var(--color-border-primary); touch-action: none; }
+.connection-divider:hover, .connection-divider:focus-visible { background: var(--color-selection); outline: 2px solid var(--color-action-text); outline-offset: -2px; }
+.connected-embedded .document-workspace { min-height: 100%; }
+.connected-embedded .workspace-topbar { padding-inline: 16px; }
+.connected-embedded .document-workspace article { padding: 28px 24px 80px; }
+.workspace-shell .slacord-blocknote a[href] { color: var(--color-action-text); text-decoration: underline; text-underline-offset: 3px; }
+@media (min-width: 1024px) {
+    .connected-body > aside { height: 100%; }
+    .connection-panes.is-split .connection-primary { width: var(--primary-width); flex-shrink: 0; }
+    .connection-panes.is-reversed { flex-direction: row-reverse; }
+}
+@media (max-width: 1023px) {
+    .connection-icon[aria-label='좌우 바꾸기'] { display: none; }
+    .connected-workspace { height: 100dvh; min-height: 0; overflow: hidden; }
+    .connection-panes .mobile-hidden { display: none; }
+    .connection-divider { display: none; }
+}
+
 @layer theme {
     :root {
+        --color-action: var(--color-brand-500);
+        --color-action-hover: var(--color-brand-400);
+        --color-action-text: var(--color-brand-200);
+        --color-selection: var(--color-bg-active);
+        --radius-control: 6px;
+        --radius-panel: 12px;
+        --color-overlay: rgb(8 12 20 / 60%);
         --color-bg-primary: #0f0c09;
         --color-bg-secondary: #17120d;
         --color-bg-tertiary: #211913;
@@ -298,6 +346,68 @@
         color: var(--color-text-primary);
     }
 
+    body:has(.workspace-shell),
+    .workspace-shell,
+    .document-workspace {
+        color-scheme: dark;
+        --color-bg-primary: #181b20;
+        --color-bg-secondary: #20242b;
+        --color-bg-tertiary: #282e38;
+        --color-bg-active: #323b4b;
+        --color-bg-hover: #2a303a;
+        --color-text-primary: #edf0f5;
+        --color-text-secondary: #bdc5d2;
+        --color-text-tertiary: #9aa6b8;
+        --color-text-muted: #8996a9;
+        --color-border-primary: #343c49;
+        --color-border-secondary: #2b323d;
+        --color-border-glow: #657da8;
+        --color-action: #4668d9;
+        --color-action-hover: #3c5ecb;
+        --color-action-text: #a8bdff;
+        --color-selection: #283653;
+        --workspace-accent: #9db6ff;
+        /* Compatibility aliases for existing components; no product-specific palette. */
+        --color-brand-50: #f1f5ff;
+        --color-brand-100: #e0e9ff;
+        --color-brand-200: #c1d1ff;
+        --color-brand-300: #a8bdff;
+        --color-brand-400: #8ba7ff;
+        --color-brand-500: #4668d9;
+        --color-brand-600: #3c5ecb;
+        --color-brand-700: #304b9c;
+        --color-brand-800: #263b73;
+        --color-brand-900: #202d4c;
+        --color-slack-teal: #79c9c3;
+        --color-slack-green: #74c69a;
+        --color-slack-coral: #f39a9f;
+        --color-slack-yellow: #e4c17b;
+        --color-discord-blue: #a8bdff;
+        --color-discord-glow: rgb(70 104 217 / 20%);
+        --color-accent-teal: #79c9c3;
+        --color-accent-coral: #f39a9f;
+        --color-accent-sage: #74c69a;
+        --color-accent-amber: #e4c17b;
+        --color-success: #74c69a;
+        --color-error: #f39a9f;
+        --color-warning: #e4c17b;
+        --color-info: #a8bdff;
+        --shadow-sm: 0 1px 2px rgb(0 0 0 / 18%);
+        --shadow-md: 0 6px 18px rgb(0 0 0 / 22%);
+        --shadow-lg: 0 12px 32px rgb(0 0 0 / 28%);
+        --shadow-xl: 0 20px 48px rgb(0 0 0 / 34%);
+        --workspace-header-height: 64px;
+        --workspace-row-height: 36px;
+        --workspace-label-size: 13px;
+        background: var(--color-bg-primary);
+        color: var(--color-text-primary);
+    }
+
+    .document-workspace .bn-editor {
+        padding: 1rem 0;
+        line-height: 1.75;
+    }
+
     .slacord-blocknote .bn-editor {
         min-height: 22rem;
         padding: 1.25rem 1.35rem;
@@ -349,8 +459,121 @@
     .marketing-card {
         border: 1px solid rgba(201, 162, 114, 0.14);
         background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015)),
-            rgba(17, 13, 9, 0.8);
+            linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015)), rgba(17, 13, 9, 0.8);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
+}
+
+/* Keep the document canvas continuous across the lazy-loaded editor stylesheet. */
+.document-workspace .slacord-blocknote .bn-editor {
+    background: transparent;
+    padding: 1rem 0;
+    line-height: 1.75;
+    color: var(--color-text-primary);
+}
+
+/* One visual rhythm for every workspace area. */
+.workspace-shell {
+    letter-spacing: -0.012em;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+.workspace-topbar {
+    min-height: var(--workspace-header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--color-border-primary);
+    background: var(--color-bg-primary);
+    flex-shrink: 0;
+}
+.workspace-topbar h1,
+.workspace-topbar h2 {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 24px;
+    letter-spacing: -0.02em;
+}
+.workspace-sidebar-row {
+    min-height: var(--workspace-row-height);
+    padding: 8px 10px;
+    gap: 10px;
+    font-size: var(--workspace-label-size);
+    line-height: 20px;
+    border-radius: var(--radius-control);
+}
+.workspace-sidebar-row[aria-current='location'] {
+    background: var(--color-selection);
+    color: var(--color-action-text);
+    box-shadow: inset 2px 0 0 var(--workspace-accent);
+}
+.workspace-shell :is(button, a, input, textarea, select):focus-visible {
+    outline: 2px solid var(--workspace-accent);
+    outline-offset: 3px;
+}
+.workspace-shell .lucide {
+    stroke-width: 1.65;
+}
+.workspace-shell .document-title:focus-visible {
+    outline: none;
+    box-shadow: 0 1px 0 var(--color-border-primary);
+}
+.workspace-command-dialog input[role='combobox']:focus-visible {
+    outline: none;
+}
+.workspace-command-dialog:focus-within {
+    border-color: var(--color-border-glow);
+}
+.workspace-shell .document-title {
+    font-size: clamp(30px, 3vw, 40px);
+    font-weight: 650;
+    line-height: 1.25;
+    letter-spacing: -0.035em;
+}
+.document-workspace .slacord-blocknote .bn-editor {
+    font-size: 16px;
+    min-height: 16rem;
+}
+.workspace-shell .slacord-blocknote [data-color-scheme='dark'] {
+    --bn-colors-menu-background: var(--color-bg-secondary);
+    --bn-colors-tooltip-background: var(--color-bg-secondary);
+    --bn-colors-selected-background: var(--color-selection);
+    --bn-colors-selected-text: var(--color-text-primary);
+    --bn-colors-hovered-background: var(--color-bg-hover);
+    --bn-colors-side-menu: var(--color-text-secondary);
+}
+
+/* Editor menus may be rendered in a portal outside the workspace shell. */
+body:has(.workspace-shell) .bn-container[data-color-scheme='dark'] {
+    --bn-colors-menu-background: var(--color-bg-secondary);
+    --bn-colors-menu-text: var(--color-text-primary);
+    --bn-colors-tooltip-background: var(--color-bg-tertiary);
+    --bn-colors-tooltip-text: var(--color-text-primary);
+    --bn-colors-hovered-background: var(--color-bg-hover);
+    --bn-colors-hovered-text: var(--color-text-primary);
+    --bn-colors-selected-background: var(--color-selection);
+    --bn-colors-selected-text: var(--color-text-primary);
+    --bn-colors-border: var(--color-border-primary);
+    --bn-colors-shadow: rgb(0 0 0 / 25%);
+}
+body:has(.workspace-shell) ::selection {
+    background: var(--color-selection);
+    color: var(--color-text-primary);
+}
+.workspace-shell input::placeholder,
+.workspace-shell textarea::placeholder {
+    color: var(--color-text-muted);
+}
+.workspace-shell .document-tree-row[aria-current='page'] {
+    background: var(--color-bg-active);
+    color: var(--color-text-primary);
+}
+@media (max-width: 639px) {
+    .workspace-topbar {
+        padding: 12px 16px;
+        gap: 8px;
+        flex-wrap: wrap;
     }
 }

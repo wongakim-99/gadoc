@@ -1,6 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { getDocumentAncestors } from '@/src/entities/document/lib/getDocumentAncestors';
 import { buildDocumentTree, type DocumentTreeNode } from '@/src/entities/document/lib/buildDocumentTree';
 import { collectExpandedIds, filterDocumentTree } from '@/src/entities/document/lib/filterDocumentTree';
 import type { DocumentNode } from '@/src/entities/document/types';
@@ -10,24 +12,39 @@ import { DocumentTreeSearch } from './DocumentTreeSearch';
 interface Props {
     documents: DocumentNode[];
     teamId: string;
+    canCreate?: boolean;
 }
 
-export function DocumentTree({ documents, teamId }: Props) {
-    const roots = buildDocumentTree(documents);
+export function DocumentTree({ documents, teamId, canCreate = false }: Props) {
+    const roots = useMemo(() => buildDocumentTree(documents), [documents]);
+    const pathname = usePathname();
     const [query, setQuery] = useState('');
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+    const ancestorKey = getDocumentAncestors(documents, pathname.split('/').at(-1) ?? '')
+        .map((doc) => doc.id)
+        .join(',');
+    useEffect(() => {
+        setExpandedIds((current) => new Set([...current, ...ancestorKey.split(',').filter(Boolean)]));
+    }, [ancestorKey]);
     const filteredRoots = useMemo(() => filterDocumentTree(roots, query), [query, roots]);
-    const visibleExpandedIds = useMemo(() => query.trim() ? collectExpandedIds(filteredRoots) : expandedIds, [expandedIds, filteredRoots, query]);
+    const visibleExpandedIds = useMemo(
+        () => (query.trim() ? collectExpandedIds(filteredRoots) : expandedIds),
+        [expandedIds, filteredRoots, query],
+    );
 
     if (roots.length === 0) {
-        return <p className="py-12 text-center text-sm text-text-tertiary">문서가 없습니다. 첫 문서를 만들어 보세요.</p>;
+        return (
+            <p className="py-12 text-center text-sm text-text-tertiary">문서가 없습니다. 첫 문서를 만들어 보세요.</p>
+        );
     }
 
     return (
         <div className="space-y-4">
             <DocumentTreeSearch onChange={setQuery} query={query} />
             {filteredRoots.length === 0 ? (
-                <p className="rounded-2xl border border-border-primary bg-bg-secondary px-4 py-6 text-center text-sm text-text-tertiary">검색 조건에 맞는 문서를 찾지 못했습니다.</p>
+                <p className="rounded-2xl border border-border-primary bg-bg-secondary px-4 py-6 text-center text-sm text-text-tertiary">
+                    검색 조건에 맞는 문서를 찾지 못했습니다.
+                </p>
             ) : (
                 <div className="space-y-2">
                     {filteredRoots.map((node) => (
@@ -38,6 +55,7 @@ export function DocumentTree({ documents, teamId }: Props) {
                             node={node}
                             onToggle={(id) => setExpandedIds((prev) => toggleExpanded(prev, id))}
                             teamId={teamId}
+                            canCreate={canCreate}
                         />
                     ))}
                 </div>
