@@ -10,6 +10,7 @@ import { documentApi, unwrapApiData } from '@/lib/api-client';
 
 interface Props {
     teamId: string;
+    documentId: string;
     initialContent?: string;
     onChange: (json: string) => void;
     editable?: boolean;
@@ -24,13 +25,13 @@ function parseBlocks(content: string) {
     }
 }
 
-export function BlockEditor({ teamId, initialContent, onChange, editable = true }: Props) {
+export function BlockEditor({ teamId, documentId, initialContent, onChange, editable = true }: Props) {
     const initialBlocks = useMemo(() => parseBlocks(initialContent ?? ''), [initialContent]);
     const editor: BlockNoteEditor = useCreateBlockNote({
         dictionary: ko,
         initialContent: initialBlocks,
         uploadFile: async (file: File) => {
-            const res = await documentApi.uploadDocumentImage(teamId, file);
+            const res = await documentApi.uploadDocumentImage(teamId, documentId, file);
             const url = unwrapApiData<{ url: string }>(res)?.url;
             if (url) return url;
             throw new Error('이미지 업로드에 실패했습니다.');

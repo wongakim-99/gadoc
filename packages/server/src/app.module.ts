@@ -1,3 +1,4 @@
+import { FileModule } from './modules/file/file.module';
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -34,6 +35,7 @@ import { HealthController } from './shared/http/health.controller';
     ],
     imports: [
         SharedModule,
+        FileModule,
         ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
         EventEmitterModule.forRoot({ wildcard: false, maxListeners: 20 }),
         MongooseModule.forRootAsync({

@@ -3,7 +3,7 @@ name: desktop-release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
 permissions:
@@ -15,6 +15,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -40,9 +43,9 @@ jobs:
       matrix:
         include:
           - os: macos-14
-            command: yarn release:desktop:mac
+            command: pnpm release:desktop:mac
           - os: windows-2022
-            command: yarn release:desktop:win
+            command: pnpm release:desktop:win
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -53,14 +56,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: yarn
+          cache: pnpm
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Validate desktop release version
         run: |

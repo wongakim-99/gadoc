@@ -21,23 +21,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: yarn
+          cache: pnpm
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Run backend tests
-        run: yarn test:server
+        run: pnpm test:server
+
+      - name: Audit dependencies
+        run: pnpm audit --audit-level high
 
       - name: Test deployment safety
-        run: node --test scripts/test/deploy-ubuntu.test.mjs
+        run: node --test scripts/test/deploy-ubuntu.test.mjs scripts/test/gadoc-storage-policy.test.mjs
 
       - name: Build backend
-        run: yarn build:server
+        run: pnpm build:server
 
   frontend:
     runs-on: ubuntu-24.04
@@ -45,20 +51,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: yarn
+          cache: pnpm
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: Test document core
+        run: pnpm test:document-core
 
       - name: Run frontend tests
-        run: yarn test:web
+        run: pnpm test:web
 
       - name: Build frontend
-        run: yarn build:web
+        run: pnpm build:web
 
   desktop:
     strategy:
@@ -70,28 +82,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: yarn
+          cache: pnpm
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Typecheck desktop
-        run: yarn workspace @slacord/desktop typecheck
+        run: pnpm --filter @slacord/desktop typecheck
 
       - name: Run desktop tests (Linux)
         if: runner.os == 'Linux'
-        run: xvfb-run -a yarn test:desktop
+        run: xvfb-run -a pnpm test:desktop
 
       - name: Run desktop tests (Windows and macOS)
         if: runner.os != 'Linux'
-        run: yarn test:desktop
+        run: pnpm test:desktop
 
       - name: Build desktop
-        run: yarn build:desktop
+        run: pnpm build:desktop
 
   web-e2e:
     needs:
@@ -111,6 +126,7 @@ jobs:
     env:
       HOST: 127.0.0.1
       PORT: 8084
+      JWT_SECRET: gadoc-ci-only-not-for-production-0123456789
       MONGODB_URI: mongodb://127.0.0.1:27017/slacord_ci
       INTERNAL_API_URL: http://127.0.0.1:8084
       NEXT_PUBLIC_API_URL: http://127.0.0.1:3002/api
@@ -127,17 +143,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: yarn
+          cache: pnpm
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Restore test storage binary
         id: minio-cache
@@ -160,14 +179,14 @@ jobs:
         if: steps.minio-cache.outputs.cache-hit != 'true'
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.x'
+          go-version: "1.24.x"
           cache-dependency-path: .ci-minio-source/go.sum
 
       - name: Build test storage
         if: steps.minio-cache.outputs.cache-hit != 'true'
         working-directory: .ci-minio-source
         env:
-          CGO_ENABLED: '0'
+          CGO_ENABLED: "0"
         run: |
           mkdir -p "$RUNNER_TEMP/slacord-minio"
           go build -o "$RUNNER_TEMP/slacord-minio/minio" .
@@ -189,12 +208,15 @@ jobs:
 
       - name: Build backend and frontend
         run: |
-          yarn build:server
-          yarn build:web
+          pnpm build:server
+          pnpm build:web
+
+      - name: Test legacy attachment permission migration
+        run: node --test scripts/test/legacy-file-bindings.integration.mjs
 
       - name: Start backend
         run: |
-          yarn start:server > /tmp/slacord-server.log 2>&1 &
+          pnpm start:server > /tmp/slacord-server.log 2>&1 &
           echo $! > /tmp/slacord-server.pid
 
       - name: Wait for backend
@@ -210,7 +232,7 @@ jobs:
 
       - name: Start frontend
         run: |
-          yarn start:web > /tmp/slacord-web.log 2>&1 &
+          pnpm start:web > /tmp/slacord-web.log 2>&1 &
           echo $! > /tmp/slacord-web.pid
 
       - name: Wait for frontend
@@ -225,7 +247,7 @@ jobs:
           exit 1
 
       - name: Run web e2e
-        run: yarn test:e2e:web
+        run: pnpm test:e2e:web
 
       - name: Upload E2E artifacts
         if: failure()

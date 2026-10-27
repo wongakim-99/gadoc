@@ -1,3 +1,4 @@
+import { AuthRateLimitGuard } from '../../../../shared/guards/auth-rate-limit.guard';
 import { Body, Controller, Get, Post, Res, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -20,21 +21,20 @@ export class AuthController {
     ) {}
 
     private isSecureCookie() {
-        return process.env.COOKIE_SECURE === 'true';
+        return process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true';
     }
 
     @Post('register')
+    @UseGuards(AuthRateLimitGuard)
     @ApiOperation({ summary: '회원가입' })
     async register(@Body() dto: RegisterDto) {
         return this.registerUseCase.execute(dto);
     }
 
     @Post('login')
+    @UseGuards(AuthRateLimitGuard)
     @ApiOperation({ summary: '로그인' })
-    async login(
-        @Body() dto: LoginDto,
-        @Res({ passthrough: true }) res: Response,
-    ): Promise<LoginOutput> {
+    async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response): Promise<LoginOutput> {
         const result = await this.loginUseCase.execute(dto);
         const maxAge = dto.rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
         res.cookie('access_token', result.accessToken, {

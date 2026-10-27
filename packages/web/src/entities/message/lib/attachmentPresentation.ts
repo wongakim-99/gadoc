@@ -2,8 +2,11 @@ import type { Attachment } from '../types';
 
 export type AttachmentKind = 'image' | 'video' | 'audio' | 'other';
 
-export function getAttachmentKind(input: Pick<Attachment, 'mimeType' | 'name'> | Pick<File, 'type' | 'name'>): AttachmentKind {
+export function getAttachmentKind(
+    input: Pick<Attachment, 'mimeType' | 'name'> | Pick<File, 'type' | 'name'>,
+): AttachmentKind {
     const mimeType = 'mimeType' in input ? input.mimeType : input.type;
+    if (mimeType === 'application/octet-stream' || mimeType === 'image/svg+xml') return 'other';
     if (mimeType.startsWith('image/')) return 'image';
     if (mimeType.startsWith('video/')) return 'video';
     if (mimeType.startsWith('audio/')) return 'audio';

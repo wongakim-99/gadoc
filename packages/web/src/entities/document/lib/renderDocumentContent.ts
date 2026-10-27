@@ -1,14 +1,23 @@
 import type { DocumentFull } from '../types';
+import sanitizeHtml from 'sanitize-html';
 
 const escapeHtml = (value: string) =>
-    value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 
 const formatInline = (value: string) =>
     escapeHtml(value)
         .replace(/`([^`]+)`/g, '<code>$1</code>')
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
         .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-        .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+|mailto:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+        .replace(
+            /\[([^\]]+)\]\((https?:\/\/[^)\s]+|mailto:[^)]+)\)/g,
+            '<a href="$2" target="_blank" rel="noreferrer">$1</a>',
+        )
         .replace(/&lt;(https?:\/\/[^&]+)&gt;/g, '<a href="$1" target="_blank" rel="noreferrer">$1</a>');
 
 const isTableBlock = (lines: string[]) =>
@@ -16,7 +25,12 @@ const isTableBlock = (lines: string[]) =>
 
 const renderTable = (lines: string[]) => {
     const isSeparator = (line: string) => /^\|\s*[-: ]+(\|\s*[-: ]+)*\|?\s*$/.test(line.trim());
-    const parseRow = (line: string) => line.trim().replace(/^\||\|$/g, '').split('|').map((cell) => formatInline(cell.trim()));
+    const parseRow = (line: string) =>
+        line
+            .trim()
+            .replace(/^\||\|$/g, '')
+            .split('|')
+            .map((cell) => formatInline(cell.trim()));
     const dataLines = lines.filter((line) => !isSeparator(line));
     if (dataLines.length === 0) return '';
     const [head, ...body] = dataLines.map(parseRow);
@@ -25,17 +39,24 @@ const renderTable = (lines: string[]) => {
 
 const renderList = (lines: string[], ordered: boolean) => {
     const tag = ordered ? 'ol' : 'ul';
-    const items = lines.map((line) => line.replace(ordered ? /^\d+\.\s+/ : /^-\s+/, '')).map((line) => `<li>${formatInline(line)}</li>`).join('');
+    const items = lines
+        .map((line) => line.replace(ordered ? /^\d+\.\s+/ : /^-\s+/, ''))
+        .map((line) => `<li>${formatInline(line)}</li>`)
+        .join('');
     return `<${tag}>${items}</${tag}>`;
 };
 
 const renderBlock = (block: string) => {
-    const lines = block.split('\n').map((line) => line.trimEnd()).filter(Boolean);
+    const lines = block
+        .split('\n')
+        .map((line) => line.trimEnd())
+        .filter(Boolean);
     if (lines.length === 0) return '';
     if (isTableBlock(lines)) return renderTable(lines);
     if (lines.every((line) => /^-\s+/.test(line.trim()))) return renderList(lines, false);
     if (lines.every((line) => /^\d+\.\s+/.test(line.trim()))) return renderList(lines, true);
-    if (lines.every((line) => /^>\s?/.test(line.trim()))) return `<blockquote>${lines.map((line) => formatInline(line.replace(/^>\s?/, ''))).join('<br />')}</blockquote>`;
+    if (lines.every((line) => /^>\s?/.test(line.trim())))
+        return `<blockquote>${lines.map((line) => formatInline(line.replace(/^>\s?/, ''))).join('<br />')}</blockquote>`;
     if (/^#{1,4}\s+/.test(lines[0])) {
         const level = Math.min(lines[0].match(/^#+/)?.[0].length ?? 1, 4);
         return `<h${level}>${formatInline(lines[0].replace(/^#{1,4}\s+/, ''))}</h${level}>`;
@@ -43,23 +64,50 @@ const renderBlock = (block: string) => {
     return `<p>${lines.map((line) => formatInline(line)).join('<br />')}</p>`;
 };
 
-/** 위험한 HTML 태그/속성을 제거하여 XSS 방지 */
-function sanitizeHtml(html: string): string {
-    return html
-        // script, iframe, object, embed, form 태그 제거
-        .replace(/<\s*\/?\s*(script|iframe|object|embed|form|base|meta|link|style)\b[^>]*>/gi, '')
-        // 이벤트 핸들러 속성 제거 (on*)
-        .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-        // javascript: 프로토콜 제거
-        .replace(/\b(href|src|action)\s*=\s*(?:"javascript:[^"]*"|'javascript:[^']*')/gi, '$1=""')
-        // data: 프로토콜 제거 (이미지 제외)
-        .replace(/\b(href|action)\s*=\s*(?:"data:[^"]*"|'data:[^']*')/gi, '$1=""');
-}
+const cleanHtml = (html: string) =>
+    sanitizeHtml(html, {
+        allowedTags: [...sanitizeHtml.defaults.allowedTags, 'img', 'details', 'summary', 'input'],
+        allowedAttributes: {
+            a: ['href', 'target', 'rel'],
+            img: ['src', 'alt', 'width', 'height'],
+            input: ['type', 'checked', 'disabled'],
+            '*': ['class'],
+        },
+        allowedClasses: {
+            '*': [
+                'slacord-callout',
+                'slacord-callout-warning',
+                'slacord-callout-tip',
+                'slacord-callout-note',
+                'slacord-callout-info',
+                'slacord-task-list',
+                'slacord-task-item',
+            ],
+        },
+        allowedSchemes: ['http', 'https', 'mailto'],
+        allowedSchemesByTag: { img: ['http', 'https'] },
+        allowProtocolRelative: false,
+        transformTags: {
+            a: sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' }),
+            input: (_tag, attrs) => ({
+                tagName: 'input',
+                attribs: { type: 'checkbox', disabled: '', ...('checked' in attrs ? { checked: '' } : {}) },
+            }),
+        },
+    });
 
 export function renderDocumentContent(doc: Pick<DocumentFull, 'content' | 'contentFormat'>) {
     if (!doc.content.trim()) return '';
-    if (doc.contentFormat === 'html') return wrapTables(sanitizeHtml(doc.content));
-    return wrapTables(doc.content.replace(/\r\n/g, '\n').split(/\n{2,}/).map((block) => renderBlock(block)).join(''));
+    if (doc.contentFormat === 'html') return wrapTables(cleanHtml(doc.content));
+    return wrapTables(
+        cleanHtml(
+            doc.content
+                .replace(/\r\n/g, '\n')
+                .split(/\n{2,}/)
+                .map((block) => renderBlock(block))
+                .join(''),
+        ),
+    );
 }
 
 function wrapTables(html: string) {

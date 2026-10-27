@@ -12,7 +12,7 @@ export class HttpLoggingInterceptor implements NestInterceptor {
         const request = context.switchToHttp().getRequest();
         const response = context.switchToHttp().getResponse();
         const startedAt = Date.now();
-        const path = request.originalUrl ?? request.url;
+        const path = request.path ?? String(request.originalUrl ?? request.url).split('?')[0];
         return next.handle().pipe(
             tap(() => this.logger.log(`${request.method} ${path} ${response.statusCode} ${Date.now() - startedAt}ms`)),
             catchError((error) => {

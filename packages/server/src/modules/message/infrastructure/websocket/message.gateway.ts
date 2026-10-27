@@ -1,3 +1,4 @@
+import { corsOrigin } from '../../../../shared/lib/security-config';
 import {
     WebSocketGateway,
     WebSocketServer,
@@ -32,7 +33,7 @@ interface ReactionPayload {
 }
 
 /** 실시간 채팅 WebSocket Gateway */
-@WebSocketGateway({ namespace: '/chat', cors: { origin: '*' } })
+@WebSocketGateway({ namespace: '/chat', cors: { origin: corsOrigin, credentials: true } })
 export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     server: Server;

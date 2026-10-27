@@ -171,7 +171,10 @@ function createTinyPngFile(name = "pixel.png") {
 }
 
 function createTinyMp4File(name = "clip.mp4") {
-  const mp4 = Buffer.from("00000020667479706d703432000000006d70343269736f6d", "hex");
+  const mp4 = Buffer.from(
+    "00000020667479706d703432000000006d70343269736f6d",
+    "hex",
+  );
   return new File([mp4], name, { type: "video/mp4" });
 }
 
@@ -359,7 +362,10 @@ async function startConfluenceStub() {
     res.end(JSON.stringify({ message: "not found" }));
   });
 
-  await new Promise((resolve) => server.listen(0, "0.0.0.0", resolve));
+  const port = process.env.SLACORD_CONFLUENCE_TEST_ORIGIN
+    ? Number(new URL(process.env.SLACORD_CONFLUENCE_TEST_ORIGIN).port)
+    : 0;
+  await new Promise((resolve) => server.listen(port, "127.0.0.1", resolve));
   const address = server.address();
   return {
     server,
@@ -410,7 +416,10 @@ async function startBridgeStub() {
     res.end(JSON.stringify({ message: "not found" }));
   });
 
-  await new Promise((resolve) => server.listen(0, "0.0.0.0", resolve));
+  const port = process.env.SLACORD_BRIDGE_TEST_ORIGIN
+    ? Number(new URL(process.env.SLACORD_BRIDGE_TEST_ORIGIN).port)
+    : 0;
+  await new Promise((resolve) => server.listen(port, "127.0.0.1", resolve));
   const address = server.address();
   return {
     deliveries,
@@ -446,12 +455,7 @@ async function waitForBridgeDelivery(
   );
 }
 
-async function waitForBridgeJob(
-  token,
-  teamId,
-  predicate,
-  timeoutMs = 10000,
-) {
+async function waitForBridgeJob(token, teamId, predicate, timeoutMs = 10000) {
   const startedAt = Date.now();
 
   while (Date.now() - startedAt <= timeoutMs) {
@@ -895,31 +899,35 @@ async function main() {
     return "guest channel create denied";
   });
 
-  await check("channel", "guest 채널 가시성은 읽기 전용 범위와 일치", async () => {
-    const guestChannels = await api(`/team/${context.teamId}/channel`, {
-      token: context.users.guest.token,
-    });
-    const guestIds = new Set(
-      (guestChannels.payload?.data || []).map((channel) => channel.id),
-    );
-    assert(
-      guestIds.has(context.channels.public),
-      "guest에게 public channel이 보여야 합니다.",
-    );
-    assert(
-      guestIds.has(context.channels.voice),
-      "guest에게 voice channel이 보여야 합니다.",
-    );
-    assert(
-      !guestIds.has(context.channels.private),
-      "guest에게 private channel이 보이면 안 됩니다.",
-    );
-    assert(
-      !guestIds.has(context.channels.dm),
-      "guest에게 dm channel이 보이면 안 됩니다.",
-    );
-    return `guest=${guestIds.size}`;
-  });
+  await check(
+    "channel",
+    "guest 채널 가시성은 읽기 전용 범위와 일치",
+    async () => {
+      const guestChannels = await api(`/team/${context.teamId}/channel`, {
+        token: context.users.guest.token,
+      });
+      const guestIds = new Set(
+        (guestChannels.payload?.data || []).map((channel) => channel.id),
+      );
+      assert(
+        guestIds.has(context.channels.public),
+        "guest에게 public channel이 보여야 합니다.",
+      );
+      assert(
+        guestIds.has(context.channels.voice),
+        "guest에게 voice channel이 보여야 합니다.",
+      );
+      assert(
+        !guestIds.has(context.channels.private),
+        "guest에게 private channel이 보이면 안 됩니다.",
+      );
+      assert(
+        !guestIds.has(context.channels.dm),
+        "guest에게 dm channel이 보이면 안 됩니다.",
+      );
+      return `guest=${guestIds.size}`;
+    },
+  );
 
   const sockets = {};
 
@@ -1063,7 +1071,8 @@ async function main() {
       const messageDenied = waitForEvent(
         sockets.guestChat,
         "error",
-        (payload) => typeof payload?.message === "string" && payload.message.length > 0,
+        (payload) =>
+          typeof payload?.message === "string" && payload.message.length > 0,
         4000,
       );
       const noGuestMessage = expectNoEvent(
@@ -1096,14 +1105,14 @@ async function main() {
       await typingDenied;
       await noTyping;
 
-      const huddleDenied = waitForEvent(
-        sockets.guestChat,
-        "error",
-        (payload) => payload?.message === "게스트는 읽기 전용입니다.",
-        4000,
+      const huddleDenied = await emitWithAck(sockets.guestChat, "huddle:join", {
+        channelId: context.channels.public,
+      });
+      assert(
+        huddleDenied?.ok === false &&
+          huddleDenied?.error === "게스트는 읽기 전용입니다.",
+        "Guest huddle join must be denied by its acknowledgement.",
       );
-      sockets.guestChat.emit("huddle:join", { channelId: context.channels.public });
-      await huddleDenied;
 
       return sendError.message;
     },
@@ -1324,7 +1333,7 @@ async function main() {
       const attachment = uploaded.payload?.data;
       assert(attachment?.url, "첨부 업로드 URL이 없습니다.");
       assert(
-        attachment.url.includes("/chat/"),
+        decodeURIComponent(attachment.url).includes("/chat/"),
         `채팅 첨부 URL이 chat 경로를 포함하지 않습니다: ${attachment.url}`,
       );
       return attachment;
@@ -1350,8 +1359,9 @@ async function main() {
     );
     return {
       messageId: sent.id,
-      hosts: attachments.map((attachment) => new URL(attachment.url).host),
-      paths: attachments.map((attachment) => new URL(attachment.url).pathname),
+      paths: attachments.map(
+        (attachment) => new URL(attachment.url, "http://127.0.0.1").pathname,
+      ),
     };
   });
 
@@ -1794,7 +1804,10 @@ async function main() {
         },
       },
     );
-    assert(edited.payload?.data?.editedAt, "문서 코멘트 수정 시 editedAt이 기록되지 않았습니다.");
+    assert(
+      edited.payload?.data?.editedAt,
+      "문서 코멘트 수정 시 editedAt이 기록되지 않았습니다.",
+    );
 
     const openList = await api(
       `/team/${context.teamId}/document/${context.documentIds.root}/comment?status=open`,
@@ -1803,7 +1816,9 @@ async function main() {
       },
     );
     assert(
-      (openList.payload?.data || []).some((comment) => comment.id === commentId),
+      (openList.payload?.data || []).some(
+        (comment) => comment.id === commentId,
+      ),
       "열린 토론 필터에서 작성한 코멘트를 찾지 못했습니다.",
     );
 
@@ -1815,7 +1830,10 @@ async function main() {
         body: { resolved: true },
       },
     );
-    assert(resolved.payload?.data?.resolvedAt, "문서 코멘트가 해결 상태로 바뀌지 않았습니다.");
+    assert(
+      resolved.payload?.data?.resolvedAt,
+      "문서 코멘트가 해결 상태로 바뀌지 않았습니다.",
+    );
 
     const resolvedList = await api(
       `/team/${context.teamId}/document/${context.documentIds.root}/comment?status=resolved`,
@@ -1824,7 +1842,9 @@ async function main() {
       },
     );
     assert(
-      (resolvedList.payload?.data || []).some((comment) => comment.id === commentId),
+      (resolvedList.payload?.data || []).some(
+        (comment) => comment.id === commentId,
+      ),
       "해결된 토론 필터에서 해결한 코멘트를 찾지 못했습니다.",
     );
 
@@ -1835,38 +1855,50 @@ async function main() {
         token: context.users.owner.token,
       },
     );
-    assert(deleted.payload?.data?.deletedAt, "문서 답글 삭제 시 deletedAt이 기록되지 않았습니다.");
+    assert(
+      deleted.payload?.data?.deletedAt,
+      "문서 답글 삭제 시 deletedAt이 기록되지 않았습니다.",
+    );
 
     return `${commentId} resolved / ${replyId} deleted`;
   });
 
-  await check("security", "비허용 멤버는 제한 문서 코멘트를 볼 수 없어야 함", async () => {
-    await expectFailure(
-      `/team/${context.teamId}/document/${context.documentIds.root}/comment`,
-      {
-        token: context.users.deniedMember.token,
-      },
-    );
-    return "restricted document comment denied";
-  });
-
-  await check("security", "guest는 문서 코멘트를 작성할 수 없어야 함", async () => {
-    await expectFailure(
-      `/team/${context.teamId}/document/${context.documentIds.root}/comment`,
-      {
-        method: "POST",
-        token: context.users.guest.token,
-        body: {
-          content: "guest comment should fail",
+  await check(
+    "security",
+    "비허용 멤버는 제한 문서 코멘트를 볼 수 없어야 함",
+    async () => {
+      await expectFailure(
+        `/team/${context.teamId}/document/${context.documentIds.root}/comment`,
+        {
+          token: context.users.deniedMember.token,
         },
-      },
-    );
-    return "guest document comment denied";
-  });
+      );
+      return "restricted document comment denied";
+    },
+  );
+
+  await check(
+    "security",
+    "guest는 문서 코멘트를 작성할 수 없어야 함",
+    async () => {
+      await expectFailure(
+        `/team/${context.teamId}/document/${context.documentIds.root}/comment`,
+        {
+          method: "POST",
+          token: context.users.guest.token,
+          body: {
+            content: "guest comment should fail",
+          },
+        },
+      );
+      return "guest document comment denied";
+    },
+  );
 
   await check("document", "문서 이미지/파일 업로드", async () => {
     const imageForm = new FormData();
     imageForm.append("file", createTinyPngFile());
+    imageForm.append("documentId", context.documentIds.root);
     const image = await api(`/team/${context.teamId}/document/upload/image`, {
       method: "POST",
       token: context.users.owner.token,
@@ -1874,7 +1906,7 @@ async function main() {
     });
     assert(image.payload?.data?.url, "문서 이미지 업로드 URL이 없습니다.");
     assert(
-      image.payload.data.url.includes("/docs/"),
+      decodeURIComponent(image.payload.data.url).includes("/docs/"),
       `문서 이미지 URL이 docs 경로를 포함하지 않습니다: ${image.payload.data.url}`,
     );
 
@@ -1890,14 +1922,12 @@ async function main() {
     );
     assert(file.payload?.data?.url, "문서 파일 업로드 URL이 없습니다.");
     assert(
-      file.payload.data.url.includes("/docs/"),
+      decodeURIComponent(file.payload.data.url).includes("/docs/"),
       `문서 파일 URL이 docs 경로를 포함하지 않습니다: ${file.payload.data.url}`,
     );
     return {
-      imageHost: new URL(image.payload.data.url).host,
-      imagePath: new URL(image.payload.data.url).pathname,
-      fileHost: new URL(file.payload.data.url).host,
-      filePath: new URL(file.payload.data.url).pathname,
+      imagePath: new URL(image.payload.data.url, "http://127.0.0.1").pathname,
+      filePath: new URL(file.payload.data.url, "http://127.0.0.1").pathname,
     };
   });
 
@@ -2124,272 +2154,8 @@ async function main() {
     );
   } else {
     try {
-      await check(
-        "integration",
-        "외부 브리지 설정 저장",
-        async () => {
-          const response = await api(`/team/${context.teamId}/bridge`, {
-            method: "PATCH",
-            token: context.users.owner.token,
-            body: {
-              slack: {
-                enabled: true,
-                webhookUrl: `http://127.0.0.1:${bridgeStub.port}/slack`,
-                relayAnnouncements: true,
-                relayGithub: true,
-              },
-              discord: {
-                enabled: true,
-                webhookUrl: `http://127.0.0.1:${bridgeStub.port}/discord`,
-                relayAnnouncements: true,
-                relayGithub: true,
-              },
-            },
-          });
-          assert(
-            response.payload?.data?.bridgeConfig?.slack?.enabled === true,
-            "Slack bridge 설정이 저장되지 않았습니다.",
-          );
-          assert(
-            response.payload?.data?.bridgeConfig?.discord?.enabled === true,
-            "Discord bridge 설정이 저장되지 않았습니다.",
-          );
-          return response.payload?.data?.bridgeConfig;
-        },
-      );
-
-      await check("security", "팀 상세 조회는 secret과 webhook url을 숨겨야 함", async () => {
-        const response = await api(`/team/${context.teamId}`, {
-          token: context.users.deniedMember.token,
-        });
-        const team = response.payload?.data;
-        assert(
-          team?.githubConfig?.hasWebhookSecret === true,
-          "public team 응답에 GitHub secret 존재 여부가 반영되지 않았습니다.",
-        );
-        assert(
-          team?.githubConfig?.webhookSecret === undefined,
-          "public team 응답에 GitHub secret이 노출되었습니다.",
-        );
-        assert(
-          team?.bridgeConfig?.slack?.hasWebhookUrl === true,
-          "public team 응답에 Slack webhook 존재 여부가 반영되지 않았습니다.",
-        );
-        assert(
-          team?.bridgeConfig?.slack?.webhookUrl === undefined,
-          "public team 응답에 Slack webhook url이 노출되었습니다.",
-        );
-        return {
-          github: team.githubConfig,
-          slack: team.bridgeConfig?.slack,
-        };
-      });
-
-      await check("security", "일반 멤버는 민감한 팀 설정 endpoint를 볼 수 없어야 함", async () => {
-        await expectFailure(`/team/${context.teamId}/settings`, {
-          token: context.users.deniedMember.token,
-        });
-        return "member denied";
-      });
-
-      await check("integration", "관리자는 민감한 팀 설정 endpoint에서 원본 값을 본다", async () => {
-        const response = await api(`/team/${context.teamId}/settings`, {
-          token: context.users.owner.token,
-        });
-        const team = response.payload?.data;
-        assert(
-          team?.githubConfig?.webhookSecret === "topsecret",
-          "admin settings 응답에 GitHub secret이 없습니다.",
-        );
-        assert(
-          team?.bridgeConfig?.slack?.webhookUrl === `http://127.0.0.1:${bridgeStub.port}/slack`,
-          "admin settings 응답에 Slack webhook url이 없습니다.",
-        );
-        assert(
-          team?.bridgeConfig?.discord?.webhookUrl === `http://127.0.0.1:${bridgeStub.port}/discord`,
-          "admin settings 응답에 Discord webhook url이 없습니다.",
-        );
-        return {
-          githubRepo: team.githubConfig?.repoUrl,
-          slackWebhook: team.bridgeConfig?.slack?.webhookUrl,
-        };
-      });
-
-      await check("integration", "공지 relay가 Slack/Discord로 전달됨", async () => {
-        const title = `bridge notice ${Date.now().toString().slice(-6)}`;
-        relayAnnouncementTitle = title;
-        await api(`/team/${context.teamId}/announcement`, {
-          method: "POST",
-          token: context.users.owner.token,
-          body: { title, content: "bridge announcement body" },
-        });
-
-        const slackPayload = await waitForBridgeDelivery(
-          bridgeStub.deliveries,
-          "slack",
-          (payload) =>
-            payload?.blocks?.[0]?.text?.text === title &&
-            payload?.text?.includes("bridge announcement body"),
-        );
-        const discordPayload = await waitForBridgeDelivery(
-          bridgeStub.deliveries,
-          "discord",
-          (payload) =>
-            payload?.embeds?.[0]?.title === title &&
-            payload?.embeds?.[0]?.description === "bridge announcement body",
-        );
-
-        return {
-          discordFooter: discordPayload.embeds?.[0]?.footer?.text,
-          slackContext: slackPayload.blocks?.[slackPayload.blocks.length - 1]
-            ?.elements?.[0]?.text,
-        };
-      });
-
-      await check("integration", "GitHub relay가 Slack/Discord로 전달됨", async () => {
-        const repoFullName = `acme/slacord-bridge-${Date.now()}`;
-        const prTitle = `Bridge relay ${Date.now().toString().slice(-4)}`;
-        const prNumber = 13;
-
-        await api(`/team/${context.teamId}/github`, {
-          method: "PATCH",
-          token: context.users.owner.token,
-          body: {
-            repoUrl: `https://github.com/${repoFullName}`,
-            webhookSecret: "bridge-secret",
-            notifyChannelId: context.channels.public,
-          },
-        });
-
-        const webhookBody = JSON.stringify({
-          action: "opened",
-          repository: { full_name: repoFullName },
-          sender: { login: "bridge-bot" },
-          pull_request: {
-            number: prNumber,
-            title: prTitle,
-            html_url: `https://github.com/${repoFullName}/pull/${prNumber}`,
-          },
-        });
-        const signature = `sha256=${crypto
-          .createHmac("sha256", "bridge-secret")
-          .update(webhookBody)
-          .digest("hex")}`;
-
-        const response = await fetch(`${apiBaseUrl}/github/webhook`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-github-event": "pull_request",
-            "x-hub-signature-256": signature,
-          },
-          body: webhookBody,
-        });
-        const payload = parsePayload(await response.text());
-        assert(response.ok, `GitHub bridge webhook HTTP 실패: ${response.status}`);
-        assert(payload?.success === true, "GitHub bridge webhook 처리에 실패했습니다.");
-
-        const expectedTitle = `[PR #${prNumber}] ${prTitle}`;
-        relayGithubTitlePrefix = expectedTitle;
-        const slackPayload = await waitForBridgeDelivery(
-          bridgeStub.deliveries,
-          "slack",
-          (entry) =>
-            entry?.blocks?.[0]?.text?.text?.startsWith(expectedTitle) &&
-            entry?.text?.includes(repoFullName),
-        );
-        const discordPayload = await waitForBridgeDelivery(
-          bridgeStub.deliveries,
-          "discord",
-          (entry) =>
-            entry?.embeds?.[0]?.title?.startsWith(expectedTitle) &&
-            entry?.embeds?.[0]?.description?.includes(repoFullName),
-        );
-
-        return {
-          discordUrl: discordPayload.embeds?.[0]?.url,
-          slackLink: slackPayload.blocks?.[2]?.text?.text,
-        };
-      });
-
-      await check("integration", "브리지 relay 이력이 최근 job 목록에 반영됨", async () => {
-        const response = await api(
-          `/team/${context.teamId}/bridge/jobs?limit=12`,
-          {
-            token: context.users.owner.token,
-          },
-        );
-        const jobs = response.payload?.data || [];
-        const announcementJob = jobs.find(
-          (job) =>
-            job.platform === "slack" &&
-            job.eventType === "announcement" &&
-            job.title === relayAnnouncementTitle,
-        );
-        const githubJob = jobs.find(
-          (job) =>
-            job.platform === "slack" &&
-            job.eventType === "github" &&
-            typeof job.title === "string" &&
-            job.title.startsWith(relayGithubTitlePrefix),
-        );
-        assert(
-          announcementJob?.status === "sent",
-          "announcement bridge job 상태가 sent가 아닙니다.",
-        );
-        assert(
-          githubJob?.status === "sent",
-          "github bridge job 상태가 sent가 아닙니다.",
-        );
-        return `${jobs.length} jobs`;
-      });
-
-      await check("integration", "실패한 브리지 relay를 현재 설정으로 다시 시도할 수 있음", async () => {
-        const retryTitle = `bridge retry ${Date.now().toString().slice(-6)}`;
-
-        await api(`/team/${context.teamId}/bridge`, {
-          method: "PATCH",
-          token: context.users.owner.token,
-          body: {
-            slack: {
-              enabled: true,
-              webhookUrl: `http://127.0.0.1:${bridgeStub.port}/slack-fail`,
-              relayAnnouncements: true,
-              relayGithub: false,
-            },
-            discord: {
-              enabled: false,
-              webhookUrl: "",
-              relayAnnouncements: false,
-              relayGithub: false,
-            },
-          },
-        });
-
-        await api(`/team/${context.teamId}/announcement`, {
-          method: "POST",
-          token: context.users.owner.token,
-          body: { title: retryTitle, content: "bridge retry body" },
-        });
-
-        const failedJobResult = await waitForBridgeJob(
-          context.users.owner.token,
-          context.teamId,
-          (job) =>
-            job.platform === "slack" &&
-            job.eventType === "announcement" &&
-            job.title === retryTitle &&
-            job.status === "failed",
-          12000,
-        );
-        const failedJob = failedJobResult.job;
-        failedBridgeJobId = failedJob.id;
-        assert(
-          failedJob.attemptCount >= 3,
-          "실패한 bridge job의 attemptCount가 기대보다 작습니다.",
-        );
-
-        await api(`/team/${context.teamId}/bridge`, {
+      await check("integration", "외부 브리지 설정 저장", async () => {
+        const response = await api(`/team/${context.teamId}/bridge`, {
           method: "PATCH",
           token: context.users.owner.token,
           body: {
@@ -2397,89 +2163,390 @@ async function main() {
               enabled: true,
               webhookUrl: `http://127.0.0.1:${bridgeStub.port}/slack`,
               relayAnnouncements: true,
-              relayGithub: false,
+              relayGithub: true,
             },
             discord: {
-              enabled: false,
-              webhookUrl: "",
-              relayAnnouncements: false,
-              relayGithub: false,
+              enabled: true,
+              webhookUrl: `http://127.0.0.1:${bridgeStub.port}/discord`,
+              relayAnnouncements: true,
+              relayGithub: true,
             },
           },
         });
+        assert(
+          response.payload?.data?.bridgeConfig?.slack?.enabled === true,
+          "Slack bridge 설정이 저장되지 않았습니다.",
+        );
+        assert(
+          response.payload?.data?.bridgeConfig?.discord?.enabled === true,
+          "Discord bridge 설정이 저장되지 않았습니다.",
+        );
+        return response.payload?.data?.bridgeConfig;
+      });
 
-        const retryResponse = await api(
-          `/team/${context.teamId}/bridge/jobs/${failedJob.id}/retry`,
-          {
+      await check(
+        "security",
+        "팀 상세 조회는 secret과 webhook url을 숨겨야 함",
+        async () => {
+          const response = await api(`/team/${context.teamId}`, {
+            token: context.users.deniedMember.token,
+          });
+          const team = response.payload?.data;
+          assert(
+            team?.githubConfig?.hasWebhookSecret === true,
+            "public team 응답에 GitHub secret 존재 여부가 반영되지 않았습니다.",
+          );
+          assert(
+            team?.githubConfig?.webhookSecret === undefined,
+            "public team 응답에 GitHub secret이 노출되었습니다.",
+          );
+          assert(
+            team?.bridgeConfig?.slack?.hasWebhookUrl === true,
+            "public team 응답에 Slack webhook 존재 여부가 반영되지 않았습니다.",
+          );
+          assert(
+            team?.bridgeConfig?.slack?.webhookUrl === undefined,
+            "public team 응답에 Slack webhook url이 노출되었습니다.",
+          );
+          return {
+            github: team.githubConfig,
+            slack: team.bridgeConfig?.slack,
+          };
+        },
+      );
+
+      await check(
+        "security",
+        "일반 멤버는 민감한 팀 설정 endpoint를 볼 수 없어야 함",
+        async () => {
+          await expectFailure(`/team/${context.teamId}/settings`, {
+            token: context.users.deniedMember.token,
+          });
+          return "member denied";
+        },
+      );
+
+      await check(
+        "integration",
+        "관리자는 민감한 팀 설정 endpoint에서 원본 값을 본다",
+        async () => {
+          const response = await api(`/team/${context.teamId}/settings`, {
+            token: context.users.owner.token,
+          });
+          const team = response.payload?.data;
+          assert(
+            team?.githubConfig?.webhookSecret === "topsecret",
+            "admin settings 응답에 GitHub secret이 없습니다.",
+          );
+          assert(
+            team?.bridgeConfig?.slack?.webhookUrl ===
+              `http://127.0.0.1:${bridgeStub.port}/slack`,
+            "admin settings 응답에 Slack webhook url이 없습니다.",
+          );
+          assert(
+            team?.bridgeConfig?.discord?.webhookUrl ===
+              `http://127.0.0.1:${bridgeStub.port}/discord`,
+            "admin settings 응답에 Discord webhook url이 없습니다.",
+          );
+          return {
+            githubRepo: team.githubConfig?.repoUrl,
+            slackWebhook: team.bridgeConfig?.slack?.webhookUrl,
+          };
+        },
+      );
+
+      await check(
+        "integration",
+        "공지 relay가 Slack/Discord로 전달됨",
+        async () => {
+          const title = `bridge notice ${Date.now().toString().slice(-6)}`;
+          relayAnnouncementTitle = title;
+          await api(`/team/${context.teamId}/announcement`, {
             method: "POST",
             token: context.users.owner.token,
-          },
-        );
-        const retryJob = retryResponse.payload?.data;
-        assert(retryJob?.id, "재시도 bridge job이 생성되지 않았습니다.");
-        assert(
-          retryJob?.id !== failedJob.id,
-          "재시도 bridge job은 새 이력으로 생성되어야 합니다.",
-        );
+            body: { title, content: "bridge announcement body" },
+          });
 
-        await waitForBridgeDelivery(
-          bridgeStub.deliveries,
-          "slack",
-          (payload) =>
-            payload?.blocks?.[0]?.text?.text === retryTitle &&
-            payload?.text?.includes("bridge retry body"),
-        );
+          const slackPayload = await waitForBridgeDelivery(
+            bridgeStub.deliveries,
+            "slack",
+            (payload) =>
+              payload?.blocks?.[0]?.text?.text === title &&
+              payload?.text?.includes("bridge announcement body"),
+          );
+          const discordPayload = await waitForBridgeDelivery(
+            bridgeStub.deliveries,
+            "discord",
+            (payload) =>
+              payload?.embeds?.[0]?.title === title &&
+              payload?.embeds?.[0]?.description === "bridge announcement body",
+          );
 
-        const sentJobResult = await waitForBridgeJob(
-          context.users.owner.token,
-          context.teamId,
-          (job) => job.id === retryJob.id && job.status === "sent",
-          10000,
-        );
+          return {
+            discordFooter: discordPayload.embeds?.[0]?.footer?.text,
+            slackContext:
+              slackPayload.blocks?.[slackPayload.blocks.length - 1]
+                ?.elements?.[0]?.text,
+          };
+        },
+      );
 
-        return {
-          failedJobId: failedJob.id,
-          retryJobId: sentJobResult.job.id,
-          retryStatus: sentJobResult.job.status,
-        };
-      });
+      await check(
+        "integration",
+        "GitHub relay가 Slack/Discord로 전달됨",
+        async () => {
+          const repoFullName = `acme/slacord-bridge-${Date.now()}`;
+          const prTitle = `Bridge relay ${Date.now().toString().slice(-4)}`;
+          const prNumber = 13;
 
-      await check("integration", "브리지 relay 이력 필터가 상태와 플랫폼별로 동작함", async () => {
-        const failedResponse = await api(
-          `/team/${context.teamId}/bridge/jobs?limit=12&status=failed`,
-          {
+          await api(`/team/${context.teamId}/github`, {
+            method: "PATCH",
             token: context.users.owner.token,
-          },
-        );
-        const failedJobs = failedResponse.payload?.data || [];
-        assert(failedJobs.length >= 1, "failed 필터 결과가 비어 있습니다.");
-        assert(
-          failedJobs.every((job) => job.status === "failed"),
-          "failed 필터 결과에 failed가 아닌 상태가 섞여 있습니다.",
-        );
-        assert(
-          failedJobs.some((job) => job.id === failedBridgeJobId),
-          "failed 필터 결과에 강제 실패 job이 없습니다.",
-        );
+            body: {
+              repoUrl: `https://github.com/${repoFullName}`,
+              webhookSecret: "bridge-secret",
+              notifyChannelId: context.channels.public,
+            },
+          });
 
-        const discordResponse = await api(
-          `/team/${context.teamId}/bridge/jobs?limit=12&platform=discord`,
-          {
+          const webhookBody = JSON.stringify({
+            action: "opened",
+            repository: { full_name: repoFullName },
+            sender: { login: "bridge-bot" },
+            pull_request: {
+              number: prNumber,
+              title: prTitle,
+              html_url: `https://github.com/${repoFullName}/pull/${prNumber}`,
+            },
+          });
+          const signature = `sha256=${crypto
+            .createHmac("sha256", "bridge-secret")
+            .update(webhookBody)
+            .digest("hex")}`;
+
+          const response = await fetch(`${apiBaseUrl}/github/webhook`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-github-event": "pull_request",
+              "x-hub-signature-256": signature,
+            },
+            body: webhookBody,
+          });
+          const payload = parsePayload(await response.text());
+          assert(
+            response.ok,
+            `GitHub bridge webhook HTTP 실패: ${response.status}`,
+          );
+          assert(
+            payload?.success === true,
+            "GitHub bridge webhook 처리에 실패했습니다.",
+          );
+
+          const expectedTitle = `[PR #${prNumber}] ${prTitle}`;
+          relayGithubTitlePrefix = expectedTitle;
+          const slackPayload = await waitForBridgeDelivery(
+            bridgeStub.deliveries,
+            "slack",
+            (entry) =>
+              entry?.blocks?.[0]?.text?.text?.startsWith(expectedTitle) &&
+              entry?.text?.includes(repoFullName),
+          );
+          const discordPayload = await waitForBridgeDelivery(
+            bridgeStub.deliveries,
+            "discord",
+            (entry) =>
+              entry?.embeds?.[0]?.title?.startsWith(expectedTitle) &&
+              entry?.embeds?.[0]?.description?.includes(repoFullName),
+          );
+
+          return {
+            discordUrl: discordPayload.embeds?.[0]?.url,
+            slackLink: slackPayload.blocks?.[2]?.text?.text,
+          };
+        },
+      );
+
+      await check(
+        "integration",
+        "브리지 relay 이력이 최근 job 목록에 반영됨",
+        async () => {
+          const response = await api(
+            `/team/${context.teamId}/bridge/jobs?limit=12`,
+            {
+              token: context.users.owner.token,
+            },
+          );
+          const jobs = response.payload?.data || [];
+          const announcementJob = jobs.find(
+            (job) =>
+              job.platform === "slack" &&
+              job.eventType === "announcement" &&
+              job.title === relayAnnouncementTitle,
+          );
+          const githubJob = jobs.find(
+            (job) =>
+              job.platform === "slack" &&
+              job.eventType === "github" &&
+              typeof job.title === "string" &&
+              job.title.startsWith(relayGithubTitlePrefix),
+          );
+          assert(
+            announcementJob?.status === "sent",
+            "announcement bridge job 상태가 sent가 아닙니다.",
+          );
+          assert(
+            githubJob?.status === "sent",
+            "github bridge job 상태가 sent가 아닙니다.",
+          );
+          return `${jobs.length} jobs`;
+        },
+      );
+
+      await check(
+        "integration",
+        "실패한 브리지 relay를 현재 설정으로 다시 시도할 수 있음",
+        async () => {
+          const retryTitle = `bridge retry ${Date.now().toString().slice(-6)}`;
+
+          await api(`/team/${context.teamId}/bridge`, {
+            method: "PATCH",
             token: context.users.owner.token,
-          },
-        );
-        const discordJobs = discordResponse.payload?.data || [];
-        assert(discordJobs.length >= 1, "discord 필터 결과가 비어 있습니다.");
-        assert(
-          discordJobs.every((job) => job.platform === "discord"),
-          "discord 필터 결과에 다른 플랫폼이 섞여 있습니다.",
-        );
+            body: {
+              slack: {
+                enabled: true,
+                webhookUrl: `http://127.0.0.1:${bridgeStub.port}/slack-fail`,
+                relayAnnouncements: true,
+                relayGithub: false,
+              },
+              discord: {
+                enabled: false,
+                webhookUrl: "",
+                relayAnnouncements: false,
+                relayGithub: false,
+              },
+            },
+          });
 
-        return {
-          failed: failedJobs.length,
-          discord: discordJobs.length,
-        };
-      });
+          await api(`/team/${context.teamId}/announcement`, {
+            method: "POST",
+            token: context.users.owner.token,
+            body: { title: retryTitle, content: "bridge retry body" },
+          });
+
+          const failedJobResult = await waitForBridgeJob(
+            context.users.owner.token,
+            context.teamId,
+            (job) =>
+              job.platform === "slack" &&
+              job.eventType === "announcement" &&
+              job.title === retryTitle &&
+              job.status === "failed",
+            12000,
+          );
+          const failedJob = failedJobResult.job;
+          failedBridgeJobId = failedJob.id;
+          assert(
+            failedJob.attemptCount >= 3,
+            "실패한 bridge job의 attemptCount가 기대보다 작습니다.",
+          );
+
+          await api(`/team/${context.teamId}/bridge`, {
+            method: "PATCH",
+            token: context.users.owner.token,
+            body: {
+              slack: {
+                enabled: true,
+                webhookUrl: `http://127.0.0.1:${bridgeStub.port}/slack`,
+                relayAnnouncements: true,
+                relayGithub: false,
+              },
+              discord: {
+                enabled: false,
+                webhookUrl: "",
+                relayAnnouncements: false,
+                relayGithub: false,
+              },
+            },
+          });
+
+          const retryResponse = await api(
+            `/team/${context.teamId}/bridge/jobs/${failedJob.id}/retry`,
+            {
+              method: "POST",
+              token: context.users.owner.token,
+            },
+          );
+          const retryJob = retryResponse.payload?.data;
+          assert(retryJob?.id, "재시도 bridge job이 생성되지 않았습니다.");
+          assert(
+            retryJob?.id !== failedJob.id,
+            "재시도 bridge job은 새 이력으로 생성되어야 합니다.",
+          );
+
+          await waitForBridgeDelivery(
+            bridgeStub.deliveries,
+            "slack",
+            (payload) =>
+              payload?.blocks?.[0]?.text?.text === retryTitle &&
+              payload?.text?.includes("bridge retry body"),
+          );
+
+          const sentJobResult = await waitForBridgeJob(
+            context.users.owner.token,
+            context.teamId,
+            (job) => job.id === retryJob.id && job.status === "sent",
+            10000,
+          );
+
+          return {
+            failedJobId: failedJob.id,
+            retryJobId: sentJobResult.job.id,
+            retryStatus: sentJobResult.job.status,
+          };
+        },
+      );
+
+      await check(
+        "integration",
+        "브리지 relay 이력 필터가 상태와 플랫폼별로 동작함",
+        async () => {
+          const failedResponse = await api(
+            `/team/${context.teamId}/bridge/jobs?limit=12&status=failed`,
+            {
+              token: context.users.owner.token,
+            },
+          );
+          const failedJobs = failedResponse.payload?.data || [];
+          assert(failedJobs.length >= 1, "failed 필터 결과가 비어 있습니다.");
+          assert(
+            failedJobs.every((job) => job.status === "failed"),
+            "failed 필터 결과에 failed가 아닌 상태가 섞여 있습니다.",
+          );
+          assert(
+            failedJobs.some((job) => job.id === failedBridgeJobId),
+            "failed 필터 결과에 강제 실패 job이 없습니다.",
+          );
+
+          const discordResponse = await api(
+            `/team/${context.teamId}/bridge/jobs?limit=12&platform=discord`,
+            {
+              token: context.users.owner.token,
+            },
+          );
+          const discordJobs = discordResponse.payload?.data || [];
+          assert(discordJobs.length >= 1, "discord 필터 결과가 비어 있습니다.");
+          assert(
+            discordJobs.every((job) => job.platform === "discord"),
+            "discord 필터 결과에 다른 플랫폼이 섞여 있습니다.",
+          );
+
+          return {
+            failed: failedJobs.length,
+            discord: discordJobs.length,
+          };
+        },
+      );
     } finally {
       await new Promise((resolve) => bridgeStub.server.close(resolve));
     }

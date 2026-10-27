@@ -124,7 +124,7 @@ export default function DocsPage({ params }: Props) {
                         {error}
                     </p>
                 )}
-                {showCreate && (
+                {showCreate && canWrite && (
                     <form onSubmit={handleCreate} className="mb-6 flex flex-wrap gap-3">
                         <p className="w-full text-sm text-text-secondary">
                             생성 위치: {parentId ? `${parent?.title ?? '상위 페이지'} / 하위 페이지` : '최상위 페이지'}

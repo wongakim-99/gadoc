@@ -1,7 +1,7 @@
 {
   "name": "@slacord/contracts",
   "version": "1.0.10",
-  "description": "Slacord 런타임 간 공유 계약 타입",
+  "description": "GaDoc 런타임 간 공유 계약 타입",
   "private": true,
   "types": "index.d.ts",
   "scripts": {

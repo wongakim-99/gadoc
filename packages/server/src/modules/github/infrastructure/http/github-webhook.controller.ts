@@ -1,16 +1,13 @@
 import { Body, Controller, Headers, Post, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import * as crypto from 'crypto';
+import { validWebhookSignature } from '../../../../shared/lib/webhook-signature';
 import { Request } from 'express';
 import { ProcessGitHubEventUseCase } from '../../application/use-cases/process-github-event.use-case';
 import { GitHubEventEntity } from '../../domain/github-event.entity';
 import { GithubConfigService } from '../service/github-config.service';
 import { BridgeEnqueueService } from '../../../bridge/application/services/bridge-enqueue.service';
-import {
-    MESSAGE_EVENTS,
-    type MessageBroadcastedEvent,
-} from '../../../../shared/events/message-events';
+import { MESSAGE_EVENTS, type MessageBroadcastedEvent } from '../../../../shared/events/message-events';
 
 /** GitHub Webhook 수신 컨트롤러 */
 @ApiTags('github')
@@ -40,9 +37,7 @@ export class GithubWebhookController {
         }
 
         /** HMAC-SHA256 서명 검증 */
-        const rawBody = req.rawBody ?? Buffer.from(JSON.stringify(body));
-        const expected = `sha256=${crypto.createHmac('sha256', config.webhookSecret).update(rawBody).digest('hex')}`;
-        if (signature !== expected) {
+        if (!validWebhookSignature(req.rawBody, config.webhookSecret, signature)) {
             return { success: false, message: 'Invalid signature.' };
         }
 
