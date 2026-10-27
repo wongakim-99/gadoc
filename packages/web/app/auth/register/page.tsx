@@ -12,7 +12,7 @@ export default async function RegisterPage({ searchParams }: Props) {
 
     return (
         <AuthShell
-            title="가닥 시작하기"
+            title="가독 시작하기"
             description="워크스페이스 계정 만들기"
             alternateHref={loginHref}
             alternateLabel="로그인"

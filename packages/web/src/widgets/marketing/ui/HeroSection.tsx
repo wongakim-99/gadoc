@@ -9,7 +9,7 @@ export function HeroSection() {
             <div className="gadoc-hero-copy">
                 <p className="gadoc-eyebrow">
                     <span className="gadoc-status-dot" />
-                    가닥 GaDoc
+                    가독 GaDoc
                 </p>
                 <h1 id="hero-heading">
                     일의 가닥이

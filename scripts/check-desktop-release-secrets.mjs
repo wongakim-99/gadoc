@@ -28,6 +28,11 @@ for (const currentTarget of targets) {
     continue;
   }
 
+  if (args.has('--allow-unsigned') && missing.length === keys.length) {
+    console.warn('Unsigned release explicitly enabled. Installer warnings and checksums must be published.');
+    continue;
+  }
+
   hasError = true;
   console.log('누락된 시크릿이 있습니다.');
   for (const key of missing) console.log(`- ${key}`);
