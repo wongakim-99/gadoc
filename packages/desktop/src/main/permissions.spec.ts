@@ -1,4 +1,10 @@
-import { configurePermissions } from './permissions';
+import { EventEmitter } from 'node:events';
+import { shell } from 'electron';
+import { configurePermissions, protectNavigation } from './permissions';
+
+vi.mock('electron', () => ({
+    shell: { openExternal: vi.fn().mockResolvedValue(undefined) },
+}));
 
 function harness() {
     let display!: (...args: any[]) => Promise<void>;
@@ -69,5 +75,44 @@ describe('desktop permissions', () => {
             requestingUrl: 'https://evil.example',
         });
         expect(callback).toHaveBeenLastCalledWith(false);
+    });
+});
+
+describe('attachment navigation', () => {
+    function navigation() {
+        let open!: (input: { url: string }) => unknown;
+        const contents = Object.assign(new EventEmitter(), {
+            setWindowOpenHandler: vi.fn((handler) => {
+                open = handler;
+            }),
+            downloadURL: vi.fn(),
+            loadURL: vi.fn().mockResolvedValue(undefined),
+        });
+        protectNavigation(contents as any);
+        return { contents, open: (url: string) => open({ url }) };
+    }
+    it('downloads protected file links without replacing the app renderer', () => {
+        const { contents, open } = navigation();
+        const url = 'https://slacord.cloud/api/files?key=gadoc%2Fchat%2Fphoto.png';
+        expect(open(url)).toEqual({ action: 'deny' });
+        expect(contents.downloadURL).toHaveBeenCalledExactlyOnceWith(url);
+        expect(contents.loadURL).not.toHaveBeenCalled();
+    });
+    it.each(['will-navigate', 'will-redirect'])('keeps the app open for %s file requests', (eventName) => {
+        const { contents } = navigation();
+        const event = { preventDefault: vi.fn() };
+        const url = 'https://slacord.cloud/api/files?key=photo.png';
+        contents.emit(eventName, event, url);
+        expect(event.preventDefault).toHaveBeenCalled();
+        expect(contents.downloadURL).toHaveBeenCalledWith(url);
+        expect(contents.loadURL).not.toHaveBeenCalled();
+    });
+    it('retains trusted internal navigation but never downloads an untrusted file URL with the app session', () => {
+        const { contents, open } = navigation();
+        open('https://slacord.cloud/dashboard');
+        expect(contents.loadURL).toHaveBeenCalledWith('https://slacord.cloud/dashboard');
+        open('https://untrusted.example/api/files?key=photo.png');
+        expect(contents.downloadURL).not.toHaveBeenCalled();
+        expect(shell.openExternal).toHaveBeenCalledWith('https://untrusted.example/api/files?key=photo.png');
     });
 });

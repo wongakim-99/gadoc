@@ -95,17 +95,26 @@ export async function requestMediaAccess(
 }
 
 export function protectNavigation(contents: WebContents) {
+    const isPrivateFile = (url: string) => isAllowedUrl(url) && new URL(url).pathname === '/api/files';
     const openExternal = (url: string) => {
         if (isExternalUrl(url)) void shell.openExternal(url).catch(() => undefined);
     };
     contents.setWindowOpenHandler(({ url }) => {
+        // Preserve the app and its session when a protected attachment is opened.
+        if (isPrivateFile(url)) {
+            contents.downloadURL(url);
+            return { action: 'deny' };
+        }
         // Keep a single trusted renderer. New internal links reuse it.
         if (isAllowedUrl(url)) void contents.loadURL(url).catch(() => undefined);
         else openExternal(url);
         return { action: 'deny' };
     });
     const guard = (event: Electron.Event, url: string) => {
-        if (!isAllowedUrl(url)) {
+        if (isPrivateFile(url)) {
+            event.preventDefault();
+            contents.downloadURL(url);
+        } else if (!isAllowedUrl(url)) {
             event.preventDefault();
             openExternal(url);
         }
