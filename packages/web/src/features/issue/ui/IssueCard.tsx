@@ -2,6 +2,7 @@ import { Draggable } from '@hello-pangea/dnd';
 import type { Issue, IssuePriority } from '@/src/entities/issue/types';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
 import { getAvatarColor } from '@/src/shared/lib/avatar';
+import { WorkspaceReferenceActions } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
 
 const PRIORITY_COLORS: Record<IssuePriority, string> = {
     low: 'text-text-tertiary border-text-tertiary/30',
@@ -27,16 +28,22 @@ interface Props {
 export function IssueCard({ draggable = true, issue, index, members, onClick }: Props) {
     const priorityClass = PRIORITY_COLORS[issue.priority];
     const assignees = members.filter((m) => issue.assigneeIds.includes(m.userId));
+    const reference = {
+        kind: 'issues' as const,
+        href: `/${issue.teamId}/issues?issue=${issue.id}`,
+        label: issue.title,
+    };
 
     if (!draggable) {
         return (
-            <button
-                type="button"
-                onClick={() => onClick(issue)}
-                className="w-full rounded-lg border border-border-primary bg-bg-secondary p-3 text-left transition-colors hover:bg-bg-hover"
-            >
-                <IssueCardBody assignees={assignees} issue={issue} priorityClass={priorityClass} />
-            </button>
+            <div className="group rounded-lg border border-border-primary bg-bg-secondary p-3 transition-colors hover:bg-bg-hover">
+                <button type="button" onClick={() => onClick(issue)} className="w-full text-left">
+                    <IssueCardBody assignees={assignees} issue={issue} priorityClass={priorityClass} />
+                </button>
+                <div className="mt-2 flex justify-end">
+                    <WorkspaceReferenceActions reference={reference} />
+                </div>
+            </div>
         );
     }
 
@@ -46,18 +53,29 @@ export function IssueCard({ draggable = true, issue, index, members, onClick }: 
                 <div
                     ref={provided.innerRef}
                     {...provided.draggableProps}
-                    {...provided.dragHandleProps}
-                    onClick={() => onClick(issue)}
-                    className={`w-full text-left bg-bg-secondary hover:bg-bg-hover border border-border-primary rounded-lg p-3 transition-colors cursor-grab active:cursor-grabbing ${snapshot.isDragging ? 'shadow-xl rotate-[2deg] border-[rgba(201,162,114,0.35)]' : ''}`}
+                    className={`w-full text-left bg-bg-secondary hover:bg-bg-hover border border-border-primary rounded-lg p-3 transition-colors cursor-grab active:cursor-grabbing ${snapshot.isDragging ? 'shadow-xl rotate-[2deg] border-action-text' : ''}`}
                 >
-                    <IssueCardBody assignees={assignees} issue={issue} priorityClass={priorityClass} />
+                    <div {...provided.dragHandleProps} onClick={() => onClick(issue)}>
+                        <IssueCardBody assignees={assignees} issue={issue} priorityClass={priorityClass} />
+                    </div>
+                    <div className="mt-2 flex justify-end">
+                        <WorkspaceReferenceActions reference={reference} />
+                    </div>
                 </div>
             )}
         </Draggable>
     );
 }
 
-function IssueCardBody({ assignees, issue, priorityClass }: { assignees: TeamMemberSummary[]; issue: Issue; priorityClass: string }) {
+function IssueCardBody({
+    assignees,
+    issue,
+    priorityClass,
+}: {
+    assignees: TeamMemberSummary[];
+    issue: Issue;
+    priorityClass: string;
+}) {
     return (
         <>
             <p className="mb-2 line-clamp-2 text-sm font-medium text-white">{issue.title}</p>
@@ -67,7 +85,10 @@ function IssueCardBody({ assignees, issue, priorityClass }: { assignees: TeamMem
                         {PRIORITY_LABELS[issue.priority]}
                     </span>
                     {issue.labels.slice(0, 2).map((label) => (
-                        <span key={label} className="rounded-full border border-slack-green/20 bg-slack-green/10 px-2 py-0.5 text-xs text-slack-green">
+                        <span
+                            key={label}
+                            className="rounded-full border border-slack-green/20 bg-slack-green/10 px-2 py-0.5 text-xs text-slack-green"
+                        >
                             {label}
                         </span>
                     ))}

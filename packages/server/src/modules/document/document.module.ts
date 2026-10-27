@@ -1,3 +1,4 @@
+import { ContentChangeInterceptor } from '../../shared/interceptors/content-change.interceptor';
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Doc, DocumentSchema } from './infrastructure/persistence/document.schema';
@@ -43,7 +44,9 @@ import { StorageModule } from '../../shared/storage/storage.module';
         StorageModule,
     ],
     controllers: [DocumentController, DocumentUploadController],
+    exports: [DOCUMENT_REPOSITORY, CreateDocumentUseCase],
     providers: [
+        ContentChangeInterceptor,
         { provide: DOCUMENT_REPOSITORY, useClass: DocumentRepository },
         { provide: DOCUMENT_COMMENT_REPOSITORY, useClass: DocumentCommentRepository },
         { provide: DOCUMENT_VERSION_REPOSITORY, useClass: DocumentVersionRepository },

@@ -1,3 +1,4 @@
+import type { IssueLink } from './issue-link';
 export type IssueStatus = 'todo' | 'in_progress' | 'in_review' | 'done';
 export type IssuePriority = 'low' | 'medium' | 'high' | 'urgent';
 
@@ -15,6 +16,7 @@ export class IssueEntity {
         public readonly createdBy: string,
         public readonly createdAt: Date,
         public readonly updatedAt: Date,
+        public readonly links: IssueLink[] = [],
     ) {}
 
     toPublic() {

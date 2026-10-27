@@ -23,6 +23,7 @@ export class DocumentEntity {
         public readonly archivedBy: string | null,
         public readonly createdAt: Date,
         public readonly updatedAt: Date,
+        private readonly permissionParent?: DocumentEntity | null,
     ) {}
 
     get isArchived(): boolean {
@@ -30,21 +31,36 @@ export class DocumentEntity {
     }
 
     canView(userId: string, role: string): boolean {
+        if (
+            this.permissionParent !== undefined &&
+            (!this.permissionParent || this.permissionParent.isArchived || !this.permissionParent.canView(userId, role))
+        )
+            return false;
         if (role === 'owner' || role === 'admin') return true;
         if (this.visibility === 'team') return true;
         return this.allowedViewerIds.includes(userId) || this.createdBy === userId;
     }
 
     canEdit(userId: string, role: string): boolean {
+        if (
+            this.permissionParent !== undefined &&
+            (!this.permissionParent ||
+                this.permissionParent.isArchived ||
+                !this.permissionParent.canView(userId, role) ||
+                !this.permissionParent.canEdit(userId, role))
+        )
+            return false;
         if (role === 'owner') return true;
         if (role === 'guest') return false;
         if (this.editPolicy === 'all') return true;
         if (this.editPolicy === 'owner_admin' && (role === 'admin' || this.createdBy === userId)) return true;
-        if (this.editPolicy === 'restricted') return this.allowedEditorIds.includes(userId) || this.createdBy === userId;
+        if (this.editPolicy === 'restricted')
+            return this.allowedEditorIds.includes(userId) || this.createdBy === userId;
         return false;
     }
 
     canDelete(userId: string, role: string): boolean {
+        if (!this.canView(userId, role)) return false;
         return role === 'owner' || role === 'admin' || this.createdBy === userId;
     }
 
@@ -62,6 +78,7 @@ export class DocumentEntity {
             externalId: this.externalId,
             externalUrl: this.externalUrl,
             visibility: this.visibility,
+            inheritPermissions: this.permissionParent !== undefined,
             editPolicy: this.editPolicy,
             allowedViewerIds: this.allowedViewerIds,
             allowedEditorIds: this.allowedEditorIds,
@@ -83,6 +100,7 @@ export class DocumentEntity {
             createdBy: this.createdBy,
             updatedBy: this.updatedBy,
             visibility: this.visibility,
+            inheritPermissions: this.permissionParent !== undefined,
             editPolicy: this.editPolicy,
             archivedAt: this.archivedAt,
             createdAt: this.createdAt,

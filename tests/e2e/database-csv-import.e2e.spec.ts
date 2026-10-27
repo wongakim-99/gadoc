@@ -1,0 +1,30 @@
+import {test,expect} from 'playwright/test';
+import {createWorkspaceFixture,jsonFetch} from './support/slacord-api';
+import {loginWithSession} from './support/slacord-session';
+import type {DatabaseDetail,DatabaseProperty} from '../../packages/web/src/features/database/model/types';
+test('CSV maps columns, imports quoted values and resumes failed rows without duplicating pages',async({page})=>{
+  const f=await createWorkspaceFixture();
+  const call=async<T>(path:string,body?:unknown)=>(await jsonFetch<T>(`/team/${f.teamId}${path}`,{token:f.owner.token,body,method:body?'POST':'GET'}))!.data!;
+  const db=await call<{id:string}>('/database',{name:'CSV import'});
+  const api=`/database/${db.id}`;
+  const amount=await call<DatabaseProperty>(`${api}/property`,{name:'Amount',type:'number',revision:0});
+  const notes=await call<DatabaseProperty>(`${api}/property`,{name:'Notes',type:'text',revision:1});
+  await loginWithSession(page,f.owner);await page.goto(`/${f.teamId}/docs?database=${db.id}`);
+  await page.getByRole("button",{name:"보기 옵션",exact:true}).click();
+  await page.getByRole('button',{name:'CSV 가져오기',exact:true}).click();
+  await page.getByLabel('가져올 CSV 파일').setInputFiles({name:'records.csv',mimeType:'text/csv',buffer:Buffer.from('Name,Amount,Notes\r\n"First, page",0,"First line\nSecond line"\r\nSecond page,42,=1+2')});
+  let requests=0;
+  await page.route(`**/api/team/${f.teamId}/database/${db.id}/row/page`,async route=>{
+    if(++requests===2)await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Temporary failure'})});else await route.continue();
+  });
+  await page.getByRole('button',{name:'가져오기 시작',exact:true}).click();
+  await expect(page.getByRole('region',{name:'CSV 가져오기'}).getByRole('alert')).toContainText('3행에서 중단');
+  expect((await call<DatabaseDetail>(api)).rows).toHaveLength(1);
+  await page.getByRole('button',{name:'이어서 가져오기',exact:true}).click();
+  await expect(page.getByRole('status').filter({hasText:'2 / 2개 완료'})).toBeVisible();
+  const detail=await call<DatabaseDetail>(api);
+  expect(detail.rows).toHaveLength(2);
+  expect(detail.rows.find(row=>row.title==='First, page')?.values[amount.id]).toBe(0);
+  expect(detail.rows.find(row=>row.title==='First, page')?.values[notes.id]).toBe('First line\nSecond line');
+  expect(detail.rows.find(row=>row.title==='Second page')?.values[notes.id]).toBe('=1+2');
+});

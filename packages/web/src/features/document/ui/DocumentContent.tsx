@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useRef } from 'react';
 import type { DocumentFull } from '@/src/entities/document/types';
+import { WorkspaceReferenceDropZone } from '@/src/features/workspace/ui/WorkspaceReferenceDropZone';
 import { renderDocumentContent } from '@/src/entities/document/lib/renderDocumentContent';
 
 const BlockEditor = dynamic(() => import('./BlockEditor').then((m) => ({ default: m.BlockEditor })), { ssr: false });
@@ -27,9 +28,10 @@ export function DocumentContent({ doc, onQuoteSelection }: Props) {
         if (!container) return;
 
         const range = selection.getRangeAt(0);
-        const anchorNode = range.commonAncestorContainer.nodeType === Node.TEXT_NODE
-            ? range.commonAncestorContainer.parentNode
-            : range.commonAncestorContainer;
+        const anchorNode =
+            range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+                ? range.commonAncestorContainer.parentNode
+                : range.commonAncestorContainer;
 
         if (!anchorNode || !container.contains(anchorNode)) {
             onQuoteSelection(null);
@@ -40,13 +42,26 @@ export function DocumentContent({ doc, onQuoteSelection }: Props) {
         onQuoteSelection(normalizedQuote ? normalizedQuote.slice(0, 280) : null);
     };
 
-    if (!doc.content) return <p className="text-sm text-text-tertiary">내용이 없습니다. 편집 버튼을 눌러 내용을 추가하세요.</p>;
+    if (!doc.content)
+        return <p className="text-sm text-text-tertiary">내용이 없습니다. 편집 버튼을 눌러 내용을 추가하세요.</p>;
 
     if (doc.contentFormat === 'json') {
         return (
-            <div data-testid="document-content" onKeyUp={handleSelectionChange} onMouseUp={handleSelectionChange} ref={containerRef}>
-                <BlockEditor teamId={doc.teamId} initialContent={doc.content} onChange={() => {}} editable={false} />
-            </div>
+            <WorkspaceReferenceDropZone disabled onInsert={() => {}}>
+                <div
+                    data-testid="document-content"
+                    onKeyUp={handleSelectionChange}
+                    onMouseUp={handleSelectionChange}
+                    ref={containerRef}
+                >
+                    <BlockEditor
+                        teamId={doc.teamId}
+                        initialContent={doc.content}
+                        onChange={() => {}}
+                        editable={false}
+                    />
+                </div>
+            </WorkspaceReferenceDropZone>
         );
     }
 

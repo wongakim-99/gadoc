@@ -22,25 +22,32 @@ export function useIssueBoardActions({ teamId, createStatus, issues, selectedIss
             priority: IssuePriority;
             assigneeIds?: string[];
             labels?: string[];
+            sourceMessageId?: string;
         }) => {
             const response = await issueApi.createIssue(teamId, { ...data, status: createStatus });
             const created = unwrapApiData<Issue>(response);
-            if (created) addIssue(created);
+            if (!response.success || !created) throw new Error('이슈를 생성하지 못했습니다.');
+            addIssue(created);
+            window.dispatchEvent(new CustomEvent('slacord:issues-refresh'));
+            return created;
         },
 
         handleUpdate: async (data: Partial<Issue>) => {
             if (!selectedIssue) return;
             const response = await issueApi.updateIssue(teamId, selectedIssue.id, data);
             const updated = unwrapApiData<Issue>(response);
+            if (!response.success || !updated) throw new Error('이슈를 저장하지 못했습니다.');
             if (updated) {
                 updateIssue(selectedIssue.id, updated);
                 setSelectedIssueId(selectedIssue.id);
+                window.dispatchEvent(new CustomEvent('slacord:issues-refresh'));
             }
         },
 
         handleDelete: async (issueId: string) => {
             await issueApi.deleteIssue(teamId, issueId);
             removeIssue(issueId);
+            window.dispatchEvent(new CustomEvent('slacord:issues-refresh'));
             if (selectedIssue?.id === issueId) setSelectedIssueId(null);
         },
 
@@ -56,6 +63,7 @@ export function useIssueBoardActions({ teamId, createStatus, issues, selectedIss
 
             try {
                 await issueApi.updateIssue(teamId, issueId, { status });
+                window.dispatchEvent(new CustomEvent('slacord:issues-refresh'));
             } catch {
                 // API 실패 시 이전 상태로 롤백
                 updateIssue(issueId, { ...issue, status: issue.status });

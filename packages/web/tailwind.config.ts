@@ -9,7 +9,18 @@ const config: Config = {
     ],
     theme: {
         extend: {
+            borderRadius: {
+                control: 'var(--radius-control)',
+                panel: 'var(--radius-panel)',
+            },
             colors: {
+                action: {
+                    DEFAULT: 'var(--color-action)',
+                    hover: 'var(--color-action-hover)',
+                    text: 'var(--color-action-text)',
+                },
+                selection: 'var(--color-selection)',
+                overlay: 'var(--color-overlay)',
                 // Background Colors
                 bg: {
                     primary: 'var(--color-bg-primary)',

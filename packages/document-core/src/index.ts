@@ -217,3 +217,7 @@ export function validateRowPatch(
     }
     return issues;
 }
+
+export * from './query';
+
+export * from './aggregate';

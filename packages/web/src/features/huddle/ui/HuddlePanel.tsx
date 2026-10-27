@@ -47,7 +47,7 @@ export function HuddlePanel({
     if (!isActive && !error) return null;
 
     return (
-        <div className="border-t border-border-primary bg-[#1a1d21]">
+        <div className="border-t border-border-primary bg-bg-secondary">
             {error && (
                 <div className="flex items-center justify-between border-b border-red-500/20 bg-red-500/10 px-4 py-3">
                     <div className="flex items-center gap-2">

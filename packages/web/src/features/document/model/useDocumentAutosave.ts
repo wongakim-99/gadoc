@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { documentApi, unwrapApiData } from '@/lib/api-client';
 import type { DocumentFull } from '@/src/entities/document/types';
 import { DocumentSaveQueue, type DocumentDraft, type SaveStatus } from './DocumentSaveQueue';
+import { canLeaveWorkspacePane, useWorkspaceLeaveGuard } from '@/src/features/workspace/model/useWorkspaceConnection';
 
 export function useDocumentAutosave(doc: DocumentFull) {
     const router = useRouter();
@@ -22,6 +23,7 @@ export function useDocumentAutosave(doc: DocumentFull) {
         if (timer.current) clearTimeout(timer.current);
         return queue.current ? queue.current.flush() : false;
     }, []);
+    useWorkspaceLeaveGuard(() => (queue.current ? flush() : true));
 
     const schedule = useCallback(() => {
         if (timer.current) clearTimeout(timer.current);
@@ -85,12 +87,14 @@ export function useDocumentAutosave(doc: DocumentFull) {
             event.returnValue = '';
         };
         const onLinkClick = (event: MouseEvent) => {
+            if (event.defaultPrevented) return;
             if (!queue.current?.dirty && !queue.current?.busy) return;
             const anchor = event.target instanceof Element ? event.target.closest('a') : null;
             if (
                 !anchor ||
                 anchor.target === '_blank' ||
                 anchor.hasAttribute('download') ||
+                anchor.hasAttribute('data-manages-draft-navigation') ||
                 event.button !== 0 ||
                 event.metaKey ||
                 event.ctrlKey ||
@@ -102,7 +106,7 @@ export function useDocumentAutosave(doc: DocumentFull) {
             if (url.origin !== location.origin || url.href === location.href) return;
             event.preventDefault();
             event.stopPropagation();
-            void flush().then((saved) => {
+            void canLeaveWorkspacePane().then((saved) => {
                 if (saved && mounted.current) router.push(url.pathname + url.search + url.hash);
             });
         };

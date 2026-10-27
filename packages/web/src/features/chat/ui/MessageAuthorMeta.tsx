@@ -11,7 +11,7 @@ export function MessageAuthorMeta({ authorLabel, time, isEdited, isPinned }: Pro
             <span className="text-[15px] font-bold text-white">{authorLabel}</span>
             <span className="text-[12px] text-text-tertiary">{time}</span>
             {isEdited ? <span className="text-[12px] text-text-tertiary">(수정됨)</span> : null}
-            {isPinned ? <span className="text-[12px] font-medium text-[#e5c07b]">고정됨</span> : null}
+            {isPinned ? <span className="text-[12px] font-medium text-warning">고정됨</span> : null}
         </div>
     );
 }

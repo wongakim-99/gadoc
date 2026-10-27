@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation';
 import { FileText, Plus } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { DocumentTreeNode } from '@/src/entities/document/lib/buildDocumentTree';
+import { WorkspaceOpenButton } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
+import { useWorkspaceDragSource } from '@/src/features/workspace/model/useWorkspaceDragSource';
 
 interface Props {
     depth: number;
@@ -21,6 +23,8 @@ export function DocumentTreeBranch({ depth, expandedIds, node, onToggle, teamId,
     const href = `/${teamId}/docs/${node.id}`;
     const active = usePathname() === href;
     const reduceMotion = useReducedMotion();
+    const reference = { kind: 'docs' as const, href, label: node.title };
+    const dragSource = useWorkspaceDragSource(reference);
 
     return (
         <div>
@@ -46,6 +50,8 @@ export function DocumentTreeBranch({ depth, expandedIds, node, onToggle, teamId,
                 )}
                 <Link
                     href={href}
+                    {...dragSource}
+                    title="페이지 열기 · 오른쪽 가장자리로 끌면 옆에 열기"
                     aria-current={active ? 'page' : undefined}
                     onKeyDown={(event) => {
                         if (event.key === 'ArrowRight' && hasChildren && !expanded) {
@@ -64,6 +70,7 @@ export function DocumentTreeBranch({ depth, expandedIds, node, onToggle, teamId,
                         <p className="truncate font-medium">{node.title}</p>
                     </div>
                 </Link>
+                <WorkspaceOpenButton reference={reference} />
                 {canCreate && (
                     <Link
                         href={`/${teamId}/docs?create=1&parentId=${encodeURIComponent(node.id)}`}

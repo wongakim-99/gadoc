@@ -5,6 +5,14 @@
  */
 
 import { toApiUrl } from './runtime-config';
+import type {
+    KnowledgeDatabase,
+    DatabaseContainer,
+    DatabaseDetail,
+    DatabaseProperty,
+    PropertyValue,
+    DatabaseView,
+} from '@/src/features/database/model/types';
 import type { ChannelType } from '@/src/entities/channel/types';
 import type { DocumentComment } from '@/src/entities/document/types';
 import type { MessageSearchPayload } from '@/src/entities/message/search.types';
@@ -15,6 +23,16 @@ import type {
     BridgeJobStatus,
     TeamInvitePreview,
 } from '@/src/entities/team/types';
+
+export class ApiError extends Error {
+    constructor(
+        message: string,
+        public readonly status: number,
+    ) {
+        super(message);
+        this.name = 'ApiError';
+    }
+}
 
 interface ApiResponse<T = any> {
     success: boolean;
@@ -69,7 +87,7 @@ async function apiFetch<T = any>(url: string, options?: RequestInit): Promise<Ap
     }
     if (!response.ok) {
         const message = Array.isArray(data?.message) ? data.message.join(' ') : data?.message;
-        throw new Error(message || '요청에 실패했습니다.');
+        throw new ApiError(message || '요청에 실패했습니다.', response.status);
     }
     if (!data || typeof data !== 'object') throw new Error('서버 응답을 처리하지 못했습니다.');
     return data;
@@ -78,6 +96,137 @@ async function apiFetch<T = any>(url: string, options?: RequestInit): Promise<Ap
 /**
  * 인증 API
  */
+export const databaseContainerApi = {
+    create: (teamId: string, name: string, creationId?: string, parentDocumentId?: string) =>
+        apiFetch<DatabaseContainer>(`/api/team/${teamId}/database-container`, {
+            method: 'POST',
+            body: JSON.stringify({ name, creationId, parentDocumentId, blank: true }),
+        }),
+    read: (teamId: string, id: string) => apiFetch<DatabaseContainer>(`/api/team/${teamId}/database-container/${id}`),
+    createSource: (teamId: string, id: string, name: string, revision: number, creationId?: string) =>
+        apiFetch<{ sourceId: string }>(`/api/team/${teamId}/database-container/${id}/source`, {
+            method: 'POST',
+            body: JSON.stringify({ name, revision, creationId, blank: true }),
+        }),
+    link: (teamId: string, id: string, sourceId: string, revision: number) =>
+        apiFetch<DatabaseContainer>(`/api/team/${teamId}/database-container/${id}/source/link`, {
+            method: 'POST',
+            body: JSON.stringify({ sourceId, revision }),
+        }),
+    unlink: (teamId: string, id: string, sourceId: string, revision: number) =>
+        apiFetch<DatabaseContainer>(`/api/team/${teamId}/database-container/${id}/source/unlink`, {
+            method: 'POST',
+            body: JSON.stringify({ sourceId, revision }),
+        }),
+};
+
+export const databaseApi = {
+    rename: (teamId:string,id:string,name:string,revision:number)=>apiFetch(`/api/team/${teamId}/database/${id}`,{method:'PATCH',body:JSON.stringify({name,revision})}),
+    setLock: (teamId: string, id: string, locked: boolean, revision: number) =>
+        apiFetch(`/api/team/${teamId}/database/${id}/lock`, {
+            method: 'PATCH',
+            body: JSON.stringify({ locked, revision }),
+        }),
+    updateRow: (
+        teamId: string,
+        id: string,
+        documentId: string,
+        values: Record<string, PropertyValue>,
+        revision: number,
+    ) =>
+        apiFetch(`/api/team/${teamId}/database/${id}/row/${documentId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ values, revision }),
+        }),
+    setDefaultTemplate: (teamId:string,id:string,templateId:string|null,revision:number) =>
+        apiFetch(`/api/team/${teamId}/database/${id}/default-template`, {method:'PATCH',body:JSON.stringify({templateId,revision})}),
+    createTemplate: (teamId: string, id: string, name: string, creationId: string, revision: number) =>
+        apiFetch<{ id: string; documentId: string }>(`/api/team/${teamId}/database/${id}/template`, {
+            method: 'POST',
+            body: JSON.stringify({ name, creationId, revision }),
+        }),
+    applyTemplate: (teamId: string, id: string, templateId: string, creationId: string) =>
+        apiFetch<{ documentId: string }>(`/api/team/${teamId}/database/${id}/template/${templateId}/page`, {
+            method: 'POST',
+            body: JSON.stringify({ creationId }),
+        }),
+    removeTemplate: (teamId: string, id: string, templateId: string, revision: number) =>
+        apiFetch(`/api/team/${teamId}/database/${id}/template/${templateId}/remove`, {
+            method: 'POST',
+            body: JSON.stringify({ revision }),
+        }),
+    createRowPage: (
+        teamId: string,
+        id: string,
+        title: string,
+        creationId: string,
+        values: Record<string, PropertyValue>,
+    ) =>
+        apiFetch<{ documentId: string }>(`/api/team/${teamId}/database/${id}/row/page`, {
+            method: 'POST',
+            body: JSON.stringify({ title, creationId, values }),
+        }),
+    duplicateRow: (teamId:string,id:string,documentId:string,creationId:string)=>
+        apiFetch<{documentId:string}>(`/api/team/${teamId}/database/${id}/row/${documentId}/duplicate`,{method:'POST',body:JSON.stringify({creationId})}),
+    configureProperty: (
+        teamId: string,
+        id: string,
+        propertyId: string,
+        property: Omit<DatabaseProperty, 'id'> & { revision: number },
+    ) =>
+        apiFetch(`/api/team/${teamId}/database/${id}/property/${propertyId}/configuration`, {
+            method: 'PATCH',
+            body: JSON.stringify(property),
+        }),
+    archiveProperty: (teamId: string, id: string, propertyId: string, revision: number, restore = false) =>
+        apiFetch(`/api/team/${teamId}/database/${id}/property/${propertyId}/${restore ? 'restore' : 'archive'}`, {
+            method: 'POST',
+            body: JSON.stringify({ revision }),
+        }),
+    memberships: (teamId: string, documentId: string) =>
+        apiFetch<DatabaseDetail[]>(`/api/team/${teamId}/database/document/${documentId}`),
+    updateView: (teamId:string,id:string,viewId:string,config:Omit<DatabaseView,'id'> & {revision:number}) =>
+        apiFetch<DatabaseView>(`/api/team/${teamId}/database/${id}/view/${viewId}`,{method:'PATCH',body:JSON.stringify(config)}),
+    removeView: (teamId:string,id:string,viewId:string,revision:number) =>
+        apiFetch(`/api/team/${teamId}/database/${id}/view/${viewId}/remove`,{method:'POST',body:JSON.stringify({revision})}),
+    addView: (teamId: string, id: string, config: Omit<DatabaseView, 'id'> & { revision: number }) =>
+        apiFetch<DatabaseView>(`/api/team/${teamId}/database/${id}/view`, { method: 'POST', body: JSON.stringify(config) }),
+    renameProperty: (teamId: string, id: string, propertyId: string, name: string, revision: number) =>
+        apiFetch(`/api/team/${teamId}/database/${id}/property/${propertyId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ name, revision }),
+        }),
+    mention: (teamId: string, id: string, documentId: string, recipientIds: string[]) =>
+        apiFetch(`/api/team/${teamId}/database/${id}/row/${documentId}/mention`, {
+            method: 'POST',
+            body: JSON.stringify({ recipientIds }),
+        }),
+    list: (teamId: string) => apiFetch<KnowledgeDatabase[]>(`/api/team/${teamId}/database`),
+    read: (teamId: string, id: string) => apiFetch<DatabaseDetail>(`/api/team/${teamId}/database/${id}`),
+    create: (teamId: string, name: string) =>
+        apiFetch<KnowledgeDatabase>(`/api/team/${teamId}/database`, { method: 'POST', body: JSON.stringify({ name }) }),
+    addProperty: (teamId: string, id: string, property: Omit<DatabaseProperty, 'id'> & { revision: number }) =>
+        apiFetch(`/api/team/${teamId}/database/${id}/property`, { method: 'POST', body: JSON.stringify(property) }),
+    addRow: (teamId: string, id: string, documentId: string, values?: Record<string, PropertyValue>) =>
+        apiFetch(`/api/team/${teamId}/database/${id}/row`, {
+            method: 'POST',
+            body: JSON.stringify({ documentId, values }),
+        }),
+    updateCell: (
+        teamId: string,
+        id: string,
+        documentId: string,
+        propertyId: string,
+        value: PropertyValue,
+        revision: number,
+        relationRevision?:string,
+    ) =>
+        apiFetch(`/api/team/${teamId}/database/${id}/row/${documentId}/${propertyId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ value, revision, relationRevision }),
+        }),
+};
+
 export const authApi = {
     /**
      * 회원가입
@@ -285,6 +434,23 @@ export const messageApi = {
  * 이슈 API
  */
 export const issueApi = {
+    async getRelated(teamId: string, kind: 'document' | 'message', resourceId: string) {
+        return apiFetch(`/api/team/${teamId}/issue/related?${new URLSearchParams({ kind, resourceId })}`);
+    },
+    async getLinks(teamId: string, issueId: string) {
+        return apiFetch(`/api/team/${teamId}/issue/${issueId}/links`);
+    },
+    async addLink(teamId: string, issueId: string, kind: 'document' | 'message', resourceId: string) {
+        return apiFetch(`/api/team/${teamId}/issue/${issueId}/links`, {
+            method: 'POST',
+            body: JSON.stringify({ kind, resourceId }),
+        });
+    },
+    async removeLink(teamId: string, issueId: string, kind: 'document' | 'message', resourceId: string) {
+        return apiFetch(`/api/team/${teamId}/issue/${issueId}/links?${new URLSearchParams({ kind, resourceId })}`, {
+            method: 'DELETE',
+        });
+    },
     async getIssues(teamId: string, filters?: { status?: string; query?: string; assigneeId?: string }) {
         const params = new URLSearchParams();
         if (filters?.status) params.set('status', filters.status);
@@ -302,6 +468,7 @@ export const issueApi = {
             status?: string;
             assigneeIds?: string[];
             labels?: string[];
+            sourceMessageId?: string;
         },
     ) {
         return apiFetch(`/api/team/${teamId}/issue`, { method: 'POST', body: JSON.stringify(data) });

@@ -49,21 +49,21 @@ export function DiscordImportPanel({ teamId, onImported }: Props) {
                     value={importer.form.guildId}
                     onChange={(event) => importer.updateField('guildId', event.target.value)}
                     placeholder="Discord Guild ID"
-                    className="rounded-2xl border border-border-primary bg-bg-primary px-4 py-3 text-sm text-white outline-none transition focus:border-[#d6b08a]/60"
+                    className="rounded-2xl border border-border-primary bg-bg-primary px-4 py-3 text-sm text-white outline-none transition focus:border-action-text/60"
                 />
                 <input
                     type="password"
                     value={importer.form.botToken}
                     onChange={(event) => importer.updateField('botToken', event.target.value)}
                     placeholder="Discord Bot Token"
-                    className="rounded-2xl border border-border-primary bg-bg-primary px-4 py-3 text-sm text-white outline-none transition focus:border-[#d6b08a]/60"
+                    className="rounded-2xl border border-border-primary bg-bg-primary px-4 py-3 text-sm text-white outline-none transition focus:border-action-text/60"
                 />
                 <textarea
                     value={importer.form.channelIds}
                     onChange={(event) => importer.updateField('channelIds', event.target.value)}
                     placeholder="특정 채널만 가져오려면 Discord Channel ID를 , 로 구분해서 넣어 주세요. 비우면 전체 채널을 가져와요."
                     rows={3}
-                    className="rounded-2xl border border-border-primary bg-bg-primary px-4 py-3 text-sm leading-6 text-white outline-none transition focus:border-[#d6b08a]/60 md:col-span-2"
+                    className="rounded-2xl border border-border-primary bg-bg-primary px-4 py-3 text-sm leading-6 text-white outline-none transition focus:border-action-text/60 md:col-span-2"
                 />
             </div>
             {importer.summary ? (

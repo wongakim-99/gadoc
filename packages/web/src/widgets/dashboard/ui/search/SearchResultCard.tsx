@@ -18,7 +18,7 @@ export function SearchResultCard({ onSelect, result }: Props) {
                 },
             }}
             onClick={onSelect}
-            className="block rounded-[24px] border border-border-primary bg-bg-secondary p-5 transition hover:border-brand-400/40 hover:bg-bg-hover"
+            className="block rounded-panel border border-border-primary bg-bg-secondary p-5 transition hover:border-border-glow hover:bg-bg-hover"
         >
             <div className="flex flex-wrap items-center gap-2 text-xs text-text-tertiary">
                 <span>{result.teamName}</span>

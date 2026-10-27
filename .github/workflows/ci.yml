@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,11 +33,14 @@ jobs:
       - name: Run backend tests
         run: yarn test:server
 
+      - name: Test deployment safety
+        run: node --test scripts/test/deploy-ubuntu.test.mjs
+
       - name: Build backend
         run: yarn build:server
 
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,7 +64,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14, windows-2022]
+        os: [ubuntu-24.04, macos-14, windows-2022]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -94,7 +97,8 @@ jobs:
     needs:
       - backend
       - frontend
-    runs-on: ubuntu-latest
+    # Playwright 1.58.2 does not support Ubuntu 26.04 yet.
+    runs-on: ubuntu-24.04
     services:
       mongo:
         image: mongo:7
@@ -115,6 +119,11 @@ jobs:
       NEXT_PUBLIC_SOCKET_URL: http://127.0.0.1:8084
       SLACORD_E2E_BASE_URL: http://127.0.0.1:3002
       SLACORD_E2E_API_URL: http://127.0.0.1:8084/api
+      MINIO_ENDPOINT: http://127.0.0.1:9000
+      MINIO_PUBLIC_URL: http://127.0.0.1:9000
+      MINIO_ACCESS_KEY: slacord-ci
+      MINIO_SECRET_KEY: slacord-ci-storage-only
+      MINIO_BUCKET: slacord-ci
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -131,6 +140,54 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      - name: Restore test storage binary
+        id: minio-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/slacord-minio
+          key: minio-ubuntu24-x64-07c3a429bfed433e49018cb0f78a52145d4bedeb
+
+      # Community MinIO images/binaries are no longer published. Build a pinned source revision.
+      - name: Checkout test storage source
+        if: steps.minio-cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: minio/minio
+          ref: 07c3a429bfed433e49018cb0f78a52145d4bedeb
+          path: .ci-minio-source
+          persist-credentials: false
+
+      - name: Setup Go for test storage
+        if: steps.minio-cache.outputs.cache-hit != 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache-dependency-path: .ci-minio-source/go.sum
+
+      - name: Build test storage
+        if: steps.minio-cache.outputs.cache-hit != 'true'
+        working-directory: .ci-minio-source
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p "$RUNNER_TEMP/slacord-minio"
+          go build -o "$RUNNER_TEMP/slacord-minio/minio" .
+
+      - name: Start test object storage
+        run: |
+          MINIO_ROOT_USER="$MINIO_ACCESS_KEY" MINIO_ROOT_PASSWORD="$MINIO_SECRET_KEY" \
+            "$RUNNER_TEMP/slacord-minio/minio" server "$RUNNER_TEMP/slacord-ci-objects" \
+            --address 127.0.0.1:9000 --console-address 127.0.0.1:9001 > /tmp/slacord-minio.log 2>&1 &
+          echo $! > /tmp/slacord-minio.pid
+          for _attempt in {1..60}; do
+            if curl -fsS http://127.0.0.1:9000/minio/health/live >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/slacord-minio.log
+          exit 1
+
       - name: Build backend and frontend
         run: |
           yarn build:server
@@ -143,7 +200,7 @@ jobs:
 
       - name: Wait for backend
         run: |
-          for i in {1..60}; do
+          for _attempt in {1..60}; do
             if curl -fsS http://127.0.0.1:8084/api/health >/dev/null; then
               exit 0
             fi
@@ -159,7 +216,7 @@ jobs:
 
       - name: Wait for frontend
         run: |
-          for i in {1..60}; do
+          for _attempt in {1..60}; do
             if curl -fsS http://127.0.0.1:3002 >/dev/null; then
               exit 0
             fi
@@ -181,6 +238,7 @@ jobs:
             test-results
             /tmp/slacord-server.log
             /tmp/slacord-web.log
+            /tmp/slacord-minio.log
           if-no-files-found: ignore
 
       - name: Stop frontend and backend
@@ -188,3 +246,4 @@ jobs:
         run: |
           if [[ -f /tmp/slacord-web.pid ]]; then kill "$(cat /tmp/slacord-web.pid)" || true; fi
           if [[ -f /tmp/slacord-server.pid ]]; then kill "$(cat /tmp/slacord-server.pid)" || true; fi
+          if [[ -f /tmp/slacord-minio.pid ]]; then kill "$(cat /tmp/slacord-minio.pid)" || true; fi

@@ -1,0 +1,32 @@
+import {test,expect} from 'playwright/test';
+import {createWorkspaceFixture,jsonFetch} from './support/slacord-api';
+import {loginWithSession} from './support/slacord-session';
+test('inline column resizing and ordering persist independently across reload',async({page})=>{
+  const f=await createWorkspaceFixture();
+  const call=async<T>(path:string,body?:unknown,method=body?'POST':'GET')=>(await jsonFetch<T>(`/team/${f.teamId}${path}`,{token:f.owner.token,body,method}))!.data!;
+  const db=await call<{id:string}>('/database',{name:'Column layout'});
+  await call(`/document/${f.documentId}`,{contentFormat:'json',content:JSON.stringify([{type:'database',props:{databaseId:db.id}},{type:'paragraph'},{type:'database',props:{databaseId:db.id}}])},'PATCH');
+  await loginWithSession(page,f.owner);
+  await page.goto(`/${f.teamId}/docs/${f.documentId}`);
+  const first=page.locator('[data-inline-database]').nth(0),second=page.locator('[data-inline-database]').nth(1);
+  const resize=first.getByRole('separator',{name:'상태 열 너비',exact:true});
+  await expect(resize).toHaveAttribute('aria-valuenow','140');
+  await resize.focus();
+  await resize.press('ArrowRight');
+  await expect(resize).toHaveAttribute('aria-valuenow','160');
+  await expect(second.getByRole('separator',{name:'상태 열 너비',exact:true})).toHaveAttribute('aria-valuenow','140');
+  await first.getByRole('button',{name:'보기 옵션',exact:true}).click();
+  await page.getByText('열 설정',{exact:true}).click();
+  await page.getByRole('button',{name:'상태 열 왼쪽으로',exact:true}).click();
+  await expect(first.getByRole('columnheader').nth(1)).toContainText('상태');
+  await expect.poll(async()=>{
+    const doc=await call<{content:string}>(`/document/${f.documentId}`);
+    const block=JSON.parse(doc.content).find((b:{type:string})=>b.type==='database');
+    const view=JSON.parse(block.props.viewState||'{}').views?.[0];
+    return view?.columnWidths?.status===160 && view?.propertyOrder?.[0]==='status';
+  }).toBe(true);
+  await page.reload();
+  await expect(first.getByRole('columnheader').nth(1)).toContainText('상태');
+  await expect(resize).toHaveAttribute('aria-valuenow','160');
+  await expect(second.getByRole('columnheader').nth(1)).toContainText('담당자');
+});

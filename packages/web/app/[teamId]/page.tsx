@@ -23,7 +23,7 @@ export default async function TeamHomePage({ params }: Props) {
             <div className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">
                 <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)]">
                     <section className="rounded-[28px] border border-border-primary bg-bg-secondary p-6 sm:p-8">
-                        <p className="text-xs uppercase tracking-[0.2em] text-[#d6b08a]">Workspace Home</p>
+                        <p className="text-xs uppercase tracking-[0.2em] text-action-text">Workspace Home</p>
                         <h1 className="mt-4 text-3xl font-bold tracking-[-0.04em] text-white sm:text-4xl">
                             {teamName} 작업 공간
                         </h1>
@@ -35,7 +35,7 @@ export default async function TeamHomePage({ params }: Props) {
                             {firstChannel ? (
                                 <Link
                                     href={`/${teamId}/channel/${firstChannel.id}`}
-                                    className="rounded-xl bg-[#b97532] px-5 py-3 text-sm font-semibold text-white"
+                                    className="rounded-xl bg-action px-5 py-3 text-sm font-semibold text-white"
                                 >
                                     대화 시작하기
                                 </Link>
@@ -64,7 +64,7 @@ export default async function TeamHomePage({ params }: Props) {
                     </section>
 
                     <section className="rounded-[28px] border border-border-primary bg-bg-secondary p-6 sm:p-8">
-                        <p className="text-xs uppercase tracking-[0.2em] text-[#d6b08a]">Snapshot</p>
+                        <p className="text-xs uppercase tracking-[0.2em] text-action-text">Snapshot</p>
                         <div className="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
                             <StatCard label="채널" value={String(workspaceChannels.length)} />
                             <StatCard label="DM / 소그룹" value={String(directChannels.length)} />
@@ -122,14 +122,14 @@ function QuickPanel({
     if (disabled)
         return (
             <div className={`${base} opacity-70`}>
-                <p className="text-xs uppercase tracking-[0.18em] text-[#d6b08a]">{label}</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-action-text">{label}</p>
                 <h2 className="mt-4 text-xl font-bold text-white">{title}</h2>
                 <p className="mt-3 text-sm leading-6 text-text-secondary">{description}</p>
             </div>
         );
     return (
-        <Link href={href} className={`${base} hover:border-[#d6b08a]/40 hover:bg-bg-hover`}>
-            <p className="text-xs uppercase tracking-[0.18em] text-[#d6b08a]">{label}</p>
+        <Link href={href} className={`${base} hover:border-action-text/40 hover:bg-bg-hover`}>
+            <p className="text-xs uppercase tracking-[0.18em] text-action-text">{label}</p>
             <h2 className="mt-4 text-xl font-bold text-white">{title}</h2>
             <p className="mt-3 text-sm leading-6 text-text-secondary">{description}</p>
         </Link>

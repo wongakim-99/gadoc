@@ -20,6 +20,9 @@ import {
 } from 'lucide-react';
 import { NotificationBell } from '@/src/features/notification/ui/NotificationBell';
 import { SidebarUserBar } from './SidebarUserBar';
+import { useWorkspaceDragSource } from '../model/useWorkspaceDragSource';
+import { WorkspaceOpenButton } from './WorkspaceReferenceActions';
+import type { WorkspaceReference } from '../model/workspaceReference';
 import { workspaceAreaLabels, type WorkspaceArea } from '../model/workspaceNavigation';
 
 export function WorkspaceSidebarShell({
@@ -78,7 +81,7 @@ export function WorkspaceSidebarShell({
                     title="Slacord · 워크스페이스 목록"
                     className={`shrink-0 rounded-md ${collapsed ? 'lg:hidden' : ''}`}
                 >
-                    <Image src="/logo.svg" alt="Slacord" width={32} height={32} />
+                    <Image src="/logo-workspace.svg" alt="Slacord" width={32} height={32} />
                 </Link>
                 <Link
                     href="/dashboard"
@@ -144,9 +147,12 @@ export function WorkspaceSidebarShell({
                     className={`flex shrink-0 flex-col gap-0.5 border-b border-border-primary px-3 pb-4 pt-2 ${collapsed ? 'lg:px-2' : ''}`}
                 >
                     {sections.map(({ area: target, href, icon: Icon }) => (
-                        <Link
+                        <AreaLink
                             key={target}
                             href={href}
+                            kind={target === 'home' ? undefined : target}
+                            label={workspaceAreaLabels[target]}
+                            collapsed={collapsed}
                             title={workspaceAreaLabels[target]}
                             aria-label={workspaceAreaLabels[target]}
                             aria-current={area === target ? 'location' : undefined}
@@ -154,7 +160,7 @@ export function WorkspaceSidebarShell({
                         >
                             <Icon size={16} className="shrink-0" />
                             <span className={hideCollapsed}>{workspaceAreaLabels[target]}</span>
-                        </Link>
+                        </AreaLink>
                     ))}
                 </nav>
                 <nav
@@ -196,5 +202,28 @@ export function WorkspaceSidebarShell({
                 </div>
             </div>
         </aside>
+    );
+}
+
+function AreaLink({
+    kind,
+    label,
+    collapsed,
+    children,
+    ...props
+}: React.ComponentProps<typeof Link> & { kind?: WorkspaceReference['kind']; label: string; collapsed: boolean }) {
+    const reference = { kind: kind ?? 'channel', href: String(props.href), label };
+    const drag = useWorkspaceDragSource(reference);
+    return (
+        <div className="group flex min-w-0 items-center">
+            <Link {...props} {...(kind ? drag : {})} className={`${props.className} min-w-0 flex-1`}>
+                {children}
+            </Link>
+            {kind && (
+                <span className={collapsed ? 'lg:hidden' : ''}>
+                    <WorkspaceOpenButton reference={reference} />
+                </span>
+            )}
+        </div>
     );
 }

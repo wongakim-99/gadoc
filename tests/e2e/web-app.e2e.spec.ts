@@ -146,12 +146,12 @@ test.describe.serial("slacord web e2e", () => {
     await page.goto(`/${fixture.teamId}/docs`);
 
     await page.locator('main').getByPlaceholder("문서 제목으로 찾기").fill("E2E 문서");
-    await page.locator('main').getByRole("link", { name: /E2E 문서/ }).click();
+    await page.locator(`main a[href="/${fixture.teamId}/docs/${fixture.documentId}"]`).click();
     await page.waitForURL(`**/${fixture.teamId}/docs/${fixture.documentId}`);
     await expect(page.getByText("문서 검증 본문")).toBeVisible();
 
     await page.goto(`/${fixture.teamId}/docs`);
-    await page.getByRole("button", { name: "문서 생성" }).click();
+    await page.getByRole("button", { name: "문서 생성", exact: true }).click();
     const title = `문서 생성 검증 ${Date.now().toString().slice(-4)}`;
     await page.getByRole("textbox", { name: "문서 제목" }).fill(title);
     await page.getByRole("button", { name: "생성", exact: true }).click();
@@ -214,7 +214,7 @@ test.describe.serial("slacord web e2e", () => {
     await loginWithSession(page, fixture.owner);
     await page.goto(`/${fixture.teamId}/issues`);
 
-    await page.getByRole("button", { name: "이슈 생성" }).click();
+    await page.getByRole("button", { name: "이슈 생성", exact: true }).click();
     const title = `이슈 생성 검증 ${Date.now().toString().slice(-4)}`;
     await page
       .getByRole("textbox", { name: "이슈 제목", exact: true })
@@ -330,7 +330,8 @@ test.describe.serial("slacord web e2e", () => {
     await expect(
       ownerPage.getByText(`안녕 @${fixture.owner.username}`),
     ).toBeVisible();
-    await notificationButton.click();
+    await ownerPage.getByRole("button", { name: "알림 패널 닫기" }).click();
+    await expect(ownerPage.getByRole("dialog", { name: "알림", exact: true })).toBeHidden();
 
     await unreadLink.click();
     await ownerPage.waitForURL(
@@ -430,6 +431,9 @@ test.describe.serial("slacord web e2e", () => {
     await loginWithSession(page, fixture.owner);
     await page.goto(`/${fixture.teamId}/channel/${fixture.channelId}`);
 
+    // The channel composer appears after the authenticated client shell is ready.
+    await expect(page.getByRole("textbox", { name: /메시지 보내기/ })).toBeEditable();
+    await page.getByRole("button", { name: "전체 검색", exact: true }).focus();
     await page.keyboard.press(
       process.platform === "darwin" ? "Meta+K" : "Control+K",
     );
@@ -441,8 +445,7 @@ test.describe.serial("slacord web e2e", () => {
       .getByPlaceholder("채널, 메시지, 문서, 이슈 검색")
       .fill(targetContent);
     const messageResult = page
-      .getByRole("option", { name: new RegExp(targetContent) })
-      .first();
+      .getByRole("option", { name: new RegExp(`^${targetContent}.*#${fixture.channelName}$`) });
     await expect(messageResult).toBeVisible();
 
     await messageResult.click();
@@ -537,7 +540,7 @@ test.describe.serial("slacord web e2e", () => {
     await page.waitForURL(
       new RegExp(`/${fixture.teamId}/issues\\?create=1&status=todo&title=`),
     );
-    await expect(page.getByRole("heading", { name: "이슈 생성" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "이슈 생성", exact: true })).toBeVisible();
     await expect(
       page.getByRole("textbox", { name: "이슈 제목", exact: true }),
     ).toHaveValue(issueTitle);
@@ -568,7 +571,7 @@ test.describe.serial("slacord web e2e", () => {
     ).toBeVisible();
 
     await page.goto(`/${fixture.teamId}/docs`);
-    await expect(page.getByRole("button", { name: "문서 생성" })).toHaveCount(
+    await expect(page.getByRole("button", { name: "문서 생성", exact: true })).toHaveCount(
       0,
     );
     await expect(
@@ -578,7 +581,7 @@ test.describe.serial("slacord web e2e", () => {
     ).toBeVisible();
 
     await page.goto(`/${fixture.teamId}/issues`);
-    await expect(page.getByRole("button", { name: "이슈 생성" })).toHaveCount(
+    await expect(page.getByRole("button", { name: "이슈 생성", exact: true })).toHaveCount(
       0,
     );
     await expect(
@@ -586,7 +589,7 @@ test.describe.serial("slacord web e2e", () => {
     ).toBeVisible();
 
     await page.goto(`/${fixture.teamId}/announcements`);
-    await expect(page.getByRole("button", { name: "공지 작성" })).toHaveCount(
+    await expect(page.getByRole("button", { name: "공지 작성", exact: true })).toHaveCount(
       0,
     );
     await expect(

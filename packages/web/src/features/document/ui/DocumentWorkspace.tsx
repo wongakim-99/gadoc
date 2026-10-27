@@ -17,6 +17,9 @@ import { DocumentCommentPanel } from './DocumentCommentPanel';
 import { DocumentVersionPanel } from './DocumentVersionPanel';
 import { DocumentContent } from './DocumentContent';
 import { ConfirmationDialog } from '@/src/shared/ui/ConfirmationDialog';
+import { WorkspaceReferenceActions } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
+import { DocumentDatabaseProperties } from '@/src/features/database/ui/DocumentDatabaseProperties';
+import { RelatedIssues } from '@/src/features/issue/ui/RelatedIssues';
 
 const DocumentEditorPanel = dynamic(() => import('./DocumentEditorPanel').then((m) => m.DocumentEditorPanel), {
     ssr: false,
@@ -47,6 +50,11 @@ export function DocumentWorkspace({
     const [pending, setPending] = useState<{ kind: 'archive' } | { kind: 'restore'; id: string } | null>(null);
     const titleInput = useRef<HTMLTextAreaElement>(null);
     const editorContainer = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (autosave.status === 'saved') {
+            setActionError((current) => (current.startsWith('하위 페이지는 생성됐지만') ? '' : current));
+        }
+    }, [autosave.status]);
     useEffect(() => {
         if (ready && new URLSearchParams(window.location.search).get('new') === '1') {
             titleInput.current?.focus();
@@ -91,7 +99,7 @@ export function DocumentWorkspace({
     const button =
         'rounded p-2 text-text-secondary hover:bg-bg-hover aria-expanded:bg-bg-hover aria-pressed:bg-bg-hover';
 
-    const createChild = async () => {
+    const createChild = async (insertLink?: (child: { id: string; title: string }) => void) => {
         if (!ready || !workspace.canWrite || doc.canEdit === false || creatingChildRef.current) return;
         creatingChildRef.current = true;
         setCreatingChild(true);
@@ -107,6 +115,15 @@ export function DocumentWorkspace({
             const child = unwrapApiData<DocumentFull>(response);
             if (!response.success || !child?.id) throw new Error('하위 페이지를 만들지 못했습니다.');
             window.dispatchEvent(new CustomEvent('slacord:documents-refresh'));
+            if (insertLink) {
+                insertLink(child);
+                if (!(await autosave.flush())) {
+                    setActionError(
+                        '하위 페이지는 생성됐지만 본문 링크 저장에 실패했습니다. 저장을 재시도한 뒤 하위 페이지를 열어 주세요.',
+                    );
+                    return;
+                }
+            }
             router.push(`/${doc.teamId}/docs/${child.id}?new=1`);
         } catch (error) {
             setActionError(error instanceof Error ? error.message : '하위 페이지 생성 실패');
@@ -141,6 +158,13 @@ export function DocumentWorkspace({
                     </span>
                 </nav>
                 <div className="flex flex-wrap items-center gap-1">
+                    <WorkspaceReferenceActions
+                        reference={{
+                            kind: 'docs',
+                            href: `/${doc.teamId}/docs/${doc.id}`,
+                            label: autosave.title || '문서',
+                        }}
+                    />
                     <button
                         aria-label="전체 너비"
                         aria-pressed={fullWidth}
@@ -217,12 +241,18 @@ export function DocumentWorkspace({
                             </a>
                         )}
                     </div>
+                    <DocumentDatabaseProperties
+                        key={doc.id}
+                        teamId={doc.teamId}
+                        documentId={doc.id}
+                        members={workspace.members}
+                    />
                     {(autosave.error || actionError) && (
                         <p
                             role="alert"
                             className="mb-4 rounded-lg border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200"
                         >
-                            {autosave.error || actionError} 작성한 내용은 이 페이지에 유지됩니다.
+                            {actionError || autosave.error} 작성한 내용은 이 페이지에 유지됩니다.
                         </p>
                     )}
                     {doc.canEdit !== false ? (
@@ -236,6 +266,7 @@ export function DocumentWorkspace({
                                     setReady(true);
                                 }}
                                 onChange={autosave.changeContent}
+                                onCreateChild={workspace.canWrite ? createChild : undefined}
                                 onQuoteSelection={setSelectedQuote}
                                 syncKey={doc.id}
                                 teamId={doc.teamId}
@@ -250,6 +281,12 @@ export function DocumentWorkspace({
                             }}
                         />
                     )}
+                    <RelatedIssues
+                        teamId={doc.teamId}
+                        kind="document"
+                        resourceId={doc.id}
+                        canWrite={workspace.canWrite}
+                    />
                     <DocumentChildrenPanel
                         teamId={doc.teamId}
                         children={children}

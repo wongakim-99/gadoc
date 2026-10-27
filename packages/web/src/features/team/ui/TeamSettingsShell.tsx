@@ -146,7 +146,7 @@ export function TeamSettingsShell({ teamId }: Props) {
                         aria-pressed={section.key === activeSection}
                         className={`rounded-[28px] border p-4 text-left transition ${
                             section.key === activeSection
-                                ? 'border-brand-400/30 bg-brand-500/12 text-white shadow-[0_18px_48px_rgba(214,176,138,0.12)]'
+                                ? 'border-brand-400/30 bg-brand-500/12 text-white shadow-sm'
                                 : 'border-white/10 bg-bg-secondary text-text-secondary hover:bg-white/6'
                         }`}
                     >
