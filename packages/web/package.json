@@ -1,6 +1,6 @@
 {
     "name": "@slacord/web",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "description": "GaDoc 웹 프론트엔드 (Next.js)",
     "private": true,
     "scripts": {
