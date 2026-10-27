@@ -9,7 +9,7 @@ export const siteConfig = {
     description: '대화, 문서, 할 일을 한곳에서. 흩어진 이야기가 정리되고, 함께할 일이 명확해집니다.',
     authDescription: '나누던 대화, 정리하던 문서, 함께할 일. 팀의 흐름을 여기서 이어가세요.',
     dashboardDescription: '팀의 대화와 할 일을 한눈에 확인하세요.',
-    desktopVersion: '1.1.0',
+    desktopVersion: '1.1.1',
     releasePage: 'https://github.com/kscold/gadoc/releases/latest',
     footerLabel: 'KSCOLD LABS',
     footerDescription: '흩어진 이야기를 모아, 함께할 일을 명확하게.',

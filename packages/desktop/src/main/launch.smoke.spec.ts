@@ -1,13 +1,21 @@
 import http from "node:http";
 import path from "node:path";
+import os from "node:os";
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { execFileSync, spawn, type ChildProcess } from "node:child_process";
+import { execFileSync } from "node:child_process";
+import { _electron } from "playwright";
 
 const requireFromThisFile = createRequire(import.meta.url);
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(currentDir, "../..");
 const electronBinary = requireFromThisFile("electron");
+const png = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lWQAAAAASUVORK5CYII=",
+  "base64",
+);
+const authorizedDownloads: string[] = [];
 
 function createSmokeServer() {
   let resolveReady: ((payload: Record<string, string>) => void) | null = null;
@@ -17,6 +25,21 @@ function createSmokeServer() {
 
   let webRevision = 1;
   const server = http.createServer((request, response) => {
+    if (request.url?.startsWith("/api/files?")) {
+      if (!request.headers.cookie?.includes("gadoc_smoke=1")) {
+        response.writeHead(401).end();
+        return;
+      }
+      authorizedDownloads.push(request.url);
+      response
+        .writeHead(200, {
+          "Content-Type": "image/png",
+          "Content-Length": png.length,
+          "Content-Disposition": 'inline; filename="photo.png"',
+        })
+        .end(png);
+      return;
+    }
     if (request.url === "/__web_update__") {
       webRevision = 2;
       response.writeHead(204).end();
@@ -37,15 +60,18 @@ function createSmokeServer() {
     response.writeHead(200, {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store",
+      "Set-Cookie": "gadoc_smoke=1; HttpOnly; SameSite=Lax; Path=/",
     });
     response.end(`<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
-    <title>Slacord Desktop Smoke</title>
+    <title>GaDoc Desktop Smoke</title>
   </head>
   <body>
     <h1 id="status">대기 중</h1>
+    <a id="file" href="/api/files?key=photo.png">Download attachment</a>
+    <a id="file-new" href="/api/files?key=photo.png" target="_blank">Open attachment</a>
     <script>
       const revision = ${webRevision};
       const bridge = window.slacordDesktop;
@@ -109,8 +135,10 @@ describe("desktop launch smoke", () => {
     });
   });
 
-  it("앱 재빌드 없이 새 웹 버전을 로드하고 preload IPC를 유지함", async () => {
-    const logs: string[] = [];
+  it("웹 갱신·인증 첨부 다운로드·기본 창 영역과 닫기 후 재열기를 유지함", async () => {
+    const directory = mkdtempSync(
+      path.join(os.tmpdir(), "gadoc-desktop-smoke-"),
+    );
     const appEnv: NodeJS.ProcessEnv = {
       ...process.env,
       ELECTRON_DISABLE_SECURITY_WARNINGS: "1",
@@ -118,38 +146,33 @@ describe("desktop launch smoke", () => {
       SLACORD_DESKTOP_START_URL: baseUrl,
     };
     delete appEnv.ELECTRON_RUN_AS_NODE;
-    const app = spawn(electronBinary, [".", "--no-sandbox", "--disable-gpu"], {
+    const app = await _electron.launch({
+      executablePath: electronBinary,
+      args: [
+        ".",
+        "--no-sandbox",
+        "--disable-gpu",
+        `--user-data-dir=${path.join(directory, "profile")}`,
+      ],
       cwd: packageRoot,
-      env: appEnv,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-
-    app.stdout?.on("data", (chunk) => {
-      logs.push(String(chunk));
-    });
-    app.stderr?.on("data", (chunk) => {
-      logs.push(String(chunk));
+      env: Object.fromEntries(
+        Object.entries(appEnv).filter(
+          (entry): entry is [string, string] => entry[1] !== undefined,
+        ),
+      ),
+      timeout: 40000,
     });
 
     try {
+      const page = await app.firstWindow();
       const ready = await Promise.race([
         server.waitForReady(),
         new Promise<Record<string, string>>((_, reject) => {
-          const timeout = setTimeout(() => {
-            reject(
-              new Error(
-                `Electron 스모크 준비 콜백을 기다리다 시간 초과가 났어요.\n${logs.join("")}`,
-              ),
-            );
-          }, 40000);
-          app.once("exit", (code) => {
-            clearTimeout(timeout);
-            reject(
-              new Error(
-                `Electron 프로세스가 먼저 종료됐어요. code=${code}\n${logs.join("")}`,
-              ),
-            );
-          });
+          const timeout = setTimeout(
+            () => reject(new Error("Electron 브리지 준비 시간 초과")),
+            40000,
+          );
+          timeout.unref();
         }),
       ]);
 
@@ -161,25 +184,88 @@ describe("desktop launch smoke", () => {
         updater: "1",
         href: "/auth/login",
       });
+      const geometry = await app.evaluate(({ app, BrowserWindow }) => {
+        const window = BrowserWindow.getAllWindows()[0];
+        return {
+          frame: window.getBounds(),
+          content: window.getContentBounds(),
+          profile: app.getPath("userData"),
+        };
+      });
+      expect(realpathSync(geometry.profile)).toBe(
+        realpathSync(path.join(directory, "profile")),
+      );
+      if (process.platform === "darwin")
+        expect(geometry.content.y - geometry.frame.y).toBeGreaterThanOrEqual(
+          20,
+        );
+      for (const id of ["file", "file-new"]) {
+        const file = path.join(directory, `${id}.png`);
+        await app.evaluate(({ BrowserWindow }, savePath) => {
+          BrowserWindow.getAllWindows()[0].webContents.session.once(
+            "will-download",
+            (_event, item) => item.setSavePath(savePath),
+          );
+        }, file);
+        // Canceled native navigation has no browser navigation-complete event.
+        await app.evaluate(
+          ({ BrowserWindow }, elementId) =>
+            BrowserWindow.getAllWindows()[0].webContents.executeJavaScript(
+              `document.getElementById(${JSON.stringify(elementId)}).click()`,
+              true,
+            ),
+          id,
+        );
+        await expect
+          .poll(() => {
+            try {
+              return readFileSync(file).equals(png);
+            } catch {
+              return false;
+            }
+          })
+          .toBe(true);
+        expect(new URL(page.url()).pathname).toBe("/auth/login");
+        expect(
+          await app.evaluate(({ BrowserWindow }) =>
+            BrowserWindow.getAllWindows()[0].webContents.isLoading(),
+          ),
+        ).toBe(false);
+      }
+      expect(authorizedDownloads).toHaveLength(2);
+      expect(
+        await app.evaluate(
+          ({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
+        ),
+      ).toBe(1);
+      expect(
+        await app.evaluate(({ BrowserWindow }) => {
+          const window = BrowserWindow.getAllWindows()[0];
+          window.close();
+          return {
+            destroyed: window.isDestroyed(),
+            visible: window.isVisible(),
+          };
+        }),
+      ).toEqual({ destroyed: false, visible: false });
+      await app.evaluate(({ app }) => app.emit("activate"));
+      await expect
+        .poll(() =>
+          app.evaluate(({ BrowserWindow }) =>
+            BrowserWindow.getAllWindows()[0].isVisible(),
+          ),
+        )
+        .toBe(true);
+      expect(
+        await app.evaluate(({ BrowserWindow }) =>
+          BrowserWindow.getAllWindows()[0].webContents.executeJavaScript(
+            "document.getElementById('status').textContent",
+          ),
+        ),
+      ).toBe("데스크톱 브리지 준비");
     } finally {
-      await stopProcess(app);
+      await app.close();
+      rmSync(directory, { recursive: true, force: true });
     }
   }, 60000);
 });
-
-async function stopProcess(process: ChildProcess) {
-  if (process.exitCode !== null) return;
-  process.kill("SIGTERM");
-  await new Promise<void>((resolve) => {
-    const fallback = setTimeout(() => {
-      if (process.exitCode === null) {
-        process.kill("SIGKILL");
-        resolve();
-      }
-    }, 5000);
-    process.once("exit", () => {
-      clearTimeout(fallback);
-      resolve();
-    });
-  });
-}

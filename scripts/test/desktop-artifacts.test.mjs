@@ -48,6 +48,14 @@ test("release requires all platforms and emits SHA256 plus unsigned warnings", (
       readFileSync(path.join(directory, "RELEASE_NOTES.md"), "utf8"),
       /SmartScreen/,
     );
+    assert.ok(
+      readFileSync(path.join(directory, "RELEASE_NOTES.md"), "utf8").includes(
+        readFileSync(
+          new URL(`../../docs/releases/v${version}.md`, import.meta.url),
+          "utf8",
+        ).trim(),
+      ),
+    );
     writeFileSync(
       path.join(directory, "latest.yml"),
       "version: 0.0.1\npath: Slacord-0.0.1-x64.exe",

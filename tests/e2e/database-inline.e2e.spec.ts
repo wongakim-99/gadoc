@@ -161,6 +161,7 @@ test("slash database stays in the document and survives reload with editable row
   await expect(page.locator("iframe")).toHaveCount(0);
   await expect(titleInput).toHaveValue("유지할 제목");
   await page.unrouteAll({ behavior: "wait" });
+  await expect(titleInput).toBeEnabled();
   await titleInput.focus();
   await titleInput.press("Enter");
   await expect(

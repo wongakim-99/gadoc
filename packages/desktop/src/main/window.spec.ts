@@ -42,7 +42,8 @@ describe.each(['win32', 'darwin'])('desktop window on %s', (platform) => {
         app.emit('before-quit');
         window.emit('close', { preventDefault });
         expect(preventDefault).not.toHaveBeenCalled();
-        expect(window.options.titleBarStyle).toBe(platform === 'darwin' ? 'hiddenInset' : 'default');
+        expect(window.options.titleBarStyle).toBe('default');
+        expect(window.options.title).toBe('GaDoc');
         expect(window.options.webPreferences).toMatchObject({
             sandbox: true,
             contextIsolation: true,
