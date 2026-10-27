@@ -129,7 +129,7 @@ test("slash database stays in the document and survives reload with editable row
       );
       return result?.data?.content;
     })
-    .toContain("databaseId");
+    .toMatch(/"databaseId":"[a-f0-9]{24}"/);
   await page.reload();
   await expect(
     page

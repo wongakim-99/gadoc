@@ -1,6 +1,9 @@
 // Preserve stored document HTML/JSON and legacy messages without rewriting the database.
 export function privateFileUrl(value: string): string {
-    return value.replaceAll('https://bucket.kscold.com/slacord/slacord/', '/api/files?key=slacord/');
+    return value.replace(
+        /https:\/\/bucket\.kscold\.com\/(?:slacord|gadoc)\/(slacord|gadoc)\//g,
+        '/api/files?key=$1/',
+    );
 }
 
 export function withPrivateFiles<T>(value: T): T {

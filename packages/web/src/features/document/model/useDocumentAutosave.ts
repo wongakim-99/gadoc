@@ -7,7 +7,7 @@ import type { DocumentFull } from '@/src/entities/document/types';
 import { DocumentSaveQueue, type DocumentDraft, type SaveStatus } from './DocumentSaveQueue';
 import { canLeaveWorkspacePane, useWorkspaceLeaveGuard } from '@/src/features/workspace/model/useWorkspaceConnection';
 
-export function useDocumentAutosave(doc: DocumentFull) {
+export function useDocumentAutosave(doc: DocumentFull, contentManagedExternally = false) {
     const router = useRouter();
     const [title, setTitle] = useState(doc.title);
     const [status, setStatus] = useState<SaveStatus>('saved');
@@ -39,8 +39,9 @@ export function useDocumentAutosave(doc: DocumentFull) {
                 async (snapshot) => {
                     const response = await documentApi.updateDocument(doc.teamId, doc.id, {
                         title: snapshot.title.trim() || '제목 없음',
-                        content: snapshot.content,
-                        contentFormat: 'json',
+                        ...(!contentManagedExternally
+                            ? { content: snapshot.content, contentFormat: 'json' as const }
+                            : {}),
                     });
                     const saved = unwrapApiData<DocumentFull>(response);
                     if (!response.success || !saved)
@@ -57,7 +58,7 @@ export function useDocumentAutosave(doc: DocumentFull) {
             queue.current.update(draft.current);
             schedule();
         },
-        [doc, schedule],
+        [doc, schedule, contentManagedExternally],
     );
 
     const changeTitle = (value: string) => {
@@ -67,6 +68,7 @@ export function useDocumentAutosave(doc: DocumentFull) {
         schedule();
     };
     const changeContent = (value: string) => {
+        if (contentManagedExternally) return;
         draft.current = { ...draft.current, content: value };
         queue.current?.update(draft.current);
         schedule();
@@ -133,5 +135,13 @@ export function useDocumentAutosave(doc: DocumentFull) {
         };
     }, [flush, router]);
 
-    return { title, status, error, updatedAt, onReady, changeTitle, changeContent, setComposing, flush };
+    const receiveRemote = (remoteTitle?: string, remoteUpdatedAt?: string) => {
+        if (remoteUpdatedAt) setUpdatedAt(remoteUpdatedAt);
+        if (remoteTitle === undefined) return;
+        if (queue.current ? queue.current.receiveTitle(remoteTitle) : draft.current.title === doc.title) {
+            draft.current.title = remoteTitle;
+            setTitle(remoteTitle);
+        }
+    };
+    return { title, status, error, updatedAt, onReady, changeTitle, changeContent, setComposing, flush, receiveRemote };
 }

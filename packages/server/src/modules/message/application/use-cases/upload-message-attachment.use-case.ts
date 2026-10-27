@@ -30,7 +30,7 @@ export class UploadMessageAttachmentUseCase {
         const fileName = this.sanitizeName(input.file.originalname);
         const datePath = this.clock.now().toISOString().slice(0, 10);
         const objectName = [
-            'slacord',
+            'gadoc',
             'chat',
             input.teamId,
             input.channelId,

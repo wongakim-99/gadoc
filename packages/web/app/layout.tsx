@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     description: siteConfig.description,
     applicationName: siteConfig.name,
     openGraph: {
-        title: `가닥 GaDoc | ${siteConfig.tagline}`,
+        title: `가독 GaDoc | ${siteConfig.tagline}`,
         description: siteConfig.description,
         siteName: siteConfig.name,
         locale: 'ko_KR',

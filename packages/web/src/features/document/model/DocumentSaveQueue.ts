@@ -34,6 +34,12 @@ export class DocumentSaveQueue {
     pause(value: boolean) {
         this.paused = value;
     }
+    receiveTitle(title: string): boolean {
+        if (this.running || this.desired.title !== this.acknowledged.title) return false;
+        this.acknowledged.title = title;
+        this.desired.title = title;
+        return true;
+    }
 
     flush(): Promise<boolean> {
         if (this.running) return this.running;

@@ -17,7 +17,9 @@ export function parseDesktopRelease(value: unknown): DesktopRelease | null {
         return null;
 
     const version = release.tag_name.slice(1);
-    const prefix = `https://github.com/kscold/slacord/releases/download/${release.tag_name}/`;
+    const prefixes = ['gadoc', 'slacord'].map(
+        (repo) => `https://github.com/kscold/${repo}/releases/download/${release.tag_name}/`,
+    );
     const names = new Set(
         ['GaDoc', 'Slacord'].flatMap((brand) =>
             ['x64.exe', 'arm64.dmg', 'arm64.zip'].map((suffix) => `${brand}-${version}-${suffix}`),
@@ -30,7 +32,7 @@ export function parseDesktopRelease(value: unknown): DesktopRelease | null {
             asset.state !== 'uploaded' ||
             typeof asset.name !== 'string' ||
             !names.has(asset.name) ||
-            asset.browser_download_url !== `${prefix}${asset.name}` ||
+            !prefixes.some((prefix) => asset.browser_download_url === `${prefix}${asset.name}`) ||
             typeof asset.size !== 'number' ||
             asset.size <= 0
         )

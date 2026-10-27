@@ -6,7 +6,7 @@ const asset = {
     name,
     state: 'uploaded',
     size: 100,
-    browser_download_url: `https://github.com/kscold/slacord/releases/download/v1.0.9/${name}`,
+    browser_download_url: `https://github.com/kscold/gadoc/releases/download/v1.0.9/${name}`,
 };
 const release = { tag_name: 'v1.0.9', draft: false, prerelease: false, assets: [asset] };
 

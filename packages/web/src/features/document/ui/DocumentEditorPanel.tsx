@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { createDocumentSchema, type DocumentBlockEditor } from './documentBlockSchema';
+import { useEffect, useMemo, useRef } from 'react';
+import { createDocumentSchema } from './documentBlockSchema';
+import { useDocumentCollaboration } from '../model/useDocumentCollaboration';
+import type { CollaborationState, DocumentCollaborationProvider } from '../model/DocumentCollaborationProvider';
 import { useCreateBlockNote, SuggestionMenuController, getDefaultReactSlashMenuItems } from '@blocknote/react';
 import { filterSuggestionItems } from '@blocknote/core/extensions';
 import { Database, FilePlus2 } from 'lucide-react';
@@ -24,23 +26,79 @@ interface Props {
     onQuoteSelection?: (quote: string | null) => void;
     syncKey: string;
     teamId: string;
+    onCollaboration?: (state: CollaborationState, flush: () => Promise<boolean>) => void;
 }
 
-export function DocumentEditorPanel({
-    contentFormat,
+export function DocumentEditorPanel(props: Props) {
+    const { provider, state } = useDocumentCollaboration(props.teamId, props.documentId);
+    const notify = useRef(props.onCollaboration);
+    notify.current = props.onCollaboration;
+    useEffect(() => {
+        if (state && provider) notify.current?.(state, () => provider.flush());
+    }, [state, provider]);
+    return (
+        <div className="space-y-3">
+            {state?.error && (
+                <div
+                    role="alert"
+                    className="rounded-control border border-amber-400/30 px-3 py-2 text-sm text-text-secondary"
+                >
+                    {state.error}{' '}
+                    <button
+                        className="ml-2 underline"
+                        onClick={() => {
+                            provider?.reconnect();
+                            void provider?.flush();
+                        }}
+                    >
+                        다시 연결
+                    </button>
+                </div>
+            )}
+            {provider && state?.ready ? (
+                <>
+                    <div
+                        aria-label="공동 편집 참여자"
+                        className="flex flex-wrap items-center gap-2 text-xs text-text-secondary"
+                    >
+                        <span
+                            className={`h-1.5 w-1.5 rounded-full ${state.connected ? 'bg-emerald-400' : 'bg-amber-400'}`}
+                        />
+                        <span>{state.connected ? '실시간 연결됨' : '재연결 중'}</span>
+                        {state.peers.map((peer) => (
+                            <span
+                                key={peer.id}
+                                className="inline-flex items-center gap-1.5 rounded-full bg-bg-secondary px-2 py-1"
+                            >
+                                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: peer.color }} />
+                                {peer.name}
+                                {peer.editing ? ' · 편집 중' : ''}
+                            </span>
+                        ))}
+                    </div>
+                    <LiveDocumentEditor {...props} provider={provider} canEdit={state.canEdit} />
+                </>
+            ) : (
+                <p role="status" className="py-6 text-sm text-text-secondary">
+                    문서를 연결하고 있습니다.
+                </p>
+            )}
+        </div>
+    );
+}
+
+function LiveDocumentEditor({
     documentId,
-    initialContent,
     onChange,
     onReady,
     onCreateChild,
     onQuoteSelection,
-    syncKey,
     teamId,
-}: Props) {
+    provider,
+    canEdit,
+}: Props & { provider: DocumentCollaborationProvider; canEdit: boolean }) {
     const onChangeRef = useRef(onChange);
-    const [loadError, setLoadError] = useState('');
     const initialized = useRef(false);
-    const loaded = useRef<{ editor: unknown; syncKey: string } | null>(null);
     const onReadyRef = useRef(onReady);
     onReadyRef.current = onReady;
     onChangeRef.current = onChange;
@@ -51,7 +109,12 @@ export function DocumentEditorPanel({
         {
             schema,
             dictionary: ko,
-            initialContent: [{ type: 'paragraph' }],
+            collaboration: {
+                fragment: provider.doc.getXmlFragment('document-store'),
+                provider,
+                user: provider.user,
+                showCursorLabels: 'activity',
+            },
             uploadFile: async (file) => {
                 const url = unwrapApiData<{ url: string }>(
                     await documentApi.uploadDocumentFile(teamId, documentId, file),
@@ -60,31 +123,13 @@ export function DocumentEditorPanel({
                 return url;
             },
         },
-        [teamId, documentId],
+        [teamId, documentId, provider],
     );
 
     useEffect(() => {
-        if (loaded.current?.editor === editor && loaded.current.syncKey === syncKey) return;
-        initialized.current = false;
-        setLoadError('');
-        let cancelled = false;
-        queueMicrotask(() => {
-            if (cancelled) return;
-            try {
-                syncEditor(editor, initialContent, contentFormat);
-                initialized.current = true;
-                loaded.current = { editor, syncKey };
-                onReadyRef.current(JSON.stringify(editor.document));
-            } catch {
-                setLoadError(
-                    '본문을 편집기로 불러오지 못했습니다. 원본은 변경하지 않았습니다. 버전 이력을 확인해 주세요.',
-                );
-            }
-        });
-        return () => {
-            cancelled = true;
-        };
-    }, [contentFormat, editor, initialContent, syncKey]);
+        initialized.current = true;
+        onReadyRef.current(JSON.stringify(editor.document));
+    }, [editor]);
 
     const markDropTarget = (target: EventTarget | null) => {
         dropTarget.current?.removeAttribute('data-reference-drop-target');
@@ -99,6 +144,7 @@ export function DocumentEditorPanel({
         [],
     );
     const insertReference = (reference: WorkspaceReference, target?: EventTarget | null) => {
+        if (!canEdit) return;
         const id = target instanceof Element ? target.closest<HTMLElement>('[data-id]')?.dataset.id : undefined;
         const block =
             target === undefined
@@ -112,25 +158,20 @@ export function DocumentEditorPanel({
         onChangeRef.current(JSON.stringify(editor.document));
     };
 
-    if (loadError)
-        return (
-            <p role="alert" className="text-sm text-red-300">
-                {loadError}
-            </p>
-        );
-
     return (
         <div className="space-y-3">
-            <InsertWorkspaceReference onInsert={(reference) => insertReference(reference)} />
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-text-tertiary">빈 줄에서 / 를 입력해 블록을 추가하세요.</p>
-                <DocumentAttachmentButton
-                    documentId={documentId}
-                    editor={editor}
-                    onUploaded={() => onChangeRef.current(JSON.stringify(editor.document))}
-                    teamId={teamId}
-                />
-            </div>
+            {canEdit && <InsertWorkspaceReference onInsert={(reference) => insertReference(reference)} />}
+            {canEdit && (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-xs text-text-tertiary">빈 줄에서 / 를 입력해 블록을 추가하세요.</p>
+                    <DocumentAttachmentButton
+                        documentId={documentId}
+                        editor={editor}
+                        onUploaded={() => onChangeRef.current(JSON.stringify(editor.document))}
+                        teamId={teamId}
+                    />
+                </div>
+            )}
             <WorkspaceReferenceDropZone
                 label="놓은 문단 아래에 참조 추가"
                 onHover={markDropTarget}
@@ -139,7 +180,7 @@ export function DocumentEditorPanel({
                 <BlockNoteView
                     slashMenu={false}
                     editor={editor}
-                    editable={!loadError}
+                    editable={canEdit}
                     className="slacord-blocknote"
                     theme="dark"
                     onSelectionChange={() => {
@@ -150,91 +191,88 @@ export function DocumentEditorPanel({
                         if (initialized.current) onChangeRef.current(JSON.stringify(editor.document));
                     }}
                 >
-                    <SuggestionMenuController
-                        triggerCharacter="/"
-                        getItems={async (query) =>
-                            filterSuggestionItems(
-                                [
-                                    ...getDefaultReactSlashMenuItems(editor),
-                                    {
-                                        title: '데이터베이스',
-                                        subtext: '페이지 안에 새 데이터베이스를 만들거나 기존 데이터베이스 연결',
-                                        aliases: ['database', '데이터베이스', '인라인', '표'],
-                                        group: '데이터 관리',
-                                        icon: <Database size={18} />,
-                                        onItemClick: () => {
-                                            const current = editor.getTextCursorPosition().block;
-                                            if (current.type === 'paragraph' && current.content.length === 0) {
-                                                editor.updateBlock(current, {
-                                                    type: 'database',
-                                                    props: { databaseId: '' },
-                                                });
-                                            } else {
-                                                editor.insertBlocks([{ type: 'database' }], current, 'after');
-                                            }
+                    {canEdit && (
+                        <SuggestionMenuController
+                            triggerCharacter="/"
+                            getItems={async (query) =>
+                                filterSuggestionItems(
+                                    [
+                                        {
+                                            title: '데이터베이스',
+                                            subtext: '페이지 안에 새 데이터베이스를 만들거나 기존 데이터베이스 연결',
+                                            aliases: [
+                                                'database',
+                                                'db',
+                                                '데이터베이스',
+                                                '데이터',
+                                                '디비',
+                                                '인라인',
+                                                '표',
+                                                'wbs',
+                                                '일정',
+                                            ],
+                                            group: '데이터 관리',
+                                            icon: <Database size={18} />,
+                                            onItemClick: () => {
+                                                const current = editor.getTextCursorPosition().block;
+                                                if (current.type === 'paragraph' && current.content.length === 0) {
+                                                    editor.updateBlock(current, {
+                                                        type: 'database',
+                                                        props: { databaseId: '' },
+                                                    });
+                                                } else {
+                                                    editor.insertBlocks([{ type: 'database' }], current, 'after');
+                                                }
+                                            },
                                         },
-                                    },
-                                    ...(onCreateChild
-                                        ? [
-                                              {
-                                                  title: '페이지',
-                                                  subtext: '이 문서 아래에 새 페이지를 만들고 열기',
-                                                  aliases: ['page', 'subpage', '하위페이지', '하위 페이지', '문서'],
-                                                  group: '문서 생성',
-                                                  icon: <FilePlus2 size={18} />,
-                                                  onItemClick: () => {
-                                                      const blockId = editor.getTextCursorPosition().block.id;
-                                                      void onCreateChild((child) => {
-                                                          const block = editor.getBlock(blockId);
-                                                          const content = [
-                                                              {
-                                                                  type: 'link' as const,
-                                                                  href: `/${teamId}/docs/${child.id}`,
-                                                                  content: child.title,
-                                                              },
-                                                          ];
-                                                          if (
-                                                              block?.type === 'paragraph' &&
-                                                              Array.isArray(block.content) &&
-                                                              block.content.length === 0
-                                                          ) {
-                                                              editor.updateBlock(blockId, { content });
-                                                          } else {
-                                                              editor.insertBlocks(
-                                                                  [{ type: 'paragraph', content }],
-                                                                  block ?? editor.document[editor.document.length - 1],
-                                                                  'after',
-                                                              );
-                                                          }
-                                                          onChangeRef.current(JSON.stringify(editor.document));
-                                                      });
+                                        ...getDefaultReactSlashMenuItems(editor),
+                                        ...(onCreateChild
+                                            ? [
+                                                  {
+                                                      title: '페이지',
+                                                      subtext: '이 문서 아래에 새 페이지를 만들고 열기',
+                                                      aliases: ['page', 'subpage', '하위페이지', '하위 페이지', '문서'],
+                                                      group: '문서 생성',
+                                                      icon: <FilePlus2 size={18} />,
+                                                      onItemClick: () => {
+                                                          const blockId = editor.getTextCursorPosition().block.id;
+                                                          void onCreateChild((child) => {
+                                                              const block = editor.getBlock(blockId);
+                                                              const content = [
+                                                                  {
+                                                                      type: 'link' as const,
+                                                                      href: `/${teamId}/docs/${child.id}`,
+                                                                      content: child.title,
+                                                                  },
+                                                              ];
+                                                              if (
+                                                                  block?.type === 'paragraph' &&
+                                                                  Array.isArray(block.content) &&
+                                                                  block.content.length === 0
+                                                              ) {
+                                                                  editor.updateBlock(blockId, { content });
+                                                              } else {
+                                                                  editor.insertBlocks(
+                                                                      [{ type: 'paragraph', content }],
+                                                                      block ??
+                                                                          editor.document[editor.document.length - 1],
+                                                                      'after',
+                                                                  );
+                                                              }
+                                                              onChangeRef.current(JSON.stringify(editor.document));
+                                                          });
+                                                      },
                                                   },
-                                              },
-                                          ]
-                                        : []),
-                                ],
-                                query,
-                            )
-                        }
-                    />
+                                              ]
+                                            : []),
+                                    ],
+                                    query,
+                                )
+                            }
+                        />
+                    )}
                 </BlockNoteView>
             </WorkspaceReferenceDropZone>
         </div>
     );
-}
-
-function syncEditor(editor: DocumentBlockEditor, content: string, contentFormat: 'plain' | 'html' | 'json') {
-    const fallback = editor.tryParseHTMLToBlocks('<p></p>');
-    if (contentFormat === 'json' && content.trim()) {
-        const blocks = JSON.parse(content);
-        if (!Array.isArray(blocks)) throw new Error('Invalid document blocks');
-        editor.replaceBlocks(editor.document, blocks.length > 0 ? blocks : fallback);
-        return;
-    }
-    const nextBlocks = !content.trim()
-        ? fallback
-        : contentFormat === 'html'
-          ? editor.tryParseHTMLToBlocks(content)
-          : editor.tryParseMarkdownToBlocks(content);
-    editor.replaceBlocks(editor.document, nextBlocks.length > 0 ? nextBlocks : fallback);
 }

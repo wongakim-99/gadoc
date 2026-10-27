@@ -29,11 +29,13 @@ export function storageCredentials(config: ConfigService, production = process.e
 export class MinioFileStorageAdapter implements IFileStorage {
     private readonly logger = new Logger(MinioFileStorageAdapter.name);
     private readonly bucket: string;
+    private readonly preProvisioned: boolean;
     private readonly client: S3Client;
     private bucketReady: Promise<void> | null = null;
 
     constructor(config: ConfigService) {
-        this.bucket = config.get<string>('MINIO_BUCKET') ?? 'slacord';
+        this.bucket = config.get<string>('MINIO_BUCKET') ?? 'gadoc';
+        this.preProvisioned = config.get<string>('MINIO_PREPROVISIONED') === '1';
         this.client = new S3Client({
             endpoint: config.get<string>('MINIO_ENDPOINT') ?? 'http://host.docker.internal:9000',
             region: 'us-east-1',
@@ -68,8 +70,9 @@ export class MinioFileStorageAdapter implements IFileStorage {
 
     async read(key: string, requestedRange?: string) {
         let stat;
+        const bucket = this.bucket;
         try {
-            stat = await this.client.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
+            stat = await this.client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
         } catch (error) {
             if (['NoSuchKey', 'NotFound'].includes((error as Error).name))
                 throw new NotFoundException('파일을 찾을 수 없습니다.');
@@ -80,7 +83,7 @@ export class MinioFileStorageAdapter implements IFileStorage {
         if (!size) return { stream: Readable.from([]), size, ...range, ...safeUploadContent(Buffer.alloc(0), '') };
         const probe = await this.client.send(
             new GetObjectCommand({
-                Bucket: this.bucket,
+                Bucket: bucket,
                 Key: key,
                 Range: `bytes=0-${Math.min(511, size - 1)}`,
             }),
@@ -89,7 +92,7 @@ export class MinioFileStorageAdapter implements IFileStorage {
         const content = safeUploadContent(Buffer.from(await probe.Body.transformToByteArray()), stat.ContentType ?? '');
         const file = await this.client.send(
             new GetObjectCommand({
-                Bucket: this.bucket,
+                Bucket: bucket,
                 Key: key,
                 Range: `bytes=${range.start}-${range.end}`,
             }),
@@ -100,7 +103,7 @@ export class MinioFileStorageAdapter implements IFileStorage {
 
     private ensureBucket() {
         // Production buckets are pre-provisioned. The app never needs ListBucket/CreateBucket/PutBucketPolicy.
-        if (process.env.NODE_ENV === 'production') return Promise.resolve();
+        if (process.env.NODE_ENV === 'production' || this.preProvisioned) return Promise.resolve();
         if (!this.bucketReady) {
             this.bucketReady = this.prepareDevelopmentBucket().catch((error) => {
                 this.bucketReady = null;

@@ -1,6 +1,6 @@
 {
     "name": "@slacord/server",
-    "version": "1.0.10",
+    "version": "1.1.0",
     "description": "GaDoc 백엔드 서버 (NestJS + 헥사고날 아키텍처)",
     "private": true,
     "scripts": {
@@ -20,6 +20,10 @@
         "clean": "rm -rf dist node_modules"
     },
     "dependencies": {
+        "@aws-sdk/client-s3": "^3.1157.0",
+        "@blocknote/core": "0.47.3",
+        "@blocknote/server-util": "0.47.3",
+        "@modelcontextprotocol/sdk": "^1.32.2",
         "@nestjs/common": "^11.2.8",
         "@nestjs/config": "^4.0.2",
         "@nestjs/core": "^11.2.8",
@@ -33,6 +37,7 @@
         "@nestjs/websockets": "^11.2.8",
         "@slack/bolt": "^4.6.0",
         "@slack/web-api": "^7.13.0",
+        "@slacord/document-core": "workspace:*",
         "axios": "^1.20.0",
         "bcrypt": "^6.0.0",
         "class-transformer": "^0.5.1",
@@ -46,8 +51,9 @@
         "rxjs": "^7.8.1",
         "socket.io": "^4.8.3",
         "swagger-ui-express": "^5.0.1",
-        "@aws-sdk/client-s3": "^3.1157.0",
-        "@slacord/document-core": "workspace:*"
+        "y-protocols": "^1.0.7",
+        "yjs": "^13.6.33",
+        "zod": "^4.6.7"
     },
     "devDependencies": {
         "@eslint/eslintrc": "^3.2.0",
