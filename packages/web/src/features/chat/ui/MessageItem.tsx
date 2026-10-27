@@ -1,6 +1,8 @@
 'use client';
 
 import { MessageActionBar } from './MessageActionBar';
+import { useState } from 'react';
+import { MessageWorkPanel } from '@/src/features/issue/ui/MessageWorkPanel';
 import { MessageAuthorMeta } from './MessageAuthorMeta';
 import { MessageActionToggle } from './MessageActionToggle';
 import { MessageBodyContent } from './MessageBodyContent';
@@ -33,6 +35,7 @@ export function MessageItem({
 }: Props) {
     const time = new Date(message.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
     const isOwn = message.authorId === currentUserId;
+    const [workOpen, setWorkOpen] = useState(false);
     const authorLabel = message.authorName || message.authorId.slice(-6);
     const { cancelEdit, editContent, editRef, editing, setEditContent, setEditing, startEdit } = useMessageItemEditor(
         message.content,
@@ -65,6 +68,11 @@ export function MessageItem({
             data-message-created-at={message.createdAt}
             data-message-id={message.id}
             ref={containerRef}
+            tabIndex={0}
+            onFocusCapture={openMenu}
+            onBlurCapture={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) closeMenu();
+            }}
             onMouseEnter={supportsHover ? openMenu : undefined}
             onMouseLeave={supportsHover ? closeMenu : undefined}
             className={`relative flex items-start gap-3 px-5 py-1.5 transition-colors ${highlighted ? 'bg-brand-500/10 ring-1 ring-inset ring-brand-400/40' : editing ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]'}`}
@@ -94,6 +102,7 @@ export function MessageItem({
                     onOpenThread={onOpenThread}
                     onReact={(emoji) => onReact(message.id, emoji)}
                 />
+                {workOpen && <MessageWorkPanel message={message} />}
             </div>
             <div className="shrink-0 pt-1 sm:hidden">
                 <MessageActionToggle onClick={toggleMenu} />
@@ -116,6 +125,7 @@ export function MessageItem({
                     onReact={(emoji) => onReact(message.id, emoji)}
                     onTogglePin={onTogglePin ? () => void onTogglePin(message) : undefined}
                     visible={open}
+                    onRelatedWork={() => setWorkOpen((value) => !value)}
                 />
             ) : null}
         </div>

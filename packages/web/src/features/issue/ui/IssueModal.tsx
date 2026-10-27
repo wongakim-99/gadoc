@@ -5,6 +5,8 @@ import type { Issue, IssuePriority, IssueStatus } from '@/src/entities/issue/typ
 import type { TeamMemberSummary } from '@/src/entities/team/types';
 import { IssueAssigneePicker } from './IssueAssigneePicker';
 import { IssueModalFields } from './IssueModalFields';
+import { IssueLinkedResources } from './IssueLinkedResources';
+import { useDialogFocusTrap } from '@/src/shared/ui/useDialogFocusTrap';
 import {
     ConnectedText,
     InsertWorkspaceReference,
@@ -13,6 +15,7 @@ import {
 import { useWorkspaceLeaveGuard } from '@/src/features/workspace/model/useWorkspaceConnection';
 
 interface CreateProps {
+    sourceNotice?: string;
     initialTitle?: string;
     mode: 'create';
     readOnly?: boolean;
@@ -37,10 +40,12 @@ interface EditProps {
     onClose: () => void;
 }
 
-type Props = CreateProps | EditProps;
+type Props = (CreateProps | EditProps) & { presentation?: 'modal' | 'pane' };
 
 export function IssueModal(props: Props) {
     const isEdit = props.mode === 'edit';
+    const pane = props.presentation === 'pane';
+    const [saved, setSaved] = useState(false);
     const [title, setTitle] = useState(isEdit ? props.issue.title : (props.initialTitle ?? ''));
     const [description, setDescription] = useState(isEdit ? (props.issue.description ?? '') : '');
     const [priority, setPriority] = useState<IssuePriority>(isEdit ? props.issue.priority : 'medium');
@@ -54,17 +59,22 @@ export function IssueModal(props: Props) {
     const readOnly = props.readOnly ?? false;
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
-    useWorkspaceLeaveGuard(
-        () =>
-            readOnly ||
+    const mayClose = () =>
+        !saving &&
+        (readOnly ||
             (title === (isEdit ? props.issue.title : (props.initialTitle ?? '')) &&
                 description === (isEdit ? (props.issue.description ?? '') : '') &&
                 priority === (isEdit ? props.issue.priority : 'medium') &&
                 status === (isEdit ? props.issue.status : 'todo') &&
                 JSON.stringify(assigneeIds) === JSON.stringify(isEdit ? (props.issue.assigneeIds ?? []) : []) &&
                 JSON.stringify(labels) === JSON.stringify(isEdit ? (props.issue.labels ?? []) : [])) ||
-            window.confirm('저장하지 않은 이슈 변경이 있습니다. 이 화면을 닫을까요?'),
-    );
+            window.confirm('저장하지 않은 이슈 변경이 있습니다. 이 화면을 닫을까요?'));
+    useWorkspaceLeaveGuard(mayClose);
+    const close = () => {
+        if (mayClose()) props.onClose();
+    };
+    const surface = useRef<HTMLFormElement>(null);
+    useDialogFocusTrap({ open: !pane, surfaceRef: surface, onEscape: close });
 
     const toggleAssignee = (userId: string) => {
         setAssigneeIds((prev) => (prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]));
@@ -102,13 +112,15 @@ export function IssueModal(props: Props) {
         if (!title.trim() || saving) return;
         setSaving(true);
         setSaveError('');
+        setSaved(false);
         try {
             if (isEdit) {
                 await props.onSubmit({ title, description, priority, status, assigneeIds, labels });
             } else {
                 await props.onSubmit({ title, description, priority, assigneeIds, labels });
             }
-            props.onClose();
+            if (!pane) props.onClose();
+            else setSaved(true);
         } catch (error) {
             setSaveError(error instanceof Error ? error.message : '저장하지 못했습니다. 작성 내용은 유지됩니다.');
         } finally {
@@ -118,26 +130,53 @@ export function IssueModal(props: Props) {
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm"
+            className={
+                pane
+                    ? 'h-full overflow-y-auto bg-bg-primary'
+                    : 'fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm'
+            }
             onClick={() => {
-                if (!saving) props.onClose();
+                if (!pane) close();
             }}
         >
             <form
-                role="dialog"
+                ref={surface}
+                aria-modal={pane ? undefined : true}
+                role={pane ? 'region' : 'dialog'}
                 aria-label={readOnly ? '이슈 보기' : isEdit ? '이슈 수정' : '이슈 생성'}
                 onClick={(e) => e.stopPropagation()}
                 onSubmit={handleSubmit}
                 aria-busy={saving}
-                className="bg-bg-secondary border border-border-primary rounded-panel p-6 w-full max-w-md shadow-2xl max-h-[85vh] overflow-y-auto"
+                className={
+                    pane
+                        ? 'mx-auto w-full max-w-3xl p-4 sm:p-6'
+                        : 'bg-bg-secondary border border-border-primary rounded-panel p-6 w-full max-w-md shadow-2xl max-h-[85vh] overflow-y-auto'
+                }
             >
                 <h3 className="text-lg font-bold text-white mb-4">
                     {readOnly ? '이슈 보기' : isEdit ? '이슈 수정' : '이슈 생성'}
                 </h3>
+                {saved && (
+                    <p role="status" className="mb-3 text-sm text-text-secondary">
+                        변경 사항을 저장했습니다.
+                    </p>
+                )}
                 {saveError && (
                     <p role="alert" className="mb-3 text-sm text-error">
                         {saveError}
                     </p>
+                )}
+                {!isEdit && props.sourceNotice && (
+                    <p className="mb-4 rounded-control border border-border-primary p-3 text-xs text-text-secondary">
+                        {props.sourceNotice}
+                    </p>
+                )}
+                {isEdit && (
+                    <IssueLinkedResources
+                        teamId={props.issue.teamId}
+                        issueId={props.issue.id}
+                        readOnly={readOnly || saving}
+                    />
                 )}
                 {isEdit && (
                     <WorkspaceReferenceActions
@@ -233,7 +272,7 @@ export function IssueModal(props: Props) {
                 <div className="flex gap-3 mt-2">
                     <button
                         type="button"
-                        onClick={props.onClose}
+                        onClick={close}
                         disabled={saving}
                         className="flex-1 py-2 rounded-lg border border-border-primary text-text-secondary hover:text-white hover:bg-bg-hover transition-colors text-sm"
                     >

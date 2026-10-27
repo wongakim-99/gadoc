@@ -9,15 +9,16 @@ interface Props {
 
 export function DashboardShell({ title, description, currentUserName, children }: Props) {
     return (
-        <div className="min-h-screen bg-bg-primary lg:flex">
+        <div className="workspace-shell dashboard-shell min-h-screen bg-bg-primary lg:flex">
             <DashboardSidebar currentUserName={currentUserName} />
-            <main className="flex-1 p-6 lg:p-10">
-                <header className="mb-8">
-                    <p className="text-sm font-medium text-[#d6b08a]">Workspace Console</p>
-                    <h1 className="mt-2 text-3xl font-bold text-white">{title}</h1>
-                    <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary">{description}</p>
+            <main className="min-w-0 flex-1">
+                <header className="workspace-topbar">
+                    <h1>{title}</h1>
                 </header>
-                {children}
+                <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+                    <p className="max-w-3xl text-sm leading-6 text-text-secondary">{description}</p>
+                    {children}
+                </div>
             </main>
         </div>
     );

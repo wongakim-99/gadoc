@@ -4,12 +4,13 @@ import { useState } from 'react';
 import type { Message } from '@/src/entities/message/types';
 import { EmojiPickerPopover } from './EmojiPickerPopover';
 import { useWorkspaceConnection } from '@/src/features/workspace/model/useWorkspaceConnection';
-import { Link2 } from 'lucide-react';
-import { useWorkspaceDragSource } from '@/src/features/workspace/model/useWorkspaceDragSource';
+import { ListTodo } from 'lucide-react';
+import { WorkspaceReferenceActions } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
 
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '🎉', '🔥', '👀', '🙏', '😢'];
 
 interface Props {
+    onRelatedWork?: () => void;
     isOwn: boolean;
     message: Message;
     onDelete?: (messageId: string) => void;
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export function MessageActionBar({
+    onRelatedWork,
     isOwn,
     message,
     onDelete,
@@ -37,29 +39,23 @@ export function MessageActionBar({
         href: `/${connection?.teamId || message.teamId}/channel/${message.channelId}?message=${encodeURIComponent(message.id)}&at=${encodeURIComponent(message.createdAt)}`,
         label: `대화 원문 · ${new Date(message.createdAt).toLocaleString('ko-KR')}`,
     };
-    const dragSource = useWorkspaceDragSource(reference);
     if (!visible && connection?.dragging?.href !== reference.href) return null;
 
     return (
         <div className="absolute right-5 -top-3.5 z-20 flex items-center gap-px rounded-lg border border-border-primary bg-bg-secondary shadow-lg">
-            {connection && (
+            {onRelatedWork && (
                 <button
                     type="button"
-                    title="끌어서 문서에 연결 · 클릭하면 참조 준비"
-                    {...dragSource}
-                    aria-label="메시지 참조 준비"
+                    title="후속 업무 · 이슈 만들기 및 연결"
+                    aria-label="메시지 후속 업무"
+                    onClick={onRelatedWork}
                     className="connection-icon"
-                    onClick={() =>
-                        connection.offer({
-                            kind: 'channel',
-                            href: `/${connection.teamId}/channel/${message.channelId}?message=${encodeURIComponent(message.id)}&at=${encodeURIComponent(message.createdAt)}`,
-                            label: `대화 원문 · ${new Date(message.createdAt).toLocaleString('ko-KR')}`,
-                        })
-                    }
                 >
-                    <Link2 size={15} />
+                    <ListTodo size={15} />
+                    <span className="text-xs">이슈 연결</span>
                 </button>
             )}
+            {connection && <WorkspaceReferenceActions reference={reference} />}
             {onOpenThread && !message.replyToId ? (
                 <IconButton onClick={onOpenThread} title="스레드">
                     <path

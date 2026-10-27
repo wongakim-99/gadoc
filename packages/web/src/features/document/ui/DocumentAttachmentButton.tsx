@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import type { BlockNoteEditor } from '@blocknote/core';
+import type { DocumentBlockEditor } from './documentBlockSchema';
 import { documentApi, unwrapApiData } from '@/lib/api-client';
 
 interface Props {
     documentId: string;
-    editor: BlockNoteEditor;
+    editor: DocumentBlockEditor;
     onUploaded: (content: string) => void;
     teamId: string;
 }

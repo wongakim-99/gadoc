@@ -1,3 +1,4 @@
+import { DatabaseModule } from './modules/knowledge-database/database.module';
 import { FileModule } from './modules/file/file.module';
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -56,6 +57,7 @@ import { HealthController } from './shared/http/health.controller';
         IssueModule,
         AnnouncementModule,
         DocumentModule,
+        DatabaseModule,
         NotificationModule,
     ],
 })

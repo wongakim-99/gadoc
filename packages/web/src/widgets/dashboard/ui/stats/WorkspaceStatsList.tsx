@@ -14,20 +14,27 @@ interface Props {
 
 export function WorkspaceStatsList({ stats }: Props) {
     return (
-        <div className="rounded-[28px] border border-border-primary bg-bg-secondary p-5 sm:p-6">
+        <div className="rounded-panel border border-border-primary bg-bg-secondary p-5 sm:p-6">
             <div className="flex items-center justify-between gap-3">
                 <div>
                     <h2 className="text-lg font-semibold text-white">워크스페이스 활동</h2>
-                    <p className="mt-1 text-sm text-text-secondary">채널별 최근 메시지 집계를 워크스페이스 단위로 묶어서 보여줍니다.</p>
+                    <p className="mt-1 text-sm text-text-secondary">
+                        채널별 최근 메시지 집계를 워크스페이스 단위로 묶어서 보여줍니다.
+                    </p>
                 </div>
             </div>
             <div className="mt-6 space-y-3">
                 {stats.map((item) => (
-                    <div key={item.id} className="rounded-2xl border border-border-primary bg-bg-primary/60 px-4 py-4">
+                    <div
+                        key={item.id}
+                        className="rounded-panel border border-border-primary bg-bg-primary/60 px-4 py-4"
+                    >
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
                                 <p className="font-semibold text-white">{item.name}</p>
-                                <p className="mt-1 text-xs text-text-tertiary">{item.githubLinked ? 'GitHub webhook 연결됨' : 'GitHub 미연결'}</p>
+                                <p className="mt-1 text-xs text-text-tertiary">
+                                    {item.githubLinked ? 'GitHub webhook 연결됨' : 'GitHub 미연결'}
+                                </p>
                             </div>
                             <div className="flex flex-wrap gap-3 text-xs text-text-secondary">
                                 <span>채널 {item.channels}</span>
@@ -37,9 +44,24 @@ export function WorkspaceStatsList({ stats }: Props) {
                             </div>
                         </div>
                         <div className="mt-4 flex flex-wrap gap-2">
-                            <Link href={`/${item.id}`} className="rounded-lg bg-[#b97532] px-3 py-2 text-xs font-semibold text-white">워크스페이스</Link>
-                            <Link href={`/${item.id}/docs`} className="rounded-lg border border-border-primary px-3 py-2 text-xs font-medium text-white">문서</Link>
-                            <Link href={`/${item.id}/issues`} className="rounded-lg border border-border-primary px-3 py-2 text-xs font-medium text-white">이슈</Link>
+                            <Link
+                                href={`/${item.id}`}
+                                className="rounded-control bg-action px-3 py-2 text-xs font-semibold text-white"
+                            >
+                                워크스페이스
+                            </Link>
+                            <Link
+                                href={`/${item.id}/docs`}
+                                className="rounded-lg border border-border-primary px-3 py-2 text-xs font-medium text-white"
+                            >
+                                문서
+                            </Link>
+                            <Link
+                                href={`/${item.id}/issues`}
+                                className="rounded-lg border border-border-primary px-3 py-2 text-xs font-medium text-white"
+                            >
+                                이슈
+                            </Link>
                         </div>
                     </div>
                 ))}

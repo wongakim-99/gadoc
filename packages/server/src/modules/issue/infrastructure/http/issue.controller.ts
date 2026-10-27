@@ -11,6 +11,8 @@ import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
 import type { IssueStatus } from '../../domain/issue.entity';
 import { IssueNotificationService } from '../../application/services/issue-notification.service';
+import { IssueLinksService } from '../../application/services/issue-links.service';
+import { IssueLinkDto } from './dto/issue-link.dto';
 
 /** 이슈 트래커 API */
 @ApiTags('issue')
@@ -19,6 +21,7 @@ import { IssueNotificationService } from '../../application/services/issue-notif
 @Controller('team/:teamId/issue')
 export class IssueController {
     constructor(
+        private readonly links: IssueLinksService,
         private readonly createIssueUseCase: CreateIssueUseCase,
         private readonly updateIssueUseCase: UpdateIssueUseCase,
         private readonly getIssuesUseCase: GetIssuesUseCase,
@@ -45,6 +48,44 @@ export class IssueController {
         });
     }
 
+    @Get('related')
+    @TeamRole('member')
+    related(@Param('teamId') teamId: string, @CurrentUser() user: { userId: string }, @Query() query: IssueLinkDto) {
+        return this.links.related(teamId, user.userId, query.kind, query.resourceId);
+    }
+
+    @Get(':issueId/links')
+    @TeamRole('member')
+    listLinks(
+        @Param('teamId') teamId: string,
+        @Param('issueId') issueId: string,
+        @CurrentUser() user: { userId: string },
+    ) {
+        return this.links.list(teamId, user.userId, issueId);
+    }
+
+    @Post(':issueId/links')
+    @TeamRole('writable')
+    addLink(
+        @Param('teamId') teamId: string,
+        @Param('issueId') issueId: string,
+        @CurrentUser() user: { userId: string },
+        @Body() dto: IssueLinkDto,
+    ) {
+        return this.links.add(teamId, user.userId, issueId, dto.kind, dto.resourceId);
+    }
+
+    @Delete(':issueId/links')
+    @TeamRole('writable')
+    removeLink(
+        @Param('teamId') teamId: string,
+        @Param('issueId') issueId: string,
+        @CurrentUser() user: { userId: string },
+        @Query() query: IssueLinkDto,
+    ) {
+        return this.links.remove(teamId, user.userId, issueId, query.kind, query.resourceId);
+    }
+
     @Post()
     @TeamRole('writable')
     @ApiOperation({ summary: '이슈 생성' })
@@ -53,7 +94,9 @@ export class IssueController {
         @CurrentUser() user: { userId: string },
         @Body() dto: CreateIssueDto,
     ) {
-        const issue = await this.createIssueUseCase.execute({ ...dto, teamId, createdBy: user.userId });
+        const { sourceMessageId, ...fields } = dto;
+        const links = sourceMessageId ? [await this.links.source(teamId, user.userId, sourceMessageId)] : [];
+        const issue = await this.createIssueUseCase.execute({ ...fields, teamId, createdBy: user.userId, links });
         void this.issueNotificationService.notifyAssignees({
             teamId,
             actorId: user.userId,
@@ -73,13 +116,12 @@ export class IssueController {
         @CurrentUser() user: { userId: string },
         @Body() dto: UpdateIssueDto,
     ) {
+        await this.links.requireIssue(teamId, issueId);
         const { updated: issue, previousAssigneeIds } = await this.updateIssueUseCase.execute({
             id: issueId,
             ...dto,
         });
-        const newAssigneeIds = (dto.assigneeIds ?? []).filter(
-            (id) => !previousAssigneeIds.includes(id),
-        );
+        const newAssigneeIds = (dto.assigneeIds ?? []).filter((id) => !previousAssigneeIds.includes(id));
         if (newAssigneeIds.length > 0) {
             void this.issueNotificationService.notifyAssignees({
                 teamId,
@@ -95,7 +137,8 @@ export class IssueController {
     @Delete(':issueId')
     @TeamRole('writable')
     @ApiOperation({ summary: '이슈 삭제' })
-    async deleteIssue(@Param('issueId') issueId: string) {
+    async deleteIssue(@Param('teamId') teamId: string, @Param('issueId') issueId: string) {
+        await this.links.requireIssue(teamId, issueId);
         await this.deleteIssueUseCase.execute(issueId);
     }
 }

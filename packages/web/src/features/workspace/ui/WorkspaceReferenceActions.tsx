@@ -4,6 +4,8 @@ import { Link2, PanelRightOpen, Plus } from 'lucide-react';
 import { useWorkspaceConnection } from '../model/useWorkspaceConnection';
 import { referenceMarkdown, workspaceHref, type WorkspaceReference } from '../model/workspaceReference';
 import { useWorkspaceDragSource } from '../model/useWorkspaceDragSource';
+import { ResourceNavigation } from './ResourceNavigation';
+import { useState } from 'react';
 
 export function WorkspaceOpenButton({ reference }: { reference: WorkspaceReference }) {
     const connection = useWorkspaceConnection();
@@ -26,24 +28,51 @@ export function WorkspaceOpenButton({ reference }: { reference: WorkspaceReferen
 }
 
 export function WorkspaceReferenceActions({ reference }: { reference: WorkspaceReference }) {
+    const [position, setPosition] = useState({ left: 0, top: 0 });
     const connection = useWorkspaceConnection();
     const dragSource = useWorkspaceDragSource(reference);
     if (!connection) return null;
     return (
         <span className="inline-flex shrink-0 items-center gap-1">
-            <button
-                type="button"
-                className="connection-icon"
-                title="끌어서 연결 · 클릭하면 참조 준비"
-                {...dragSource}
-                aria-label={`${reference.label} 참조 준비`}
-                onClick={(event) => {
-                    event.stopPropagation();
-                    connection.offer(reference);
+            <details
+                className="relative"
+                onClick={(event) => event.stopPropagation()}
+                onToggle={(event) => {
+                    if (!event.currentTarget.open) return;
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    setPosition({
+                        left: Math.max(8, Math.min(rect.left, window.innerWidth - 232)),
+                        top: Math.min(rect.bottom + 4, window.innerHeight - 120),
+                    });
                 }}
             >
-                <Link2 size={15} />
-            </button>
+                <summary
+                    className="connection-icon list-none cursor-pointer"
+                    title="끌어서 연결 · 연결 메뉴"
+                    {...dragSource}
+                    aria-label={`${reference.label} 연결 메뉴`}
+                >
+                    <Link2 size={15} />
+                </summary>
+                <div
+                    style={position}
+                    className="fixed z-[90] w-56 rounded-control border border-border-primary bg-bg-secondary p-2 shadow-lg"
+                >
+                    <p className="px-2 py-1 text-xs text-text-tertiary">
+                        아이콘을 끌어 자료에 연결하거나 옆에 열 수 있습니다.
+                    </p>
+                    <button
+                        type="button"
+                        className="w-full rounded-control p-2 text-left text-xs hover:bg-bg-hover"
+                        onClick={(event) => {
+                            connection.offer(reference);
+                            event.currentTarget.closest('details')?.removeAttribute('open');
+                        }}
+                    >
+                        다른 본문에 링크 넣기
+                    </button>
+                </div>
+            </details>
             <WorkspaceOpenButton reference={reference} />
         </span>
     );
@@ -68,7 +97,7 @@ export function InsertWorkspaceReference({
                 connection.offer(null);
             }}
         >
-            <Plus size={14} /> 참조 넣기: <span className="truncate">{connection.pending.label}</span>
+            <Plus size={14} /> 본문에 링크 넣기: <span className="truncate">{connection.pending.label}</span>
         </button>
     );
 }
@@ -98,19 +127,9 @@ function ConnectedReferenceLink({ href, label }: { href: string; label: string }
     const dragSource = useWorkspaceDragSource(reference);
     if (!connection) return <span>{label}</span>;
     return (
-        <a
-            href={href}
-            {...dragSource}
-            className="connection-link"
-            title="관련 내용을 옆에 열기"
-            onClick={(event) => {
-                if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
-                event.preventDefault();
-                event.stopPropagation();
-                connection.open(href, label);
-            }}
-        >
-            <Link2 size={12} className="inline" /> {label}
-        </a>
+        <span {...dragSource} className="inline-flex max-w-full items-center gap-1 align-middle">
+            <Link2 size={12} />
+            <ResourceNavigation href={href} title={label} />
+        </span>
     );
 }

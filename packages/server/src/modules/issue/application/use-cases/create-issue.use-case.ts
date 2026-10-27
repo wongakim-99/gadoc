@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { IIssueRepository } from '../../domain/issue.port';
 import { ISSUE_REPOSITORY } from '../../domain/issue.port';
 import { IssueEntity, IssuePriority } from '../../domain/issue.entity';
+import type { IssueLink } from '../../domain/issue-link';
 
 export interface CreateIssueInput {
     teamId: string;
@@ -11,6 +12,7 @@ export interface CreateIssueInput {
     assigneeIds?: string[];
     labels?: string[];
     createdBy: string;
+    links?: IssueLink[];
 }
 
 @Injectable()
@@ -26,6 +28,7 @@ export class CreateIssueUseCase {
             assigneeIds: input.assigneeIds ?? [],
             labels: input.labels ?? [],
             createdBy: input.createdBy,
+            links: input.links ?? [],
         });
     }
 }

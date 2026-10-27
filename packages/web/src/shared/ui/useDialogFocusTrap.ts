@@ -11,6 +11,8 @@ const FOCUSABLE_SELECTOR = [
     '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
 
+const dialogStack: HTMLElement[] = [];
+
 interface Options {
     initialFocusRef?: RefObject<HTMLElement | null>;
     onEscape?: () => void;
@@ -34,12 +36,15 @@ export function useDialogFocusTrap({ initialFocusRef, onEscape, open, restoreFoc
         const surface = surfaceRef.current;
         if (!surface) return;
 
+        dialogStack.push(surface);
+
         const previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
         const focusTarget = initialFocusRef?.current ?? getFocusableElements(surface)[0] ?? surface;
         focusTarget.focus();
 
         const handleKeyDown = (event: KeyboardEvent) => {
+            if (dialogStack.at(-1) !== surface) return;
             if (event.key === 'Escape') {
                 event.preventDefault();
                 onEscapeRef.current?.();
@@ -73,6 +78,8 @@ export function useDialogFocusTrap({ initialFocusRef, onEscape, open, restoreFoc
         document.addEventListener('keydown', handleKeyDown);
 
         return () => {
+            const index = dialogStack.indexOf(surface);
+            if (index !== -1) dialogStack.splice(index, 1);
             document.removeEventListener('keydown', handleKeyDown);
 
             const restoreTarget = restoreFocusRef?.current ?? previousActiveElement;
