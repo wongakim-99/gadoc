@@ -1,3 +1,6 @@
+import { test } from 'playwright/test';
+import { authRequest } from './auth-request';
+
 interface ApiOptions {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
   token?: string;
@@ -41,7 +44,7 @@ export async function jsonFetch<T = unknown>(
   pathName: string,
   options: ApiOptions = {},
 ) {
-  const response = await fetch(`${e2eApiUrl}${pathName}`, {
+  const send = () => fetch(`${e2eApiUrl}${pathName}`, {
     method: options.method ?? "GET",
     headers: {
       "Content-Type": "application/json",
@@ -49,6 +52,16 @@ export async function jsonFetch<T = unknown>(
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
+  const fixtureAuth = options.method === "POST" &&
+    (pathName === "/auth/register" || pathName === "/auth/login");
+  const response = fixtureAuth
+    ? await authRequest(send, async (milliseconds) => {
+        // Extend only this test's setup budget by the server-requested cooldown.
+        const info = test.info();
+        if (info.timeout > 0) info.setTimeout(info.timeout + milliseconds);
+        await new Promise((resolve) => setTimeout(resolve, milliseconds));
+      })
+    : await send();
   const text = await response.text();
   const payload = text ? (JSON.parse(text) as ApiEnvelope<T>) : null;
   if (!response.ok) {
