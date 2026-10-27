@@ -22,12 +22,14 @@ export function useIssueBoardActions({ teamId, createStatus, issues, selectedIss
             priority: IssuePriority;
             assigneeIds?: string[];
             labels?: string[];
+            sourceMessageId?: string;
         }) => {
             const response = await issueApi.createIssue(teamId, { ...data, status: createStatus });
             const created = unwrapApiData<Issue>(response);
             if (!response.success || !created) throw new Error('이슈를 생성하지 못했습니다.');
             addIssue(created);
             window.dispatchEvent(new CustomEvent('slacord:issues-refresh'));
+            return created;
         },
 
         handleUpdate: async (data: Partial<Issue>) => {

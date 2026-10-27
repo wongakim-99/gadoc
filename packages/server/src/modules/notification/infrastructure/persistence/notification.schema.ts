@@ -9,7 +9,7 @@ export class Notification extends Document {
     @Prop({ required: true, index: true })
     recipientId: string;
 
-    @Prop({ required: true, enum: ['mention', 'issue_assigned', 'issue_updated', 'thread_reply'] })
+    @Prop({ required: true, enum: ['mention', 'document_assigned', 'issue_assigned', 'issue_updated', 'thread_reply'] })
     type: string;
 
     @Prop({ required: true })

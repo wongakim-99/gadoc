@@ -14,6 +14,7 @@ export const NOTIFICATION_EVENTS = {
     MENTIONED: 'notification.mentioned',
     THREAD_REPLIED: 'notification.thread_replied',
     ISSUE_ASSIGNED: 'notification.issue_assigned',
+    DOCUMENT_ASSIGNED: 'notification.document_assigned',
 } as const;
 
 export interface MentionedEvent {

@@ -9,6 +9,7 @@ import { IssueDesktopBoard } from '@/src/features/issue/ui/IssueDesktopBoard';
 import { IssueBoardHeader } from '@/src/features/issue/ui/IssueBoardHeader';
 import { IssueMobileSection } from '@/src/features/issue/ui/IssueMobileSection';
 import type { IssueStatus } from '@/src/entities/issue/types';
+import { useWorkspaceConnection } from '@/src/features/workspace/model/useWorkspaceConnection';
 import { useIssueBoard } from '@/src/features/issue/model/useIssueBoard';
 
 const COLUMNS: IssueStatus[] = ['todo', 'in_progress', 'in_review', 'done'];
@@ -23,6 +24,9 @@ export default function IssuesPage({ params }: Props) {
     const board = useIssueBoard(teamId);
     const router = useRouter();
     const searchParams = useSearchParams();
+    const connection = useWorkspaceConnection();
+    const sourceMessageId = searchParams.get('sourceMessage') ?? undefined;
+    const pane = !!connection?.embedded || !!sourceMessageId;
     const quickCreateTitle = searchParams.get('title') ?? '';
     const quickCreateStatus = normalizeIssueStatus(searchParams.get('status'));
     const shouldOpenQuickCreate = searchParams.get('create') === '1';
@@ -31,6 +35,7 @@ export default function IssuesPage({ params }: Props) {
         if (!shouldOpenQuickCreate) return;
         const nextParams = new URLSearchParams(searchParams.toString());
         nextParams.delete('create');
+        nextParams.delete('sourceMessage');
         nextParams.delete('status');
         nextParams.delete('title');
         const nextQuery = nextParams.toString();
@@ -49,9 +54,64 @@ export default function IssuesPage({ params }: Props) {
         await board.handleMove(draggableId, destination.droppableId as IssueStatus);
     };
 
+    const forms = (
+        <>
+            {board.showCreate && (
+                <IssueModal
+                    presentation={pane ? 'pane' : 'modal'}
+                    sourceNotice={
+                        sourceMessageId
+                            ? '이 메시지를 생성 근거로 연결합니다. 제목과 설명은 팀에 공유되므로 공유할 내용만 작성하세요.'
+                            : undefined
+                    }
+                    initialTitle={quickCreateTitle}
+                    key={`create:${quickCreateTitle}:${board.createStatus}`}
+                    mode="create"
+                    readOnly={!board.canWrite}
+                    teamId={teamId}
+                    members={board.members}
+                    onSubmit={async (data) => {
+                        const created = await board.handleCreate({ ...data, sourceMessageId });
+                        if (pane) {
+                            board.setShowCreate(false);
+                            board.setSelectedIssue(created);
+                            router.replace(`${pathname}?issue=${created.id}`, { scroll: false });
+                        }
+                    }}
+                    onClose={() => {
+                        board.setShowCreate(false);
+                        clearQuickCreateParams();
+                    }}
+                />
+            )}
+            {board.selectedIssue && (
+                <IssueModal
+                    key={board.selectedIssue.id}
+                    presentation={pane ? 'pane' : 'modal'}
+                    mode="edit"
+                    issue={board.selectedIssue}
+                    readOnly={!board.canWrite}
+                    members={board.members}
+                    onSubmit={board.handleUpdate}
+                    onClose={() => {
+                        board.setSelectedIssue(null);
+                        router.replace(pathname, { scroll: false });
+                    }}
+                />
+            )}
+        </>
+    );
+    if (pane && (board.showCreate || board.selectedIssue)) return <div className="h-full min-h-0">{forms}</div>;
+
     return (
         <div className="h-full flex flex-col">
-            <IssueBoardHeader canWrite={board.canWrite} onCreate={() => { board.setCreateStatus('todo'); board.setShowCreate(true); }} />
+            <IssueBoardHeader
+                canWrite={board.canWrite}
+                onCreate={() => {
+                    board.setCreateStatus('todo');
+                    board.setShowCreate(true);
+                }}
+            />
             <IssueBoardFilters
                 query={board.query}
                 assigneeId={board.assigneeId}
@@ -75,7 +135,10 @@ export default function IssuesPage({ params }: Props) {
                             key={status}
                             issues={board.issuesByStatus[status]}
                             members={board.members}
-                            onAddClick={() => { board.setCreateStatus(status); board.setShowCreate(true); }}
+                            onAddClick={() => {
+                                board.setCreateStatus(status);
+                                board.setShowCreate(true);
+                            }}
                             onCardClick={board.setSelectedIssue}
                             status={status}
                         />
@@ -87,38 +150,17 @@ export default function IssuesPage({ params }: Props) {
                         columns={COLUMNS}
                         issuesByStatus={board.issuesByStatus}
                         members={board.members}
-                        onAddClick={(status) => { board.setCreateStatus(status); board.setShowCreate(true); }}
+                        onAddClick={(status) => {
+                            board.setCreateStatus(status);
+                            board.setShowCreate(true);
+                        }}
                         onCardClick={board.setSelectedIssue}
                         onDragEnd={handleDragEnd}
                     />
                 </div>
             </div>
 
-            {board.showCreate && (
-                <IssueModal
-                    initialTitle={quickCreateTitle}
-                    key={`create:${quickCreateTitle}:${board.createStatus}`}
-                    mode="create"
-                    readOnly={!board.canWrite}
-                    teamId={teamId}
-                    members={board.members}
-                    onSubmit={board.handleCreate}
-                    onClose={() => {
-                        board.setShowCreate(false);
-                        clearQuickCreateParams();
-                    }}
-                />
-            )}
-            {board.selectedIssue && (
-                <IssueModal
-                    mode="edit"
-                    issue={board.selectedIssue}
-                    readOnly={!board.canWrite}
-                    members={board.members}
-                    onSubmit={board.handleUpdate}
-                    onClose={() => board.setSelectedIssue(null)}
-                />
-            )}
+            {forms}
         </div>
     );
 }

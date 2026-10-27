@@ -17,6 +17,8 @@ function buildNotificationTitle(notification: AppNotification, actorName: string
                 : `${actorName}님이 멘션했어요`;
         case 'issue_assigned':
             return `${actorName}님이 이슈를 맡겼어요`;
+        case 'document_assigned':
+            return `${actorName}님이 문서 담당자로 지정했어요`;
         case 'issue_updated':
             return `${actorName}님이 이슈를 업데이트했어요`;
         case 'thread_reply':

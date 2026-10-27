@@ -84,7 +84,7 @@ function SearchSection({
     title: string;
 }) {
     return (
-        <section className="rounded-[28px] border border-border-primary bg-bg-secondary p-5 sm:p-6">
+        <section className="rounded-panel border border-border-primary bg-bg-secondary p-5 sm:p-6">
             <div className="mb-4">
                 <h2 className="text-lg font-semibold text-white">{title}</h2>
             </div>
@@ -103,7 +103,7 @@ function SearchSection({
 
 function SearchState({ title, description }: { title: string; description: string }) {
     return (
-        <div className="rounded-[28px] border border-border-primary bg-bg-secondary px-6 py-16 text-center">
+        <div className="rounded-panel border border-border-primary bg-bg-secondary px-6 py-16 text-center">
             <p className="text-lg font-semibold text-white">{title}</p>
             <p className="mt-3 text-sm leading-6 text-text-secondary">{description}</p>
         </div>

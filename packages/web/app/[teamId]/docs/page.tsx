@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { DatabaseWorkspace } from '@/src/features/database/ui/DatabaseWorkspace';
 import { useEffect, useState } from 'react';
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -15,6 +17,19 @@ interface Props {
 
 export default function DocsPage({ params }: Props) {
     const { teamId } = use(params);
+    const searchParams = useSearchParams();
+    if (searchParams.has('database') || searchParams.has('databases'))
+        return (
+            <DatabaseWorkspace
+                key={searchParams.get('database') ?? 'index'}
+                teamId={teamId}
+                databaseId={searchParams.get('database')}
+            />
+        );
+    return <DocumentIndex teamId={teamId} />;
+}
+
+function DocumentIndex({ teamId }: { teamId: string }) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const parentId = searchParams.get('parentId');
@@ -108,6 +123,12 @@ export default function DocsPage({ params }: Props) {
                             : 'guest는 문서를 읽고 탐색할 수 있지만 새 문서를 만들 수는 없습니다.'}
                     </p>
                 </div>
+                <Link
+                    href={`/${teamId}/docs?databases=1`}
+                    className="rounded-control border border-border-primary px-3 py-2 text-sm"
+                >
+                    데이터베이스
+                </Link>
                 {canWrite ? (
                     <button
                         onClick={() => setShowCreate(true)}

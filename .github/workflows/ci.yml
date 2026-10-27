@@ -112,6 +112,7 @@ jobs:
     needs:
       - backend
       - frontend
+    # Playwright 1.58.2 does not support Ubuntu 26.04 yet.
     runs-on: ubuntu-24.04
     services:
       mongo:

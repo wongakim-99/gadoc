@@ -19,6 +19,7 @@ function makeIssue(id: string) {
 
 describe('IssueController', () => {
     const mockCreateIssueUseCase = { execute: jest.fn() };
+    const mockLinks = { requireIssue: jest.fn(), source: jest.fn() };
     const mockUpdateIssueUseCase = { execute: jest.fn() };
     const mockGetIssuesUseCase = { execute: jest.fn() };
     const mockDeleteIssueUseCase = { execute: jest.fn() };
@@ -30,6 +31,7 @@ describe('IssueController', () => {
         jest.clearAllMocks();
         // 권한 검사는 TeamAccessGuard, 응답 래핑은 ResponseInterceptor가 AOP로 담당
         controller = new IssueController(
+            mockLinks as any,
             mockCreateIssueUseCase as any,
             mockUpdateIssueUseCase as any,
             mockGetIssuesUseCase as any,
@@ -69,6 +71,7 @@ describe('IssueController', () => {
             ...dto,
             teamId: 'team-1',
             createdBy: 'user-1',
+            links: [],
         });
         expect(mockIssueNotificationService.notifyAssignees).toHaveBeenCalledWith({
             teamId: 'team-1',
@@ -84,7 +87,9 @@ describe('IssueController', () => {
         const issue = makeIssue('issue-1');
         mockUpdateIssueUseCase.execute.mockResolvedValue({ updated: issue, previousAssigneeIds: [] });
 
-        const result = await controller.updateIssue('team-1', 'issue-1', { userId: 'user-1' }, { assigneeIds: ['user-3'] } as any);
+        const result = await controller.updateIssue('team-1', 'issue-1', { userId: 'user-1' }, {
+            assigneeIds: ['user-3'],
+        } as any);
 
         expect(mockIssueNotificationService.notifyAssignees).toHaveBeenCalledWith({
             teamId: 'team-1',
@@ -109,7 +114,28 @@ describe('IssueController', () => {
     });
 
     it('이슈 삭제를 위임함', async () => {
-        await controller.deleteIssue('issue-1');
+        await controller.deleteIssue('team-1', 'issue-1');
         expect(mockDeleteIssueUseCase.execute).toHaveBeenCalledWith('issue-1');
+    });
+
+    it('접근 불가 원문은 이슈 생성 전에 거절함', async () => {
+        mockLinks.source.mockRejectedValue(new Error('unavailable'));
+        await expect(
+            controller.createIssue('team-1', { userId: 'user-1' }, { title: '업무', sourceMessageId: 'source' }),
+        ).rejects.toThrow('unavailable');
+        expect(mockCreateIssueUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    it('출처를 이슈와 같은 저장 요청에 포함하고 원문 본문은 복사하지 않음', async () => {
+        const source = { kind: 'message', resourceId: 'source', relation: 'origin' };
+        mockLinks.source.mockResolvedValue(source);
+        mockCreateIssueUseCase.execute.mockResolvedValue(makeIssue('issue-1'));
+        await controller.createIssue('team-1', { userId: 'user-1' }, { title: '업무', sourceMessageId: 'source' });
+        expect(mockCreateIssueUseCase.execute).toHaveBeenCalledWith({
+            title: '업무',
+            teamId: 'team-1',
+            createdBy: 'user-1',
+            links: [source],
+        });
     });
 });

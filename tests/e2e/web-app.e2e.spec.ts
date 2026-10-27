@@ -458,8 +458,7 @@ test.describe.serial("slacord web e2e", () => {
       .getByPlaceholder("채널, 메시지, 문서, 이슈 검색")
       .fill(targetContent);
     const messageResult = page
-      .getByRole("option", { name: new RegExp(targetContent) })
-      .first();
+      .getByRole("option", { name: new RegExp(`^${targetContent}.*#${fixture.channelName}$`) });
     await expect(messageResult).toBeVisible();
 
     await messageResult.click();

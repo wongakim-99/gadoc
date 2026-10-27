@@ -48,6 +48,12 @@ export function DocumentNavigation({ teamId, canWrite }: { teamId: string; canWr
 
     const tree = (
         <>
+            <Link
+                href={`/${teamId}/docs?databases=1`}
+                className="mb-4 block rounded-control border border-border-primary px-3 py-2 text-xs text-text-secondary hover:bg-bg-hover"
+            >
+                데이터베이스 · 지식베이스
+            </Link>
             <div className="mb-3 flex items-center justify-between px-1">
                 <Link className="text-xs font-medium text-neutral-400 hover:text-white" href={`/${teamId}/docs`}>
                     페이지

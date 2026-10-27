@@ -24,6 +24,36 @@ export class NotificationEventListener {
         @Inject(USER_REPOSITORY) private readonly userRepo: IUserRepository,
     ) {}
 
+    @OnEvent(NOTIFICATION_EVENTS.DOCUMENT_ASSIGNED, { async: true })
+    async handleDocumentAssigned(event: {
+        teamId: string;
+        actorId: string;
+        documentId: string;
+        recipientIds: string[];
+        mention?: boolean;
+    }): Promise<void> {
+        try {
+            const actor = await this.userRepo.findById(event.actorId);
+            await this.createNotification.executeBulk(
+                event.recipientIds.map((recipientId) => ({
+                    teamId: event.teamId,
+                    actorId: event.actorId,
+                    actorName: actor?.username ?? '팀 동료',
+                    recipientId,
+                    type: event.mention ? 'mention' : 'document_assigned',
+                    resourceType: 'document',
+                    resourceId: event.documentId,
+                    // Do not retain private document titles in notifications after access is revoked.
+                    content: event.mention
+                        ? '공유된 문서에서 확인을 요청했어요.'
+                        : '공유된 문서의 담당자로 지정됐어요.',
+                })),
+            );
+        } catch (error) {
+            this.logger.warn(`document 알림 생성 실패: ${(error as Error).message}`);
+        }
+    }
+
     @OnEvent(NOTIFICATION_EVENTS.MENTIONED, { async: true })
     async handleMentioned(event: MentionedEvent): Promise<void> {
         if (event.recipientIds.length === 0) return;
