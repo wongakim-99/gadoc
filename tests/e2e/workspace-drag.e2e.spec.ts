@@ -65,10 +65,7 @@ test("native edge drag opens alongside; cross-pane drops preserve drafts and aut
     .inputValue();
   const composer = side.locator("textarea").last();
   await composer.fill("기존 작성 중인 메시지");
-  await startDrag(
-    page,
-    page.getByRole("button", { name: `${title} 참조 준비`, exact: true }),
-  );
+  await startDrag(page, page.getByLabel(`${title} 연결 메뉴`, { exact: true }));
   await dropOn(page, composer);
   await expect(composer).toHaveValue(new RegExp(f.documentId));
   await expect(composer).toHaveValue(/기존 작성 중인 메시지/);
@@ -76,10 +73,7 @@ test("native edge drag opens alongside; cross-pane drops preserve drafts and aut
     side.locator("[data-message-id]").filter({ hasText: title }),
   ).toHaveCount(0);
   await message.hover();
-  await startDrag(
-    page,
-    message.getByRole("button", { name: "메시지 참조 준비" }),
-  );
+  await startDrag(page, message.getByLabel(/대화 원문 .* 연결 메뉴/));
   await expect(edge).toBeVisible();
   await dropOn(page, page.locator(".bn-editor [data-id]").first());
   await expect(page.locator(".bn-editor a")).toHaveAttribute(
@@ -129,7 +123,7 @@ test("issue reference drag is separate from Kanban status movement", async ({
   await expect(card).toBeVisible();
   await startDrag(
     page,
-    card.getByRole("button", { name: "연결 및 상태 이동 참조 준비" }),
+    card.getByLabel("연결 및 상태 이동 연결 메뉴", { exact: true }),
   );
   await expect(page.getByTestId("workspace-edge-drop")).toBeVisible();
   await dropOn(page, page.getByTestId("workspace-edge-drop"));

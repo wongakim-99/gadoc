@@ -5,6 +5,7 @@ export type DocumentDocument = Doc & Document;
 
 @Schema({ timestamps: true, collection: 'documents' })
 export class Doc {
+    @Prop({ default: false }) inheritPermissions?: boolean;
     static readonly name = 'Document';
 
     @Prop({ required: true, index: true })

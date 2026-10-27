@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { documentApi, unwrapApiData } from '@/lib/api-client';
 import type { DocumentFull } from '@/src/entities/document/types';
 import { DocumentSaveQueue, type DocumentDraft, type SaveStatus } from './DocumentSaveQueue';
-import { useWorkspaceLeaveGuard } from '@/src/features/workspace/model/useWorkspaceConnection';
+import { canLeaveWorkspacePane, useWorkspaceLeaveGuard } from '@/src/features/workspace/model/useWorkspaceConnection';
 
 export function useDocumentAutosave(doc: DocumentFull) {
     const router = useRouter();
@@ -94,6 +94,7 @@ export function useDocumentAutosave(doc: DocumentFull) {
                 !anchor ||
                 anchor.target === '_blank' ||
                 anchor.hasAttribute('download') ||
+                anchor.hasAttribute('data-manages-draft-navigation') ||
                 event.button !== 0 ||
                 event.metaKey ||
                 event.ctrlKey ||
@@ -105,7 +106,7 @@ export function useDocumentAutosave(doc: DocumentFull) {
             if (url.origin !== location.origin || url.href === location.href) return;
             event.preventDefault();
             event.stopPropagation();
-            void flush().then((saved) => {
+            void canLeaveWorkspacePane().then((saved) => {
                 if (saved && mounted.current) router.push(url.pathname + url.search + url.hash);
             });
         };

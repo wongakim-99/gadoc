@@ -33,10 +33,11 @@ test("issue references survive a failed save and persist after retry", async ({
     "연결 저장 재시도",
   );
   await page
-    .getByRole("button", { name: `${doc.data!.title} 참조 준비`, exact: true })
+    .getByLabel(`${doc.data!.title} 연결 메뉴`, { exact: true })
     .click();
+  await page.getByRole("button", { name: "다른 본문에 링크 넣기" }).click();
   await side
-    .getByRole("button", { name: `참조 넣기: ${doc.data!.title}` })
+    .getByRole("button", { name: `본문에 링크 넣기: ${doc.data!.title}` })
     .click();
   const endpoint = `**/api/team/${f.teamId}/issue/${issueId}`;
   await page.route(endpoint, (route) =>
@@ -56,9 +57,9 @@ test("issue references survive a failed save and persist after retry", async ({
   );
   await page.unroute(endpoint);
   await side.getByRole("button", { name: "저장", exact: true }).click();
-  await expect(side.getByPlaceholder("이슈 제목", { exact: true })).toHaveCount(
-    0,
-  );
+  await expect(
+    side.getByRole("status").filter({ hasText: "변경 사항을 저장했습니다." }),
+  ).toBeVisible();
   await expect
     .poll(
       async () =>
@@ -110,10 +111,11 @@ test("document and chat exchange durable references without sending drafts autom
     side.getByRole("complementary", { name: "워크스페이스 사이드바" }),
   ).toHaveCount(0);
   await page
-    .getByRole("button", { name: `${doc.data!.title} 참조 준비`, exact: true })
+    .getByLabel(`${doc.data!.title} 연결 메뉴`, { exact: true })
     .click();
+  await page.getByRole("button", { name: "다른 본문에 링크 넣기" }).click();
   await side
-    .getByRole("button", { name: `참조 넣기: ${doc.data!.title}` })
+    .getByRole("button", { name: `본문에 링크 넣기: ${doc.data!.title}` })
     .click();
   const composer = side.locator("textarea").last();
   await expect(composer).toHaveValue(new RegExp(fixture.documentId));
@@ -128,8 +130,11 @@ test("document and chat exchange durable references without sending drafts autom
     .locator("[data-message-id]")
     .filter({ hasText: "분할 화면에서 결정 근거 연결 검증" });
   await message.hover();
-  await message.getByRole("button", { name: "메시지 참조 준비" }).click();
-  await page.getByRole("button", { name: /참조 넣기: 대화 원문/ }).click();
+  await message.getByLabel(/대화 원문 .* 연결 메뉴/).click();
+  await message.getByRole("button", { name: "다른 본문에 링크 넣기" }).click();
+  await page
+    .getByRole("button", { name: /본문에 링크 넣기: 대화 원문/ })
+    .click();
   await expect(page.locator(".bn-editor a")).toHaveAttribute(
     "href",
     /message=/,
@@ -236,8 +241,9 @@ test("issues and announcements connect through a published reference with mobile
   );
   await page
     .getByRole("dialog", { name: "이슈 수정" })
-    .getByRole("button", { name: "서비스 배포 확인 참조 준비" })
+    .getByLabel("서비스 배포 확인 연결 메뉴", { exact: true })
     .click();
+  await page.getByRole("button", { name: "다른 본문에 링크 넣기" }).click();
   // The pane picker can be opened after closing the existing issue dialog.
   await page.getByRole("button", { name: "취소", exact: true }).click();
   const notice = await jsonFetch<{ id: string }>(
@@ -252,7 +258,7 @@ test("issues and announcements connect through a published reference with mobile
   await expect(side.locator(`#announcement-${notice.data!.id}`)).toBeVisible();
   await side.getByRole("button", { name: "공지 작성", exact: true }).click();
   await side
-    .getByRole("button", { name: "참조 넣기: 서비스 배포 확인" })
+    .getByRole("button", { name: "본문에 링크 넣기: 서비스 배포 확인" })
     .click();
   await side.getByPlaceholder("공지 제목").fill("배포 완료 안내");
   await expect(side.getByPlaceholder("공지 내용")).toHaveValue(

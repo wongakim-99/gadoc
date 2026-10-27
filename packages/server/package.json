@@ -4,15 +4,15 @@
   "description": "Slacord 백엔드 서버 (NestJS + 헥사고날 아키텍처)",
   "private": true,
   "scripts": {
-    "build": "nest build",
+    "build": "yarn workspace @slacord/document-core build && nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
-    "start:dev": "nest start --watch",
+    "start:dev": "yarn workspace @slacord/document-core build && nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "typecheck": "tsc --noEmit",
-    "test": "jest",
+    "typecheck": "yarn workspace @slacord/document-core build && tsc --noEmit",
+    "test": "yarn workspace @slacord/document-core build && jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
@@ -46,7 +46,8 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.3",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "@slacord/document-core": "1.0.10"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

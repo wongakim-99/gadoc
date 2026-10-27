@@ -1,4 +1,5 @@
-import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { ContentChangeInterceptor } from '../../../../shared/interceptors/content-change.interceptor';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Query, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../../shared/decorators/current-user.decorator';
@@ -30,6 +31,7 @@ import { UpdateDocumentDto } from './dto/update-document.dto';
 /** 문서/위키 API */
 @ApiTags('document')
 @ApiBearerAuth()
+@UseInterceptors(ContentChangeInterceptor)
 @UseGuards(JwtAuthGuard)
 @Controller('team/:teamId/document')
 export class DocumentController {

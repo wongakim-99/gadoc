@@ -254,7 +254,12 @@ export function ConnectedWorkspace({
                 event.target instanceof Element
                     ? event.target.closest<HTMLAnchorElement>('.slacord-blocknote a[href], [data-connected-link]')
                     : null;
-            if (!anchor || !workspaceHref(anchor.href, teamId, window.location.origin)) return;
+            if (
+                !anchor ||
+                anchor.hasAttribute('data-manages-draft-navigation') ||
+                !workspaceHref(anchor.href, teamId, window.location.origin)
+            )
+                return;
             event.preventDefault();
             event.stopPropagation();
             void open(anchor.href, anchor.textContent || '관련 내용');
@@ -355,11 +360,11 @@ export function ConnectedWorkspace({
                                 <Link2 size={14} />
                                 <span className="truncate">연결할 내용: {pending.label}</span>
                                 <span className="hidden text-text-tertiary sm:inline">
-                                    작성란에서 ‘참조 넣기’를 선택하세요.
+                                    작성란에서 ‘본문에 링크 넣기’를 선택하세요.
                                 </span>
                                 <button
                                     className="connection-icon ml-auto"
-                                    aria-label="참조 선택 취소"
+                                    aria-label="본문 링크 선택 취소"
                                     onClick={() => offer(null)}
                                 >
                                     <X size={14} />

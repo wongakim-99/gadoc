@@ -1,0 +1,46 @@
+import { test, expect } from 'playwright/test';
+import { createWorkspaceFixture, jsonFetch } from './support/slacord-api';
+import { loginWithSession } from './support/slacord-session';
+import type { DatabaseDetail, DatabaseProperty } from '../../packages/web/src/features/database/model/types';
+
+test('inverse relation edits update canonical links and rollups; stale edits conflict', async ({page}) => {
+  const f = await createWorkspaceFixture();
+  const call = async <T>(path:string, body?:unknown, method=body?'POST':'GET') =>
+    (await jsonFetch<T>(`/team/${f.teamId}${path}`, {token:f.owner.token,method,body}))!.data!;
+  const source = await call<{id:string}>('/database',{name:'Projects'});
+  const target = await call<{id:string}>('/database',{name:'Resources'});
+  const number = await call<DatabaseProperty>(`/database/${source.id}/property`,{name:'Budget',type:'number',revision:0});
+  const relation = await call<DatabaseProperty>(`/database/${source.id}/property`,{name:'Resources',type:'relation',targetDatabaseId:target.id,bidirectional:true,inverseName:'Projects',revision:1});
+  const doc = await call<{id:string}>('/document',{title:'Resource page'});
+  await call(`/database/${target.id}/row`,{documentId:doc.id});
+  await call(`/database/${source.id}/row`,{documentId:f.documentId});
+  await call(`/database/${source.id}/row/${f.documentId}/${number.id}`,{value:12,revision:0},'PATCH');
+  await call(`/database/${source.id}/row/${f.documentId}/${relation.id}`,{value:[doc.id],revision:1},'PATCH');
+  let detail = await call<DatabaseDetail>(`/database/${target.id}`);
+  const inverse = detail.properties.find(p=>p.reverseOf?.propertyId===relation.id)!;
+  expect(inverse).toBeTruthy();
+  expect(detail.rows[0].values[inverse.id]).toEqual([f.documentId]);
+  const rollup = await call<DatabaseProperty>(`/database/${target.id}/property`,{name:'Total',type:'rollup',relationPropertyId:inverse.id,targetPropertyId:number.id,aggregation:'sum',revision:0});
+  detail = await call<DatabaseDetail>(`/database/${target.id}`);
+  expect(detail.rows[0].values[rollup.id]).toBe(12);
+  const stale = detail.rows[0].relationRevisions![inverse.id];
+  await loginWithSession(page,f.owner);
+  await page.goto(`/${f.teamId}/docs?database=${target.id}`);
+  const table = page.getByRole('table');
+  await table.getByText('연결 편집',{exact:true}).click();
+  const checkbox=page.getByRole('dialog',{name:'Resource page · Projects',exact:true}).locator('input[type=checkbox]');
+  await expect(checkbox).toBeChecked();
+  await checkbox.uncheck();
+  await expect.poll(async()=> (await call<DatabaseDetail>(`/database/${source.id}`)).rows[0].values[relation.id]).toEqual([]);
+  await expect.poll(async()=> (await call<DatabaseDetail>(`/database/${target.id}`)).rows[0].values[rollup.id]).toBe(0);
+  await expect(call(`/database/${target.id}/row/${doc.id}/${inverse.id}`,{value:[f.documentId],revision:0,relationRevision:stale},'PATCH')).rejects.toThrow('409');
+  detail = await call<DatabaseDetail>(`/database/${target.id}`);
+  await call(`/database/${target.id}/row/${doc.id}/${inverse.id}`,{value:[f.documentId],revision:0,relationRevision:detail.rows[0].relationRevisions![inverse.id]},'PATCH');
+  expect((await call<DatabaseDetail>(`/database/${source.id}`)).rows[0].values[relation.id]).toEqual([doc.id]);
+  await call(`/database/${source.id}/property/${relation.id}/archive`,{revision:2});
+  expect((await call<DatabaseDetail>(`/database/${target.id}`)).properties.find(p=>p.id===inverse.id)).toBeUndefined();
+  await call(`/database/${source.id}/property/${relation.id}/restore`,{revision:3});
+  detail=await call<DatabaseDetail>(`/database/${target.id}`);
+  expect(detail.rows[0].values[inverse.id]).toEqual([f.documentId]);
+  expect(detail.rows[0].values[rollup.id]).toBe(12);
+});

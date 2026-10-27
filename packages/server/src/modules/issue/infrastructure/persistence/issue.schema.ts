@@ -1,11 +1,24 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import type { IssueLink } from '../../domain/issue-link';
 
 export type IssueDocument = Issue & Document;
 
 /** 이슈 트래커 MongoDB 스키마 */
 @Schema({ timestamps: true, collection: 'issues' })
 export class Issue {
+    @Prop({
+        type: [
+            {
+                _id: false,
+                kind: { type: String, enum: ['document', 'message'], required: true },
+                resourceId: { type: String, required: true },
+                relation: { type: String, enum: ['reference', 'origin'], required: true },
+            },
+        ],
+        default: [],
+    })
+    links: IssueLink[];
     @Prop({ required: true, type: Types.ObjectId, ref: 'Team', index: true })
     teamId: Types.ObjectId;
 
@@ -36,3 +49,4 @@ export class Issue {
 
 export const IssueSchema = SchemaFactory.createForClass(Issue);
 IssueSchema.index({ teamId: 1, status: 1 });
+IssueSchema.index({ teamId: 1, 'links.kind': 1, 'links.resourceId': 1 });

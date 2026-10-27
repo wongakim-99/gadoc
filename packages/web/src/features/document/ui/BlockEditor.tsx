@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import type { BlockNoteEditor } from '@blocknote/core';
+import { createDocumentSchema } from './documentBlockSchema';
 import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
@@ -26,7 +26,9 @@ function parseBlocks(content: string) {
 
 export function BlockEditor({ teamId, initialContent, onChange, editable = true }: Props) {
     const initialBlocks = useMemo(() => parseBlocks(initialContent ?? ''), [initialContent]);
-    const editor: BlockNoteEditor = useCreateBlockNote({
+    const schema = useMemo(() => createDocumentSchema(teamId), [teamId]);
+    const editor = useCreateBlockNote({
+        schema,
         dictionary: ko,
         initialContent: initialBlocks,
         uploadFile: async (file: File) => {

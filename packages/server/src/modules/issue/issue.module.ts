@@ -11,11 +11,23 @@ import { GetIssuesUseCase } from './application/use-cases/get-issues.use-case';
 import { DeleteIssueUseCase } from './application/use-cases/delete-issue.use-case';
 import { IssueNotificationService } from './application/services/issue-notification.service';
 import { IssueController } from './infrastructure/http/issue.controller';
+import { IssueLinksService } from './application/services/issue-links.service';
+import { DocumentModule } from '../document/document.module';
+import { MessageModule } from '../message/message.module';
+import { ChannelModule } from '../channel/channel.module';
 
 @Module({
-    imports: [MongooseModule.forFeature([{ name: Issue.name, schema: IssueSchema }]), AuthModule, TeamModule],
+    imports: [
+        MongooseModule.forFeature([{ name: Issue.name, schema: IssueSchema }]),
+        AuthModule,
+        TeamModule,
+        DocumentModule,
+        MessageModule,
+        ChannelModule,
+    ],
     controllers: [IssueController],
     providers: [
+        IssueLinksService,
         { provide: ISSUE_REPOSITORY, useClass: IssueRepository },
         CreateIssueUseCase,
         UpdateIssueUseCase,

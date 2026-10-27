@@ -49,28 +49,32 @@ export function DashboardSidebar({ currentUserName }: Props) {
     return (
         <>
             <aside className="w-full shrink-0 border-b border-border-primary bg-bg-secondary lg:flex lg:min-h-screen lg:w-64 lg:flex-col lg:border-b-0 lg:border-r">
-                <div className="border-b border-border-primary p-4 sm:p-6">
+                <div className="border-b border-border-primary p-4">
                     <Link href="/" className="flex items-center gap-3">
-                        <Image src="/logo.svg" alt="Slacord" width={40} height={40} className="rounded-xl" />
+                        <Image
+                            src="/logo-workspace.svg"
+                            alt="Slacord"
+                            width={32}
+                            height={32}
+                            className="rounded-control"
+                        />
                         <div>
-                            <h1 className="text-xl font-bold text-white">Slacord</h1>
-                            <p className="mt-0.5 text-xs text-text-tertiary">Team Collaboration</p>
+                            <h1 className="text-base font-semibold text-white">Slacord</h1>
+                            <p className="mt-0.5 text-xs text-text-tertiary">전체 워크스페이스</p>
                         </div>
                     </Link>
-                    {currentUserName ? (
-                        <p className="mt-3 text-sm text-text-secondary">Signed in as {currentUserName}</p>
-                    ) : null}
+                    {currentUserName ? <p className="mt-3 text-sm text-text-secondary">{currentUserName}</p> : null}
                     <button
                         ref={searchButtonRef}
                         type="button"
                         onClick={() => setSearchOpen(true)}
-                        className="mt-4 flex w-full items-center justify-between rounded-[20px] border border-white/10 bg-white/[0.04] px-4 py-3 text-left transition hover:border-brand-400/30 hover:bg-white/[0.06]"
+                        className="mt-4 flex w-full items-center justify-between rounded-control border border-border-primary bg-bg-primary px-4 py-3 text-left transition hover:border-border-glow hover:bg-bg-hover"
                     >
                         <div>
                             <p className="text-sm font-semibold text-white">빠른 검색</p>
-                            <p className="mt-1 text-xs text-text-secondary">메시지 검색과 대시보드 quick action을 바로 열기</p>
+                            <p className="mt-1 text-xs text-text-secondary">문서, 대화, 작업 검색</p>
                         </div>
-                        <span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-text-tertiary">
+                        <span className="rounded-full border border-border-primary px-2.5 py-1 text-[11px] text-text-tertiary">
                             {typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? '⌘K' : 'Ctrl+K'}
                         </span>
                     </button>
@@ -79,13 +83,14 @@ export function DashboardSidebar({ currentUserName }: Props) {
                     {NAV_ITEMS.map((item) => {
                         const isActive = pathname === item.href;
                         const stateClass = isActive
-                            ? 'bg-bg-hover text-white'
+                            ? 'bg-selection text-action-text'
                             : 'text-text-secondary hover:bg-bg-hover hover:text-white';
                         return (
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className={`flex min-h-11 items-center gap-3 whitespace-nowrap rounded-lg px-4 py-3 transition-colors ${stateClass}`}
+                                aria-current={isActive ? 'page' : undefined}
+                                className={`flex min-h-9 items-center gap-3 whitespace-nowrap rounded-control px-3 py-2 transition-colors ${stateClass}`}
                             >
                                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
@@ -96,7 +101,7 @@ export function DashboardSidebar({ currentUserName }: Props) {
                     })}
                 </nav>
                 <div className="hidden border-t border-border-primary p-4 text-xs text-text-tertiary lg:block">
-                    <p className="font-semibold text-[#d6b08a]">v{siteConfig.desktopVersion}</p>
+                    <p className="font-semibold text-action-text">v{siteConfig.desktopVersion}</p>
                     <p className="mt-1">{siteConfig.badge}</p>
                 </div>
             </aside>

@@ -1,4 +1,4 @@
-export type NotificationType = 'mention' | 'issue_assigned' | 'issue_updated' | 'thread_reply';
+export type NotificationType = 'mention' | 'document_assigned' | 'issue_assigned' | 'issue_updated' | 'thread_reply';
 
 export interface AppNotification {
     id: string;

@@ -1,0 +1,38 @@
+import {test,expect} from 'playwright/test';
+import {createWorkspaceFixture,jsonFetch} from './support/slacord-api';
+import {loginWithSession} from './support/slacord-session';
+import type {DatabaseDetail} from '../../packages/web/src/features/database/model/types';
+
+test('default template applies to new pages, filter defaults win, removal clears default',async({page})=>{
+  const f=await createWorkspaceFixture();
+  const call=async<T>(path:string,body?:unknown,method=body?'POST':'GET')=>(await jsonFetch<T>(`/team/${f.teamId}${path}`,{token:f.owner.token,body,method}))!.data!;
+  const id=()=>crypto.randomUUID().replaceAll('-','').slice(0,24);
+  const db=await call<{id:string}>('/database',{name:'Default templates'});
+  const api=`/database/${db.id}`;
+  const template=await call<{id:string;documentId:string}>(`${api}/template`,{name:'Meeting',creationId:id(),revision:0});
+  const content=JSON.stringify([{type:'paragraph',content:[{type:'text',text:'Meeting agenda',styles:{}}]}]);
+  await call(`/document/${template.documentId}`,{contentFormat:'json',content},'PATCH');
+  await call(`${api}/row/${template.documentId}`,{values:{status:'검토 중',owner:[f.owner.userId]},revision:0},'PATCH');
+  await loginWithSession(page,f.owner);
+  await page.goto(`/${f.teamId}/docs?database=${db.id}`);
+  await page.getByLabel('템플릿',{exact:true}).click();
+  await page.getByRole('button',{name:'기본으로 설정',exact:true}).click();
+  await expect(page.getByRole('button',{name:'기본 템플릿 해제',exact:true})).toBeVisible();
+  const creationId=id();
+  const created=await call<{documentId:string}>(`${api}/row/page`,{title:'Sprint review',creationId,values:{status:'초안'}});
+  expect(created.documentId).toBe(creationId);
+  expect((await call<{content:string}>(`/document/${creationId}`)).content).toBe(content);
+  let detail=await call<DatabaseDetail>(api);
+  expect(detail.rows[0].values.status).toBe('초안');
+  expect(detail.rows[0].values.owner).toEqual([f.owner.userId]);
+  await call(`${api}/row/${creationId}/status`,{value:'검토 중',revision:0},'PATCH');
+  await call(`${api}/row/page`,{title:'Sprint review',creationId,values:{status:'초안'}});
+  detail=await call<DatabaseDetail>(api);
+  expect(detail.rows).toHaveLength(1);
+  expect(detail.rows[0].values.status).toBe('검토 중');
+  await expect(call(`${api}/default-template`,{templateId:null,revision:1},'PATCH')).rejects.toThrow('409');
+  await call(`${api}/template/${template.id}/remove`,{revision:detail.revision});
+  expect((await call<DatabaseDetail>(api)).defaultTemplateId).toBeUndefined();
+  const blank=await call<{documentId:string}>(`${api}/row/page`,{title:'Blank',creationId:id(),values:{}});
+  expect((await call<{content:string}>(`/document/${blank.documentId}`)).content).not.toBe(content);
+});

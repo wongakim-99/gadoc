@@ -1,8 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsArray, IsEnum, IsOptional, IsString, MinLength, IsMongoId } from 'class-validator';
 import type { IssuePriority } from '../../../domain/issue.entity';
 
 export class CreateIssueDto {
+    @IsOptional()
+    @IsMongoId()
+    sourceMessageId?: string;
     @ApiProperty({ example: '로그인 버튼 클릭 시 500 에러 발생' })
     @IsString()
     @MinLength(1)

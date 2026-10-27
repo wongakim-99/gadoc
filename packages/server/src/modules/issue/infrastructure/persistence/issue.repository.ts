@@ -4,11 +4,39 @@ import { Model } from 'mongoose';
 import { IIssueRepository, type IssueSearchFilters } from '../../domain/issue.port';
 import { IssueEntity, IssuePriority, IssueStatus } from '../../domain/issue.entity';
 import { Issue, IssueDocument } from './issue.schema';
+import type { IssueLink } from '../../domain/issue-link';
 
 /** Issue Repository Adapter - MongoDB 구현체 */
 @Injectable()
 export class IssueRepository implements IIssueRepository {
     constructor(@InjectModel(Issue.name) private readonly issueModel: Model<IssueDocument>) {}
+
+    async findLinked(teamId: string, link: Pick<IssueLink, 'kind' | 'resourceId'>) {
+        const docs = await this.issueModel
+            .find({ teamId, links: { $elemMatch: link } })
+            .sort({ updatedAt: -1 })
+            .limit(100)
+            .lean();
+        return docs.map((doc) => this.toEntity(doc as IssueDocument));
+    }
+
+    async addLink(id: string, teamId: string, link: IssueLink) {
+        // The predicate and append are atomic, including duplicate/size protection.
+        const result = await this.issueModel.updateOne(
+            {
+                _id: id,
+                teamId,
+                links: { $not: { $elemMatch: { kind: link.kind, resourceId: link.resourceId } } },
+                'links.49': { $exists: false },
+            },
+            { $push: { links: link } },
+        );
+        return result.modifiedCount > 0;
+    }
+
+    async removeLink(id: string, teamId: string, kind: IssueLink['kind'], resourceId: string) {
+        await this.issueModel.updateOne({ _id: id, teamId }, { $pull: { links: { kind, resourceId } } });
+    }
 
     async findByTeam(teamId: string, filters?: IssueSearchFilters): Promise<IssueEntity[]> {
         const query: Record<string, unknown> = { teamId };
@@ -35,19 +63,23 @@ export class IssueRepository implements IIssueRepository {
         assigneeIds: string[];
         labels: string[];
         createdBy: string;
+        links?: IssueLink[];
     }): Promise<IssueEntity> {
         const doc = await this.issueModel.create(data);
         return this.toEntity(doc);
     }
 
-    async update(id: string, data: Partial<{
-        title: string;
-        description: string;
-        status: IssueStatus;
-        priority: IssuePriority;
-        assigneeIds: string[];
-        labels: string[];
-    }>): Promise<IssueEntity | null> {
+    async update(
+        id: string,
+        data: Partial<{
+            title: string;
+            description: string;
+            status: IssueStatus;
+            priority: IssuePriority;
+            assigneeIds: string[];
+            labels: string[];
+        }>,
+    ): Promise<IssueEntity | null> {
         const doc = await this.issueModel.findByIdAndUpdate(id, data, { new: true }).lean();
         return doc ? this.toEntity(doc as IssueDocument) : null;
     }
@@ -70,6 +102,7 @@ export class IssueRepository implements IIssueRepository {
             doc.createdBy,
             doc.createdAt,
             doc.updatedAt,
+            doc.links ?? [],
         );
     }
 }
