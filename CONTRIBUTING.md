@@ -43,8 +43,8 @@ docs(release): 기능 브랜치와 dev main 반영 규칙 정리
 
 ## 검증 게이트
 
-- 서버 테스트와 빌드: `yarn test:server`, `yarn build:server`
-- 웹 테스트와 빌드: `yarn test:web`, `yarn build:web`
+- 서버 테스트와 빌드: `pnpm test:server`, `pnpm build:server`
+- 웹 테스트와 빌드: `pnpm test:web`, `pnpm build:web`
 - 변경한 UI/API의 Playwright 시나리오, 기존 문서 자동 저장·분할·드래그 회귀
 - 공유 대상, 비공개 문서, 다른 팀, 읽기 전용 역할의 권한 시나리오
 - 셀 저장 실패·초안 보존·동시 수정, 관계와 집계의 데이터 무결성

@@ -1,6 +1,6 @@
 {
     "name": "@slacord/web",
-    "version": "1.0.10",
+    "version": "1.1.1",
     "description": "GaDoc 웹 프론트엔드 (Next.js)",
     "private": true,
     "scripts": {
@@ -15,7 +15,6 @@
         "clean": "rm -rf .next node_modules"
     },
     "dependencies": {
-        "sanitize-html": "^2.18.1",
         "@blocknote/core": "0.47.3",
         "@blocknote/mantine": "0.47.3",
         "@blocknote/react": "0.47.3",
@@ -26,25 +25,29 @@
         "@mantine/utils": "6.0.22",
         "@radix-ui/react-slot": "^1.2.4",
         "@slacord/contracts": "workspace:*",
+        "@slacord/document-core": "workspace:*",
         "@tailwindcss/postcss": "^4.1.18",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "framer-motion": "^12.23.26",
+        "lib0": "^0.2.119",
         "lucide-react": "^0.562.0",
         "next": "^16.4.3",
         "qrcode": "^1.5.4",
         "react": "^19.2.3",
         "react-dom": "^19.2.3",
+        "sanitize-html": "^2.18.1",
         "socket.io-client": "^4.8.3",
         "tailwind-merge": "^3.4.0",
-        "zustand": "^5.0.12",
-        "@slacord/document-core": "workspace:*"
+        "y-protocols": "^1.0.7",
+        "yjs": "^13.6.33",
+        "zustand": "^5.0.12"
     },
     "devDependencies": {
-        "@types/sanitize-html": "^2.16.0",
         "@types/node": "^25.0.3",
         "@types/react": "^19.2.7",
         "@types/react-dom": "^19.2.3",
+        "@types/sanitize-html": "^2.16.0",
         "autoprefixer": "^10.4.23",
         "eslint": "^9.39.2",
         "eslint-config-next": "^16.4.3",

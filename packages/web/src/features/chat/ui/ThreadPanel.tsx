@@ -71,7 +71,7 @@ export function ThreadPanel({
                 </button>
             </div>
 
-            <div className="relative flex-1">
+            <div className="relative min-h-0 flex-1">
                 <div ref={containerRef} onScroll={handleScroll} className="h-full overflow-y-auto">
                     <div className="border-b border-border-primary pb-3">
                         <ThreadParentMessage message={parentMessage} />

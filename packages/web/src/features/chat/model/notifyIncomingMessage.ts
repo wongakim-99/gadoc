@@ -11,6 +11,7 @@ export async function notifyIncomingMessage(message: Message, channelLabel: stri
     const isDesktop = typeof window !== 'undefined' && !!window.slacordDesktop?.isDesktop;
     await showDesktopMessageNotification({
         id: `message:${message.id}`,
+        teamId: message.teamId,
         title: `${channelLabel} · ${author}`,
         body,
         force: isDesktop,

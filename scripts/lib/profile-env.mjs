@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import os from "node:os";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -207,10 +208,19 @@ async function deriveEnv(baseEnv, options) {
     env.SLACORD_DISCORD_MOCK_REPORT ||
     "./artifacts/live-surface-check/discord-import-mock-report.json";
   env.MINIO_ENDPOINT = env.MINIO_ENDPOINT || "http://127.0.0.1:9000";
-  env.MINIO_BUCKET = env.MINIO_BUCKET || "slacord";
+  env.MINIO_BUCKET = env.MINIO_BUCKET || "gadoc";
   env.MINIO_PUBLIC_URL = env.MINIO_PUBLIC_URL || "https://bucket.kscold.com";
-  env.MINIO_ACCESS_KEY = env.MINIO_ACCESS_KEY || "minioadmin";
-  env.MINIO_SECRET_KEY = env.MINIO_SECRET_KEY || "minioadmin";
+  if (env.SLACORD_MINIO_CREDENTIAL_FILE) {
+    const credentialPath = env.SLACORD_MINIO_CREDENTIAL_FILE.replace(/^~(?=\/)/, os.homedir());
+    const metadata = await fs.stat(credentialPath);
+    if (metadata.mode & 0o077) throw new Error('MinIO credential file must be private (0600).');
+    const credentials = await readEnvFile(credentialPath);
+    env.MINIO_ACCESS_KEY = env.MINIO_ACCESS_KEY || credentials.MINIO_ACCESS_KEY;
+    env.MINIO_SECRET_KEY = env.MINIO_SECRET_KEY || credentials.MINIO_SECRET_KEY;
+  }
+  if (!env.MINIO_ACCESS_KEY || !env.MINIO_SECRET_KEY) {
+    throw new Error('Provide dedicated MinIO credentials or an isolated test profile.');
+  }
 
   await ensureMongoUri(env, { strict: options.strictMongoCredentials });
   applyFetchMock(env);

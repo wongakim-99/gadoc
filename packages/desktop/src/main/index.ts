@@ -1,5 +1,6 @@
 import { app, ipcMain } from "electron";
 import path from "node:path";
+import { existsSync } from "node:fs";
 import log from "electron-log";
 import { createMainWindow } from "./window";
 import { configurePermissions, requestMediaAccess } from "./permissions";
@@ -30,7 +31,7 @@ process.on("unhandledRejection", (reason) => {
 
 // Keep the installed app's session and preferences across the display-name change.
 const userData = app.isPackaged
-  ? path.join(app.getPath("appData"), "Slacord")
+  ? path.join(app.getPath("appData"), existsSync(path.join(app.getPath("appData"), "Slacord")) ? "Slacord" : "GaDoc")
   : app.getPath("userData");
 app.setName("GaDoc");
 app.setPath("userData", userData);

@@ -22,7 +22,7 @@ export function AuthShell({ title, description, alternateHref, alternateLabel, a
             </header>
             <main className="gadoc-auth-body">
                 <section className="gadoc-auth-story">
-                    <p className="gadoc-eyebrow">가닥 GaDoc</p>
+                    <p className="gadoc-eyebrow">가독 GaDoc</p>
                     <h1>{siteConfig.headline}</h1>
                     <p className="gadoc-english" lang="en">
                         {siteConfig.englishTagline}

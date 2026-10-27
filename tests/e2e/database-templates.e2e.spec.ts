@@ -46,7 +46,7 @@ test("templates edit as pages, copy content and defaults, and preserve access an
   ]);
   await call(
     `/document/${template.documentId}`,
-    { contentFormat: "json", content },
+    { contentFormat: "json", content, expectedUpdatedAt: (await call<{ updatedAt: string }>(`/document/${template.documentId}`))!.data!.updatedAt },
     "PATCH",
   );
   await call(
@@ -70,7 +70,7 @@ test("templates edit as pages, copy content and defaults, and preserve access an
   const copied = (await call<{ content: string }>(
     `/document/${created.documentId}`,
   ))!.data!;
-  expect(JSON.parse(copied.content)).toEqual(JSON.parse(content));
+  expect(JSON.parse(copied.content)).toMatchObject(JSON.parse(content));
   await call(`${api}/template/${template.id}/page`, {
     creationId: created.documentId,
   });

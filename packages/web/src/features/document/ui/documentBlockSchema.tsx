@@ -114,7 +114,14 @@ function DatabaseBlockBoundary({ id, children }: { id: string; children: ReactNo
         };
     }, []);
     return (
-        <div ref={container} contentEditable={false} className="w-full min-w-0" data-inline-database={id || 'new'}>
+        <div
+            ref={container}
+            contentEditable={false}
+            className="w-full min-w-0"
+            data-inline-database={id || 'new'}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+        >
             {children}
         </div>
     );

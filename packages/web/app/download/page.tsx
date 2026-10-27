@@ -111,7 +111,11 @@ export default async function DownloadPage() {
                     </Link>
                 </div>
                 <div className="marketing-card rounded-[30px] p-6 sm:p-7">
-                    <p className="marketing-kicker text-[11px]">Install Guide</p>
+                    <p className="marketing-kicker text-[11px]">설치 안내</p>
+                    <p className="marketing-caption mt-4 text-[1rem]">
+                        이번 설치 파일은 코드 서명과 macOS 공증이 없습니다. Windows SmartScreen 또는 macOS Gatekeeper 경고가 표시될 수 있습니다.
+                        공식 GitHub 릴리즈의 파일명과 SHA256 체크섬을 확인하세요. 설치가 차단되면 웹 버전을 이용할 수 있습니다.
+                    </p>
                     <p className="marketing-caption mt-4 text-[1rem]">
                         Windows는 앱 안에서 새 버전을 확인하고 내려받은 뒤 재시작으로 바로 적용할 수 있습니다.
                     </p>

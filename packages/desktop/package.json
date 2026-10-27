@@ -1,6 +1,6 @@
 {
   "name": "@slacord/desktop",
-  "version": "1.0.10",
+  "version": "1.1.1",
   "description": "GaDoc 데스크톱 앱 (Electron + DMG)",
   "author": "kscold",
   "private": true,
@@ -58,7 +58,7 @@
       {
         "provider": "github",
         "owner": "kscold",
-        "repo": "slacord"
+        "repo": "gadoc"
       }
     ],
     "mac": {

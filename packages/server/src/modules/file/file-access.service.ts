@@ -10,7 +10,7 @@ export function parseStorageKey(value: unknown) {
     const parts = value.split('/');
     if (
         parts.some((part) => !part || part === '.' || part === '..') ||
-        parts[0] !== 'slacord' ||
+        !['gadoc', 'slacord'].includes(parts[0]) ||
         !['chat', 'docs'].includes(parts[1])
     )
         throw new BadRequestException('파일 경로가 올바르지 않습니다.');

@@ -14,8 +14,10 @@ export function createMainWindow() {
         height: 960,
         minWidth: 1180,
         minHeight: 760,
-        backgroundColor: '#0f0c09',
-        titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+        backgroundColor: '#191c21',
+        title: 'GaDoc',
+        // Native chrome reserves space for the window controls on every route.
+        titleBarStyle: 'default',
         show: false,
         webPreferences: {
             preload: getPreloadPath(),

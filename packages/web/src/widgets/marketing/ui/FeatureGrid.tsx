@@ -60,7 +60,7 @@ export function FeatureGrid() {
             </section>
             <section className="gadoc-story gadoc-container" aria-labelledby="story-heading">
                 <div>
-                    <p className="gadoc-eyebrow">가닥이라는 이름</p>
+                    <p className="gadoc-eyebrow">가독이라는 이름</p>
                     <h2 id="story-heading">“이제 가닥이 잡히네요.”</h2>
                     <p>
                         GaDoc은 ‘일의 가닥을 잡다’에서 출발한 이름입니다.
@@ -71,7 +71,7 @@ export function FeatureGrid() {
                 </div>
                 <div className="gadoc-story-wordmark" aria-hidden="true">
                     Ga<span>Doc</span>
-                    <small>가닥</small>
+                    <small>가독</small>
                 </div>
             </section>
             <section className="gadoc-closing gadoc-container" aria-labelledby="closing-heading">

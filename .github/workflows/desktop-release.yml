@@ -2,29 +2,25 @@ name: desktop-release
 
 on:
   push:
-    tags:
-      - "v*"
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   preflight:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-
-      - name: Validate release secrets
+      - name: Validate tag and signing mode
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
@@ -34,79 +30,95 @@ jobs:
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: |
-          node scripts/check-desktop-release-secrets.mjs --target=mac
+          [[ "$GITHUB_REF_TYPE" == "tag" ]]
+          VERSION=$(node -p "require('./packages/desktop/package.json').version")
+          [[ "$GITHUB_REF_NAME" == "v$VERSION" ]]
+          test -s "docs/releases/$GITHUB_REF_NAME.md"
+          node scripts/check-desktop-release-secrets.mjs --allow-unsigned
 
-  publish:
+  build:
     needs: preflight
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-14
-            command: pnpm release:desktop:mac
+            command: pnpm --filter @slacord/desktop dist:dmg
           - os: windows-2022
-            command: pnpm release:desktop:win
+            command: pnpm --filter @slacord/desktop dist:win
     runs-on: ${{ matrix.os }}
     defaults:
       run:
         shell: bash
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Validate desktop release version
-        run: |
-          VERSION=$(node -p "require('./packages/desktop/package.json').version")
-          echo "desktop version=$VERSION"
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            TAG_VERSION="${GITHUB_REF_NAME#v}"
-            [[ "$VERSION" == "$TAG_VERSION" ]] || {
-              echo "tag version ($TAG_VERSION) does not match desktop version ($VERSION)"
-              exit 1
-            }
-          fi
-
-      - name: Warn when Windows signing is missing
-        if: runner.os == 'Windows'
-        run: |
-          if [[ -z "${WIN_CSC_LINK}" || -z "${WIN_CSC_KEY_PASSWORD}" ]]; then
-            echo "Windows 코드사인 시크릿이 비어 있습니다. 릴리즈는 되지만 SmartScreen 경고가 남을 수 있습니다."
-          fi
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:desktop
+      - name: Build installers without publishing
         env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-
-      - name: Publish desktop artifacts
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.CSC_LINK && 'true' || 'false' }}
         run: |
-          # 코드 서명 시크릿이 있을 때만 env에 주입 (빈 문자열은 electron-builder 오류 유발)
-          if [[ -n "${{ secrets.CSC_LINK }}" ]]; then
-            export CSC_LINK="${{ secrets.CSC_LINK }}"
-            export CSC_KEY_PASSWORD="${{ secrets.CSC_KEY_PASSWORD }}"
-          fi
-          if [[ -n "${{ secrets.APPLE_ID }}" ]]; then
-            export APPLE_ID="${{ secrets.APPLE_ID }}"
-            export APPLE_APP_SPECIFIC_PASSWORD="${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}"
-            export APPLE_TEAM_ID="${{ secrets.APPLE_TEAM_ID }}"
-          fi
-          if [[ -n "${{ secrets.WIN_CSC_LINK }}" ]]; then
-            export WIN_CSC_LINK="${{ secrets.WIN_CSC_LINK }}"
-            export WIN_CSC_KEY_PASSWORD="${{ secrets.WIN_CSC_KEY_PASSWORD }}"
+          for key in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID WIN_CSC_LINK WIN_CSC_KEY_PASSWORD; do
+            if [[ -z "${!key}" ]]; then unset "$key"; fi
+          done
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            unset CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+          else
+            unset WIN_CSC_LINK WIN_CSC_KEY_PASSWORD
           fi
           ${{ matrix.command }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ runner.os }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            packages/desktop/release/*.dmg
+            packages/desktop/release/*.zip
+            packages/desktop/release/*.exe
+            packages/desktop/release/*.blockmap
+            packages/desktop/release/latest*.yml
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: installers-*
+          merge-multiple: true
+          path: release
+      - name: Verify complete release and generate checksums
+        env:
+          GADOC_MAC_SIGNED: ${{ secrets.CSC_LINK != '' && '1' || '0' }}
+          GADOC_WINDOWS_SIGNED: ${{ secrets.WIN_CSC_LINK != '' && '1' || '0' }}
+        run: node scripts/verify-desktop-artifacts.mjs release "$GITHUB_REF_NAME"
+      - name: Publish only after every target succeeds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft' > /tmp/release-draft; then
+            [[ "$(cat /tmp/release-draft)" == "true" ]] || { echo "An already-public release is immutable."; exit 1; }
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --draft --title "GaDoc $GITHUB_REF_NAME" --notes-file release/RELEASE_NOTES.md
+          fi
+          gh release upload "$GITHUB_REF_NAME" release/* --clobber
+          gh release edit "$GITHUB_REF_NAME" --notes-file release/RELEASE_NOTES.md --draft=false --latest
