@@ -73,11 +73,13 @@ async function main() {
       fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
       fs.writeFileSync(
         file,
-        `MINIO_ACCESS_KEY=${account}\nMINIO_SECRET_KEY=${randomBytes(48).toString("hex")}\nMINIO_BUCKET=slacord\nMINIO_ENDPOINT=http://host.docker.internal:9000\n`,
+        `MINIO_ACCESS_KEY=${account}\nMINIO_SECRET_KEY=${randomBytes(48).toString("hex")}\nMINIO_BUCKET=gadoc\nMINIO_ENDPOINT=http://host.docker.internal:9000\n`,
         { mode: 0o600, flag: "wx" },
       );
     }
     const values = credentials();
+    if (values.MINIO_BUCKET !== "gadoc")
+      throw new Error("Complete the verified gadoc bucket migration before applying the final policy.");
     run("mc", ["admin", "policy", "create", alias, policy, policyFile]);
     if (info.status !== 0)
       run("mc", [
@@ -147,9 +149,9 @@ async function main() {
     });
     if (reader.status !== 401)
       throw new Error("Authenticated file reader is not live.");
-    run("mc", ["anonymous", "set", "none", `${alias}/slacord`]);
+    run("mc", ["anonymous", "set", "none", `${alias}/gadoc`]);
     console.log(
-      "Removed anonymous access from slacord only. Verify authorized reads plus anonymous GET/HEAD/LIST now.",
+      "Removed anonymous access from gadoc only. Verify authorized reads plus anonymous GET/HEAD/LIST now.",
     );
   }
 }

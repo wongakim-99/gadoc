@@ -22,4 +22,12 @@ describe('legacy private attachment URLs', () => {
         ])
             expect(privateFileUrl(url)).toBe(url);
     });
+    it('normalizes both buckets and keeps legacy object keys unchanged after migration', () => {
+        for (const bucket of ['gadoc', 'slacord']) {
+            for (const prefix of ['gadoc', 'slacord']) {
+                const key = `${prefix}/docs/team/doc/page/date/file.png`;
+                expect(privateFileUrl(`https://bucket.kscold.com/${bucket}/${key}`)).toBe(`/api/files?key=${key}`);
+            }
+        }
+    });
 });

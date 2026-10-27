@@ -19,6 +19,7 @@ describe('private attachments', () => {
     });
     it('allows members and checks private channel membership before storage access', async () => {
         expect(await access.authorize(chat, 'user')).toBe(chat);
+        expect(await access.authorize(chat.replace('slacord/', 'gadoc/'), 'user')).toBe(chat.replace('slacord/', 'gadoc/'));
         expect(messages.ensureChannelMember).toHaveBeenCalledWith('channel', 'user');
         messages.ensureChannelMember.mockRejectedValue(new Error('private channel'));
         await expect(access.authorize(chat, 'other-user')).rejects.toThrow();

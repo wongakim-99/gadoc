@@ -5,8 +5,16 @@
       "Effect": "Allow",
       "Action": ["s3:GetObject", "s3:PutObject"],
       "Resource": [
-        "arn:aws:s3:::slacord/slacord/chat/*",
-        "arn:aws:s3:::slacord/slacord/docs/*"
+        "arn:aws:s3:::gadoc/gadoc/chat/*",
+        "arn:aws:s3:::gadoc/gadoc/docs/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": [
+        "arn:aws:s3:::gadoc/slacord/chat/*",
+        "arn:aws:s3:::gadoc/slacord/docs/*"
       ]
     }
   ]
