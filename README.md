@@ -1,6 +1,8 @@
-# Slacord
+# 가닥 GaDoc
 
-대화, 할 일, 문서를 한 곳에서 관리하는 올인원 팀 워크스페이스.
+일의 가닥이 잡히는 곳.
+
+대화, 문서, 할 일을 한곳에서.
 
 > https://slacord.cloud
 
@@ -56,7 +58,7 @@
 | -------------- | --------------------------------------------------------- |
 | **백엔드**     | NestJS 11, TypeScript, MongoDB (Mongoose), Socket.IO, JWT |
 | **프론트엔드** | Next.js 16, TypeScript, Tailwind CSS v4, Zustand          |
-| **데스크톱**   | Electron 39, electron-updater                             |
+| **데스크톱**   | Electron 45, electron-updater                             |
 | **스토리지**   | MinIO (S3 호환 오브젝트 스토리지)                         |
 | **인프라**     | Docker, Colima, Nginx, PM2                                |
 | **아키텍처**   | 헥사고날 (Ports & Adapters), FSD (Feature-Sliced Design)  |
@@ -74,25 +76,39 @@ packages/
 ## 로컬 실행 프로필
 
 현재 코드 기준 로컬 서버/웹을 띄우면서 컨테이너로 포워딩된 MongoDB/MinIO를
-함께 쓰는 실행 프로필을 추가했습니다.
+함께 쓰는 실행 프로필이 있습니다. 통합 검증은 운영 데이터가 아닌 격리 저장소를 기본으로 사용합니다.
 
-- 기본 프로필: `config/profiles/local-container.env`
-- Discord mock 검증 프로필: `config/profiles/local-container-discord-mock.env`
+- 개발 프로필: `config/profiles/local-container.env`
+- 통합 검증: `config/profiles/isolated-test.env` (Mongo 27127, MinIO 19000, 서버 18094, 웹 3202)
+- Discord mock 검증: `config/profiles/isolated-discord-mock.env`
 - 민감값 override: `config/profiles/*.local.env` (gitignored)
+
+Node 22.12 이상과 `packageManager`에 고정된 pnpm 10.34.9를 사용합니다. Yarn은 사용하지 않습니다.
+
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+```
 
 자주 쓰는 명령:
 
 ```bash
-yarn profile:print
-yarn dev:stack:profile
-yarn build:server
-yarn build:web:profile
-yarn start:stack:profile
-yarn verify:full
+pnpm profile:print
+pnpm dev:stack:profile
+pnpm build:server
+pnpm build:web:profile
+pnpm start:stack:profile
+pnpm verify:full
 ```
 
 상세 동작과 override 예시는 [runtime-profiles.md](./docs/runtime-profiles.md)에서
 확인할 수 있습니다.
+
+## 보안 검증
+
+확인한 문제, 수정 내용, 운영 반영 전 남은 항목은
+[2026-10-27 보안 점검 기록](./docs/security-review-2026-10-27.md)에 정리했습니다.
+가닥 첨부는 팀·채널·문서 권한 검증을 거쳐 제공하며, 블로그 공개 정책은 변경하지 않습니다.
 
 ## 라이선스
 

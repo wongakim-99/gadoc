@@ -22,16 +22,16 @@
 
 ## 실행 및 검증
 
-기존 Yarn workspace 의존성이 설치되어 있으면:
+기존 pnpm workspace 의존성이 설치되어 있으면:
 
 ```sh
-yarn test:document-core
+pnpm test:document-core
 ```
 
 전체 모노레포 설치 없이 코어만 검증하려면:
 
 ```sh
-npx -y -p typescript@5.7.3 tsc -p packages/document-core/tsconfig.json
+pnpm --filter @slacord/document-core exec tsc -p tsconfig.json
 node --test packages/document-core/test/schema.test.cjs
 ```
 

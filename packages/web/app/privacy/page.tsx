@@ -46,17 +46,17 @@ const SECTIONS = [
 
 export default function PrivacyPage() {
     return (
-        <div className="min-h-screen bg-[radial-gradient(circle_at_top,#2b1d11_0%,#120f0b_42%,#0c0a08_100%)]">
+        <div className="gadoc-marketing">
             <MarketingHeader />
             <main className="mx-auto max-w-5xl px-4 py-14 sm:px-6 sm:py-20">
                 <section className="rounded-[2rem] border border-white/10 bg-black/25 p-6 backdrop-blur-sm sm:p-10">
                     <p className="marketing-kicker">PRIVACY POLICY</p>
                     <h1 className="mt-4 text-3xl font-bold tracking-[-0.04em] text-white sm:text-5xl">
-                        Slacord 개인정보 처리 방침
+                        GaDoc 개인정보 처리 방침
                     </h1>
-                    <p className="mt-5 max-w-3xl text-base leading-8 text-[#d7ccbf] sm:text-lg">
-                        Slacord는 팀 협업에 필요한 정보만 수집하고, 서비스 운영에 필요한 범위 안에서만 사용해요.
-                        아래 내용은 2026년 3월 30일 기준 정책이에요.
+                    <p className="mt-5 max-w-3xl text-base leading-8 text-text-secondary sm:text-lg">
+                        GaDoc은 팀 협업에 필요한 정보만 수집하고, 서비스 운영에 필요한 범위 안에서만 사용해요. 아래
+                        내용은 2026년 3월 30일 기준 정책이에요.
                     </p>
                 </section>
 
@@ -66,10 +66,8 @@ export default function PrivacyPage() {
                             key={section.title}
                             className="rounded-[1.75rem] border border-white/8 bg-white/[0.03] p-6"
                         >
-                            <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">
-                                {section.title}
-                            </h2>
-                            <div className="mt-4 space-y-3 text-sm leading-7 text-[#c8bbac] sm:text-[0.98rem]">
+                            <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">{section.title}</h2>
+                            <div className="mt-4 space-y-3 text-sm leading-7 text-text-secondary sm:text-[0.98rem]">
                                 {section.body.map((line) => (
                                     <p key={line}>{line}</p>
                                 ))}
@@ -79,10 +77,8 @@ export default function PrivacyPage() {
                 </section>
 
                 <section className="mt-8 rounded-[1.75rem] border border-white/8 bg-white/[0.03] p-6 sm:mt-10 sm:p-8">
-                    <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">
-                        문의처
-                    </h2>
-                    <div className="mt-4 space-y-2 text-sm leading-7 text-[#c8bbac] sm:text-[0.98rem]">
+                    <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">문의처</h2>
+                    <div className="mt-4 space-y-2 text-sm leading-7 text-text-secondary sm:text-[0.98rem]">
                         <p>상호: 콜딩(Colding)</p>
                         <p>대표: 김승찬</p>
                         <p>이메일: coldingcontact@gmail.com</p>

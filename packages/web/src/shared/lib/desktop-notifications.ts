@@ -24,7 +24,7 @@ export async function showDesktopMessageNotification(input: {
         // Browser permissions must be requested from a user gesture, never an
         // unsolicited socket event. Desktop permissions are handled by the OS.
         if (!('Notification' in window) || Notification.permission !== 'granted') return;
-        const notification = new Notification(input.title, { body: input.body, icon: '/assets/slacord-bot-icon.png' });
+        const notification = new Notification(input.title, { body: input.body, icon: '/brand/gadoc-icon.png' });
         notification.onclick = () => {
             window.focus();
             if (input.href) {

@@ -11,7 +11,13 @@ export default async function RegisterPage({ searchParams }: Props) {
     const loginHref = nextPath ? `/auth/login?next=${encodeURIComponent(nextPath)}` : '/auth/login';
 
     return (
-        <AuthShell title="Get Started" description="워크스페이스 계정 만들기" alternateHref={loginHref} alternateLabel="로그인" alternateText="이미 계정이 있나요?">
+        <AuthShell
+            title="가닥 시작하기"
+            description="워크스페이스 계정 만들기"
+            alternateHref={loginHref}
+            alternateLabel="로그인"
+            alternateText="이미 계정이 있나요?"
+        >
             <RegisterForm nextPath={nextPath} />
         </AuthShell>
     );

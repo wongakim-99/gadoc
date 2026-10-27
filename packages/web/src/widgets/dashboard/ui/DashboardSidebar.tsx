@@ -51,9 +51,9 @@ export function DashboardSidebar({ currentUserName }: Props) {
             <aside className="w-full shrink-0 border-b border-border-primary bg-bg-secondary lg:flex lg:min-h-screen lg:w-64 lg:flex-col lg:border-b-0 lg:border-r">
                 <div className="border-b border-border-primary p-4 sm:p-6">
                     <Link href="/" className="flex items-center gap-3">
-                        <Image src="/logo.svg" alt="Slacord" width={40} height={40} className="rounded-xl" />
+                        <Image src="/logo.svg" alt="GaDoc" width={40} height={40} className="rounded-xl" />
                         <div>
-                            <h1 className="text-xl font-bold text-white">Slacord</h1>
+                            <h1 className="text-xl font-bold text-white">GaDoc</h1>
                             <p className="mt-0.5 text-xs text-text-tertiary">Team Collaboration</p>
                         </div>
                     </Link>
@@ -68,7 +68,9 @@ export function DashboardSidebar({ currentUserName }: Props) {
                     >
                         <div>
                             <p className="text-sm font-semibold text-white">빠른 검색</p>
-                            <p className="mt-1 text-xs text-text-secondary">메시지 검색과 대시보드 quick action을 바로 열기</p>
+                            <p className="mt-1 text-xs text-text-secondary">
+                                메시지 검색과 대시보드 quick action을 바로 열기
+                            </p>
                         </div>
                         <span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-text-tertiary">
                             {typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? '⌘K' : 'Ctrl+K'}
