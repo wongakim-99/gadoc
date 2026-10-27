@@ -146,7 +146,7 @@ test.describe.serial("slacord web e2e", () => {
     await page.goto(`/${fixture.teamId}/docs`);
 
     await page.locator('main').getByPlaceholder("문서 제목으로 찾기").fill("E2E 문서");
-    await page.locator('main').getByRole("link", { name: /E2E 문서/ }).click();
+    await page.locator(`main a[href="/${fixture.teamId}/docs/${fixture.documentId}"]`).click();
     await page.waitForURL(`**/${fixture.teamId}/docs/${fixture.documentId}`);
     await expect(page.getByText("문서 검증 본문")).toBeVisible();
 
