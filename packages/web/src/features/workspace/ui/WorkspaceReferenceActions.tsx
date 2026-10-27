@@ -58,9 +58,6 @@ export function WorkspaceReferenceActions({ reference }: { reference: WorkspaceR
                     style={position}
                     className="fixed z-[90] w-56 rounded-control border border-border-primary bg-bg-secondary p-2 shadow-lg"
                 >
-                    <p className="px-2 py-1 text-xs text-text-tertiary">
-                        아이콘을 끌어 자료에 연결하거나 옆에 열 수 있습니다.
-                    </p>
                     <button
                         type="button"
                         className="w-full rounded-control p-2 text-left text-xs hover:bg-bg-hover"

@@ -123,7 +123,6 @@ export function DocumentEditorPanel({
         <div className="space-y-3">
             <InsertWorkspaceReference onInsert={(reference) => insertReference(reference)} />
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-text-tertiary">빈 줄에서 / 를 입력해 블록을 추가하세요.</p>
                 <DocumentAttachmentButton
                     documentId={documentId}
                     editor={editor}
@@ -158,7 +157,7 @@ export function DocumentEditorPanel({
                                     ...getDefaultReactSlashMenuItems(editor),
                                     {
                                         title: '데이터베이스',
-                                        subtext: '페이지 안에 새 데이터베이스를 만들거나 기존 데이터베이스 연결',
+                                        subtext: '빈 데이터베이스 추가',
                                         aliases: ['database', '데이터베이스', '인라인', '표'],
                                         group: '데이터 관리',
                                         icon: <Database size={18} />,
@@ -172,6 +171,27 @@ export function DocumentEditorPanel({
                                             } else {
                                                 editor.insertBlocks([{ type: 'database' }], current, 'after');
                                             }
+                                        },
+                                    },
+                                    {
+                                        title: '데이터베이스 연결',
+                                        subtext: '기존 데이터베이스의 보기 추가',
+                                        aliases: ['linked database', '연결된 데이터베이스'],
+                                        group: '데이터 관리',
+                                        icon: <Database size={18} />,
+                                        onItemClick: () => {
+                                            const current = editor.getTextCursorPosition().block;
+                                            if (current.type === 'paragraph' && current.content.length === 0)
+                                                editor.updateBlock(current, {
+                                                    type: 'database',
+                                                    props: { linked: true },
+                                                });
+                                            else
+                                                editor.insertBlocks(
+                                                    [{ type: 'database', props: { linked: true } }],
+                                                    current,
+                                                    'after',
+                                                );
                                         },
                                     },
                                     ...(onCreateChild

@@ -1,6 +1,7 @@
 import type { DocumentNode } from '../types';
 
 export interface DocumentTreeNode extends DocumentNode {
+    databaseId?: string;
     children: DocumentTreeNode[];
 }
 

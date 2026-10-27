@@ -9,9 +9,10 @@ import type { AppNotification } from '@/src/entities/notification/types';
 
 interface Props {
     teamId: string;
+    compact?: boolean;
 }
 
-export function NotificationBell({ teamId }: Props) {
+export function NotificationBell({ teamId, compact = false }: Props) {
     const router = useRouter();
     const { notifications, unreadCount, error, markAsRead, markAllAsRead } = useNotifications(teamId);
     const [open, setOpen] = useState(false);
@@ -51,7 +52,13 @@ export function NotificationBell({ teamId }: Props) {
                 aria-controls={panelId}
                 aria-expanded={open}
                 aria-haspopup="dialog"
-                className="workspace-sidebar-row flex w-full items-center text-text-secondary transition-colors hover:bg-bg-hover hover:text-white"
+                aria-label={unreadCount ? `알림 ${unreadCount}개 읽지 않음` : '알림'}
+                title="알림"
+                className={
+                    compact
+                        ? 'relative flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-text-secondary hover:bg-bg-hover'
+                        : 'workspace-sidebar-row flex w-full items-center text-text-secondary hover:bg-bg-hover'
+                }
             >
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -61,9 +68,11 @@ export function NotificationBell({ teamId }: Props) {
                         d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
                     />
                 </svg>
-                <span className="flex-1 text-left">알림</span>
+                {!compact && <span className="flex-1 text-left">알림</span>}
                 {unreadCount > 0 && (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white">
+                    <span
+                        className={`flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ${compact ? 'absolute -right-1 -top-1' : ''}`}
+                    >
                         {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                 )}

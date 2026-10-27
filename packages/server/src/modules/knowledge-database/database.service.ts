@@ -101,6 +101,7 @@ export class DatabaseService {
         return sources.map((db) => ({
             id: String(db._id),
             name: db.name,
+            parentDocumentId: db.parentDocumentId ?? null,
             locked: db.locked ?? false,
             properties: [
                 ...db.properties.filter((prop) => !prop.archived),

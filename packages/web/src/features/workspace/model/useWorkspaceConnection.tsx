@@ -6,6 +6,8 @@ import type { WorkspaceReference } from './workspaceReference';
 export const WorkspaceConnection = createContext<{
     teamId: string;
     embedded: boolean;
+    activePath?: string;
+    activeHref?: string;
     pending: WorkspaceReference | null;
     dragging: WorkspaceReference | null;
     drag: (reference: WorkspaceReference | null) => void;

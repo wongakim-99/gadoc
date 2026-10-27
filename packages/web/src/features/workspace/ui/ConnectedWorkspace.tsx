@@ -5,7 +5,6 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { ArrowLeftRight, Columns2, Link2, X } from 'lucide-react';
 import { WorkspaceConnection, canLeaveWorkspacePane } from '../model/useWorkspaceConnection';
 import { sameDocument, workspaceHref, type WorkspaceReference } from '../model/workspaceReference';
-import { WorkspaceResourcePicker } from './WorkspaceResourcePicker';
 import { hasReferenceDrag, readReferenceDrag, validDragReference } from '../model/workspaceDrag';
 
 const protocol = 'slacord-workspace-v1';
@@ -33,9 +32,9 @@ export function ConnectedWorkspace({
     const [pending, setPending] = useState<WorkspaceReference | null>(null);
     const [dragging, setDragging] = useState<WorkspaceReference | null>(null);
     const [edgeOver, setEdgeOver] = useState(false);
-    const [picker, setPicker] = useState(false);
-    const [ratio, setRatio] = useState(55);
+    const [ratio, setRatio] = useState(50);
     const [reversed, setReversed] = useState(false);
+    const [activePane, setActivePane] = useState<'primary' | 'secondary'>('primary');
     const [mobilePane, setMobilePane] = useState<'primary' | 'secondary'>('primary');
     const [notice, setNotice] = useState('');
     const [busy, setBusy] = useState(false);
@@ -122,7 +121,8 @@ export function ConnectedWorkspace({
                 return;
             }
             if (sameDocument(href, window.location.pathname)) {
-                setNotice('이미 현재 영역에서 편집 중인 문서입니다. 다른 내용을 선택해 주세요.');
+                setNotice('');
+                setActivePane('primary');
                 setMobilePane('primary');
                 return;
             }
@@ -132,11 +132,12 @@ export function ConnectedWorkspace({
             try {
                 if (latest.current.secondary?.href !== href && !(await mayClose())) return;
                 if (latest.current.secondary?.href !== href) frameReady.current = false;
+                if (!latest.current.secondary) setRatio(50);
                 setSecondary({ href, label });
                 if (right) setReversed(false);
                 setSecondaryPath(href);
-                setPicker(false);
                 setMobilePane('secondary');
+                setActivePane('secondary');
                 setNotice('');
             } finally {
                 transition.current = false;
@@ -152,6 +153,7 @@ export function ConnectedWorkspace({
         try {
             if (await mayClose()) {
                 setSecondary(null);
+                setActivePane('primary');
                 setMobilePane('primary');
                 setNotice('');
             }
@@ -170,6 +172,10 @@ export function ConnectedWorkspace({
                 ? event.source === window.parent
                 : Boolean(frame.current && event.source === frame.current.contentWindow);
             if (!trustedSource) return;
+            if (!embedded && payload.type === 'focus') {
+                setActivePane('secondary');
+                return;
+            }
             if (payload.type === 'drag') {
                 const reference =
                     payload.data === null ? null : validDragReference(payload.data, teamId, window.location.origin);
@@ -274,21 +280,56 @@ export function ConnectedWorkspace({
             if (!anchor || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
             if (
                 new URL(anchor.href).origin === window.location.origin &&
-                sameDocument(new URL(anchor.href).pathname, secondary.href)
+                sameDocument(new URL(anchor.href).pathname, secondaryPath || secondary.href)
             ) {
                 event.preventDefault();
                 event.stopPropagation();
                 setMobilePane('secondary');
+                setActivePane('secondary');
                 frame.current?.focus();
-                setNotice('이 문서는 옆 영역에 열려 있습니다. 해당 영역에서 계속 편집하세요.');
+                setNotice('');
             }
         };
         window.addEventListener('click', preventDuplicate, true);
         return () => window.removeEventListener('click', preventDuplicate, true);
-    }, [embedded, secondary]);
+    }, [embedded, secondary, secondaryPath]);
     useEffect(() => {
         if (embedded) post(window.parent, 'ready', window.location.pathname + window.location.search);
     }, [embedded, pathname, searchParams, post]);
+    useEffect(() => {
+        if (!embedded) return;
+        const focus = () => post(window.parent, 'focus');
+        window.addEventListener('pointerdown', focus, true);
+        window.addEventListener('focusin', focus);
+        return () => {
+            window.removeEventListener('pointerdown', focus, true);
+            window.removeEventListener('focusin', focus);
+        };
+    }, [embedded, post]);
+    useEffect(() => {
+        if (embedded || !secondary || activePane !== 'secondary') return;
+        const navigate = (event: MouseEvent) => {
+            if (
+                event.defaultPrevented ||
+                event.button !== 0 ||
+                event.ctrlKey ||
+                event.metaKey ||
+                event.shiftKey ||
+                event.altKey
+            )
+                return;
+            const anchor =
+                event.target instanceof Element
+                    ? event.target.closest<HTMLAnchorElement>('aside[aria-label="워크스페이스 사이드바"] a[href]')
+                    : null;
+            if (!anchor || !workspaceHref(anchor.href, teamId, window.location.origin)) return;
+            event.preventDefault();
+            event.stopPropagation();
+            void open(anchor.href, anchor.textContent?.trim() || '페이지');
+        };
+        window.addEventListener('click', navigate, true);
+        return () => window.removeEventListener('click', navigate, true);
+    }, [embedded, secondary, activePane, open, teamId]);
     const resize = (clientX: number) => {
         const rect = panes.current?.getBoundingClientRect();
         if (!rect) return;
@@ -298,6 +339,11 @@ export function ConnectedWorkspace({
     const value = {
         teamId,
         embedded,
+        activeHref:
+            activePane === 'secondary' && secondary
+                ? secondaryPath
+                : pathname + (searchParams.size ? '?' + searchParams.toString() : ''),
+        activePath: activePane === 'secondary' && secondary ? secondaryPath.split('?')[0] : pathname,
         pending,
         dragging,
         drag,
@@ -317,44 +363,34 @@ export function ConnectedWorkspace({
     return (
         <WorkspaceConnection.Provider value={value}>
             <div className="workspace-shell connected-workspace flex min-h-screen flex-col bg-bg-primary lg:h-screen lg:overflow-hidden">
-                <div className="connection-toolbar" aria-label="연결 작업 도구">
-                    <span className="hidden text-xs text-text-tertiary sm:block">
-                        {secondary ? '연결 작업' : '항목의 옆에 열기 버튼을 누르거나 오른쪽 가장자리로 끌어보세요'}
-                    </span>
-                    <div className="ml-auto flex min-w-0 items-center gap-1">
-                        <button
-                            className="connection-open"
-                            disabled={busy}
-                            onClick={() => setPicker(true)}
-                            title="목록에서 찾아 옆에 열기"
-                        >
-                            <Columns2 size={15} />
-                            찾아서 열기
-                        </button>
-                        {secondary && (
-                            <>
-                                <button
-                                    className="connection-icon hidden lg:inline-flex"
-                                    aria-label="좌우 바꾸기"
-                                    onClick={() => setReversed(!reversed)}
-                                >
-                                    <ArrowLeftRight size={15} />
-                                </button>
-                                <button
-                                    className="connection-icon"
-                                    aria-label="분할 닫기"
-                                    disabled={busy}
-                                    onClick={() => void close()}
-                                >
-                                    <X size={16} />
-                                </button>
-                            </>
-                        )}
-                    </div>
-                </div>
                 <div className="connected-body flex min-h-0 flex-1 flex-col lg:flex-row">
                     {sidebar}
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                        {secondary && (
+                            <div className="connection-toolbar" aria-label="연결 작업 도구">
+                                <div className="ml-auto flex min-w-0 items-center gap-1">
+                                    {secondary && (
+                                        <>
+                                            <button
+                                                className="connection-icon hidden lg:inline-flex"
+                                                aria-label="좌우 바꾸기"
+                                                onClick={() => setReversed(!reversed)}
+                                            >
+                                                <ArrowLeftRight size={15} />
+                                            </button>
+                                            <button
+                                                className="connection-icon"
+                                                aria-label="분할 닫기"
+                                                disabled={busy}
+                                                onClick={() => void close()}
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                         {pending && (
                             <div className="connection-reference-tray" role="status">
                                 <Link2 size={14} />
@@ -384,14 +420,20 @@ export function ConnectedWorkspace({
                             >
                                 <button
                                     aria-pressed={mobilePane === 'primary'}
-                                    onClick={() => setMobilePane('primary')}
+                                    onClick={() => {
+                                        setMobilePane('primary');
+                                        setActivePane('primary');
+                                    }}
                                     className="flex-1 p-2 text-sm aria-pressed:bg-selection"
                                 >
                                     현재 작업
                                 </button>
                                 <button
                                     aria-pressed={mobilePane === 'secondary'}
-                                    onClick={() => setMobilePane('secondary')}
+                                    onClick={() => {
+                                        setMobilePane('secondary');
+                                        setActivePane('secondary');
+                                    }}
                                     className="min-w-0 flex-1 truncate p-2 text-sm aria-pressed:bg-selection"
                                 >
                                     {secondary.label}
@@ -404,6 +446,9 @@ export function ConnectedWorkspace({
                             style={{ '--primary-width': `${ratio}%` } as React.CSSProperties}
                         >
                             <div
+                                onPointerDownCapture={() => setActivePane('primary')}
+                                onFocusCapture={() => setActivePane('primary')}
+                                data-active={activePane === 'primary'}
                                 className={`connection-primary ${secondary && mobilePane !== 'primary' ? 'mobile-hidden' : ''}`}
                             >
                                 <main className="h-full min-w-0 overflow-auto">
@@ -416,7 +461,10 @@ export function ConnectedWorkspace({
                                             </p>
                                             <button
                                                 className="connection-open mt-4"
-                                                onClick={() => setMobilePane('secondary')}
+                                                onClick={() => {
+                                                    setMobilePane('secondary');
+                                                    setActivePane('secondary');
+                                                }}
                                             >
                                                 편집 중인 영역 보기
                                             </button>
@@ -467,6 +515,7 @@ export function ConnectedWorkspace({
                                     />
                                     <section
                                         aria-label="옆 작업 영역"
+                                        data-active={activePane === 'secondary'}
                                         className={`connection-secondary ${mobilePane !== 'secondary' ? 'mobile-hidden' : ''}`}
                                     >
                                         <iframe
@@ -516,13 +565,6 @@ export function ConnectedWorkspace({
                         <span className="max-w-full truncate">{dragging.label}</span>
                         <small>{secondary ? '옆 화면 교체 · 현재 작업 유지' : '현재 작업은 그대로 유지됩니다'}</small>
                     </div>
-                )}
-                {picker && (
-                    <WorkspaceResourcePicker
-                        teamId={teamId}
-                        onClose={() => setPicker(false)}
-                        onSelect={(reference) => void open(reference.href, reference.label)}
-                    />
                 )}
             </div>
         </WorkspaceConnection.Provider>

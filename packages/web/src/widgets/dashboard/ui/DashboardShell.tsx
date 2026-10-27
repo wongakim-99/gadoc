@@ -7,7 +7,7 @@ interface Props {
     children: React.ReactNode;
 }
 
-export function DashboardShell({ title, description, currentUserName, children }: Props) {
+export function DashboardShell({ title, currentUserName, children }: Props) {
     return (
         <div className="workspace-shell dashboard-shell min-h-screen bg-bg-primary lg:flex">
             <DashboardSidebar currentUserName={currentUserName} />
@@ -15,10 +15,7 @@ export function DashboardShell({ title, description, currentUserName, children }
                 <header className="workspace-topbar">
                     <h1>{title}</h1>
                 </header>
-                <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
-                    <p className="max-w-3xl text-sm leading-6 text-text-secondary">{description}</p>
-                    {children}
-                </div>
+                <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">{children}</div>
             </main>
         </div>
     );

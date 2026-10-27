@@ -7,25 +7,25 @@ interface Props {
 
 export function WorkspaceCard({ team }: Props) {
     return (
-        <div className="rounded-panel border border-border-primary bg-bg-secondary p-6 transition hover:border-border-glow hover:bg-bg-hover">
+        <div className="min-w-0 rounded-panel border border-border-primary bg-bg-secondary p-6 transition hover:border-border-glow hover:bg-bg-hover">
             <div className="flex items-start justify-between gap-4">
-                <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-action-text">{team.slug}</p>
+                <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs uppercase tracking-[0.18em] text-action-text">{team.slug}</p>
                     <Link
                         href={`/${team.id}`}
-                        className="mt-2 block text-xl font-bold text-white hover:text-action-text"
+                        className="mt-2 block break-words text-xl font-bold text-white hover:text-action-text"
                     >
                         {team.name}
                     </Link>
                 </div>
-                <span className="rounded-full bg-selection px-3 py-1 text-xs font-medium text-action-text">
+                <span className="shrink-0 whitespace-nowrap rounded-full bg-selection px-3 py-1 text-xs font-medium text-action-text">
                     {team.memberCount}명
                 </span>
             </div>
-            <p className="mt-4 min-h-12 text-sm leading-6 text-text-secondary">
+            <p className="mt-4 min-h-12 break-words text-sm leading-6 text-text-secondary">
                 {team.description || '워크스페이스 설명이 아직 없습니다.'}
             </p>
-            <div className="mt-6 flex items-center justify-between text-xs text-text-tertiary">
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-xs text-text-tertiary">
                 <span>{team.githubConfig?.repoUrl ? 'GitHub 연결됨' : 'GitHub 미연결'}</span>
                 <span>{new Date(team.createdAt).toLocaleDateString('ko-KR')}</span>
             </div>
