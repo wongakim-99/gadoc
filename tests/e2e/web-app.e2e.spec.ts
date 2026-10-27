@@ -396,6 +396,7 @@ test.describe.serial("slacord web e2e", () => {
     await expect(
       page.locator('video[src*="teaser.mp4"]').first(),
     ).toBeVisible();
+    await expect(page.locator('video[src*="teaser.mp4"]').locator('xpath=ancestor::a')).toHaveCount(0);
   });
 
   test("메시지 검색 결과에서 오래된 대화까지 자동으로 불러와 이동한다", async ({
