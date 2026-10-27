@@ -19,7 +19,7 @@ export class BridgeWorkerService implements OnModuleInit, OnModuleDestroy {
     ) {}
 
     onModuleInit() {
-        if (process.env.NODE_ENV === 'test') return;
+        if (process.env.NODE_ENV === 'test' && process.env.SLACORD_INTEGRATION_TEST !== '1') return;
         this.timer = setInterval(() => {
             void this.processPending().catch((error: unknown) => {
                 // A transient database outage must not become an unhandled

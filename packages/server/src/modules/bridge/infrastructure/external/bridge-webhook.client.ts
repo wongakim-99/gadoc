@@ -1,19 +1,21 @@
+import { bridgeWebhookUrl } from '../../../../shared/lib/outbound-url';
 import { BadGatewayException, Injectable } from '@nestjs/common';
 import type { BridgeJobEntity } from '../../domain/bridge-job.entity';
-import {
-    DISCORD_EMBED_DESCRIPTION_MAX,
-    SLACK_EMBED_DESCRIPTION_MAX,
-} from '../../../../shared/constants/limits';
+import { DISCORD_EMBED_DESCRIPTION_MAX, SLACK_EMBED_DESCRIPTION_MAX } from '../../../../shared/constants/limits';
 
 @Injectable()
 export class BridgeWebhookClient {
     async deliver(job: BridgeJobEntity) {
-        const response = await fetch(job.webhookUrl, {
+        const response = await fetch(bridgeWebhookUrl(job.platform, job.webhookUrl), {
+            redirect: 'error',
+            signal: AbortSignal.timeout(15_000),
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(job.platform === 'slack' ? this.buildSlackPayload(job) : this.buildDiscordPayload(job)),
+            body: JSON.stringify(
+                job.platform === 'slack' ? this.buildSlackPayload(job) : this.buildDiscordPayload(job),
+            ),
         });
 
         if (!response.ok) {
@@ -53,7 +55,7 @@ export class BridgeWebhookClient {
                 elements: [
                     {
                         type: 'mrkdwn',
-                        text: job.eventType === 'announcement' ? 'Slacord announcement relay' : 'Slacord GitHub relay',
+                        text: job.eventType === 'announcement' ? 'GaDoc announcement relay' : 'GaDoc GitHub relay',
                     },
                 ],
             },
@@ -75,7 +77,7 @@ export class BridgeWebhookClient {
                     url: job.url ?? undefined,
                     color: job.eventType === 'announcement' ? 0xf59e0b : 0x22c55e,
                     footer: {
-                        text: job.eventType === 'announcement' ? 'Slacord announcement relay' : 'Slacord GitHub relay',
+                        text: job.eventType === 'announcement' ? 'GaDoc announcement relay' : 'GaDoc GitHub relay',
                     },
                 },
             ],

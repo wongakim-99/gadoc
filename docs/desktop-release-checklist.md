@@ -65,15 +65,15 @@ node scripts/check-desktop-release-secrets.mjs --target=all
 
 ```bash
 cd /Users/kscold/Desktop/slacord
-yarn version:all 1.1.0
+pnpm version:all 1.1.0
 ```
 
 2. 웹/서버/데스크톱 빌드를 확인합니다.
 
 ```bash
-yarn build:server
-yarn build:web
-yarn build:desktop
+pnpm build:server
+pnpm build:web
+pnpm build:desktop
 ```
 
 3. 커밋과 태그를 만듭니다.

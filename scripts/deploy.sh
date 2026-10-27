@@ -16,7 +16,7 @@ log() { echo "▸ $1"; }
 deploy_server() {
     log "서버 빌드 중..."
     cd "$PROJECT_DIR/packages/server"
-    yarn build 2>&1 | tail -1
+    pnpm build 2>&1 | tail -1
 
     log "서버 산출물 전송 중..."
     tar czf /tmp/slacord-server-dist.tar.gz dist/
@@ -32,7 +32,7 @@ deploy_server() {
 deploy_web() {
     log "프론트 빌드 중..."
     cd "$PROJECT_DIR/packages/web"
-    yarn build 2>&1 | tail -1
+    pnpm build 2>&1 | tail -1
 
     log "프론트 산출물 전송 중..."
     tar czf /tmp/slacord-web-next.tar.gz .next/

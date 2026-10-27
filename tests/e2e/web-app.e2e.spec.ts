@@ -145,8 +145,13 @@ test.describe.serial("slacord web e2e", () => {
     await loginWithSession(page, fixture.owner);
     await page.goto(`/${fixture.teamId}/docs`);
 
-    await page.locator('main').getByPlaceholder("문서 제목으로 찾기").fill("E2E 문서");
-    await page.locator(`main a[href="/${fixture.teamId}/docs/${fixture.documentId}"]`).click();
+    await page
+      .locator("main")
+      .getByPlaceholder("문서 제목으로 찾기")
+      .fill("E2E 문서");
+    await page
+      .locator(`main a[href="/${fixture.teamId}/docs/${fixture.documentId}"]`)
+      .click();
     await page.waitForURL(`**/${fixture.teamId}/docs/${fixture.documentId}`);
     await expect(page.getByText("문서 검증 본문")).toBeVisible();
 
@@ -157,8 +162,12 @@ test.describe.serial("slacord web e2e", () => {
     await page.getByRole("button", { name: "생성", exact: true }).click();
 
     await page.waitForURL(new RegExp(`/${fixture.teamId}/docs/.+\\?edit=1`));
-    await expect(page.locator('.bn-editor[contenteditable="true"]')).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "페이지 제목" })).toHaveValue(title);
+    await expect(
+      page.locator('.bn-editor[contenteditable="true"]'),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: "페이지 제목" }),
+    ).toHaveValue(title);
   });
 
   test("문서에서 선택 인용 코멘트와 답글 및 해결 처리를 남긴다", async ({
@@ -172,7 +181,7 @@ test.describe.serial("slacord web e2e", () => {
     await page.goto(`/${fixture.teamId}/docs/${fixture.documentId}`);
     await expect(page.getByText("문서 검증 본문")).toBeVisible();
 
-    await page.getByRole('button', { name: '댓글', exact: true }).click();
+    await page.getByRole("button", { name: "댓글", exact: true }).click();
     await selectDocumentText(page, "문서 검증 본문");
     await expect(page.getByText("선택 인용")).toBeVisible();
     await expect(page.getByText('"문서 검증 본문"')).toBeVisible();
@@ -197,7 +206,9 @@ test.describe.serial("slacord web e2e", () => {
 
     await page.getByRole("button", { name: "열린 토론" }).click();
     await expect(
-      page.getByText("열린 토론이 없습니다. 해결되지 않은 이슈가 생기면 여기에서 바로 이어서 볼 수 있습니다."),
+      page.getByText(
+        "열린 토론이 없습니다. 해결되지 않은 이슈가 생기면 여기에서 바로 이어서 볼 수 있습니다.",
+      ),
     ).toBeVisible();
 
     await page.getByRole("button", { name: "해결됨" }).click();
@@ -331,7 +342,9 @@ test.describe.serial("slacord web e2e", () => {
       ownerPage.getByText(`안녕 @${fixture.owner.username}`),
     ).toBeVisible();
     await ownerPage.getByRole("button", { name: "알림 패널 닫기" }).click();
-    await expect(ownerPage.getByRole("dialog", { name: "알림", exact: true })).toBeHidden();
+    await expect(
+      ownerPage.getByRole("dialog", { name: "알림", exact: true }),
+    ).toBeHidden();
 
     await unreadLink.click();
     await ownerPage.waitForURL(
@@ -431,9 +444,9 @@ test.describe.serial("slacord web e2e", () => {
     await loginWithSession(page, fixture.owner);
     await page.goto(`/${fixture.teamId}/channel/${fixture.channelId}`);
 
-    // The channel composer appears after the authenticated client shell is ready.
-    await expect(page.getByRole("textbox", { name: /메시지 보내기/ })).toBeEditable();
-    await page.getByRole("button", { name: "전체 검색", exact: true }).focus();
+    // The keyboard listener is installed after hydration; wait for live channel data, not just SSR HTML.
+    await expect(page.getByText(targetContent, { exact: true })).toBeVisible();
+
     await page.keyboard.press(
       process.platform === "darwin" ? "Meta+K" : "Control+K",
     );
@@ -505,8 +518,8 @@ test.describe.serial("slacord web e2e", () => {
 
     const openPalette = async () => {
       // Wait for the client sidebar to hydrate before sending a global shortcut.
-      await page.getByRole('button', { name: /검색/ }).first().waitFor();
-      await page.getByRole('button', { name: /검색/ }).first().click();
+      await page.getByRole("button", { name: /검색/ }).first().waitFor();
+      await page.getByRole("button", { name: /검색/ }).first().click();
       await expect(
         page.getByRole("dialog", { name: "워크스페이스 검색" }),
       ).toBeVisible();
@@ -530,17 +543,23 @@ test.describe.serial("slacord web e2e", () => {
       .getByRole("option", { name: new RegExp(`"${documentTitle}" 문서 생성`) })
       .click();
     await page.waitForURL(new RegExp(`/${fixture.teamId}/docs/[^?]+\\?edit=1`));
-    await expect(page.getByRole("textbox", { name: "페이지 제목" })).toHaveValue(documentTitle);
+    await expect(
+      page.getByRole("textbox", { name: "페이지 제목" }),
+    ).toHaveValue(documentTitle);
 
     await openPalette();
     await paletteInput.fill(issueTitle);
     await page
-      .getByRole("option", { name: new RegExp(`"${issueTitle}" 이슈 초안 열기`) })
+      .getByRole("option", {
+        name: new RegExp(`"${issueTitle}" 이슈 초안 열기`),
+      })
       .click();
     await page.waitForURL(
       new RegExp(`/${fixture.teamId}/issues\\?create=1&status=todo&title=`),
     );
-    await expect(page.getByRole("heading", { name: "이슈 생성", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "이슈 생성", exact: true }),
+    ).toBeVisible();
     await expect(
       page.getByRole("textbox", { name: "이슈 제목", exact: true }),
     ).toHaveValue(issueTitle);
@@ -596,11 +615,15 @@ test.describe.serial("slacord web e2e", () => {
       page.getByText("guest는 공지를 읽기만 할 수 있습니다."),
     ).toBeVisible();
 
-    await expect(page.getByRole("link", { name: "휴지통", exact: true })).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "휴지통", exact: true }),
+    ).toHaveCount(0);
     const runtimeErrors: string[] = [];
-    page.on("pageerror", error => runtimeErrors.push(error.message));
+    page.on("pageerror", (error) => runtimeErrors.push(error.message));
     await page.goto(`/${fixture.teamId}/docs/archived`);
-    await expect(page.getByRole("alert").filter({ hasText: "관리자 권한이 필요합니다." })).toBeVisible();
+    await expect(
+      page.getByRole("alert").filter({ hasText: "관리자 권한이 필요합니다." }),
+    ).toBeVisible();
     expect(runtimeErrors).toEqual([]);
   });
 
@@ -723,7 +746,9 @@ test.describe.serial("slacord web e2e", () => {
 
     await page.getByRole("button", { name: /운영 이력/ }).click();
     await page.waitForURL(`**/${fixture.teamId}/settings?section=operations`);
-    await expect(page.getByText("운영 감사 로그와 재시도 흐름을 남김")).toBeVisible();
+    await expect(
+      page.getByText("운영 감사 로그와 재시도 흐름을 남김"),
+    ).toBeVisible();
     await expect(
       page.getByText("Slack/Discord 브리지 설정을 저장함"),
     ).toBeVisible();
@@ -760,7 +785,9 @@ test.describe.serial("slacord web e2e", () => {
     await page.getByRole("button", { name: /운영 이력/ }).click();
     await page.waitForURL(`**/${fixture.teamId}/settings?section=operations`);
     await expect(
-      page.getByRole("heading", { name: "운영 감사 로그와 재시도 흐름을 남김" }),
+      page.getByRole("heading", {
+        name: "운영 감사 로그와 재시도 흐름을 남김",
+      }),
     ).toBeVisible();
   });
 });

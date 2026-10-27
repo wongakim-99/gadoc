@@ -1,3 +1,4 @@
+import { corsOrigin } from '../../../../shared/lib/security-config';
 import {
     WebSocketGateway,
     WebSocketServer,
@@ -20,7 +21,7 @@ interface SocketUser {
 }
 
 /** 팀원 온라인 상태 WebSocket Gateway (/presence namespace) */
-@WebSocketGateway({ namespace: '/presence', cors: { origin: '*' } })
+@WebSocketGateway({ namespace: '/presence', cors: { origin: corsOrigin, credentials: true } })
 export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     server: Server;
@@ -58,10 +59,7 @@ export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect
 
     /** 클라이언트에서 직접 상태 변경 (away, do-not-disturb 등) */
     @SubscribeMessage('set_status')
-    handleSetStatus(
-        @MessageBody() data: { status: PresenceStatus },
-        @ConnectedSocket() client: Socket,
-    ) {
+    handleSetStatus(@MessageBody() data: { status: PresenceStatus }, @ConnectedSocket() client: Socket) {
         const user = client.data.user as SocketUser;
         this.presenceService.setStatus(user.userId, data.status);
         this.server.emit('presence_update', { userId: user.userId, status: data.status, lastSeen: new Date() });
@@ -93,10 +91,12 @@ export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect
         if (!cookieHeader) {
             return null;
         }
-        return cookieHeader
-            .split(';')
-            .map((value) => value.trim())
-            .find((value) => value.startsWith('access_token='))
-            ?.slice('access_token='.length) ?? null;
+        return (
+            cookieHeader
+                .split(';')
+                .map((value) => value.trim())
+                .find((value) => value.startsWith('access_token='))
+                ?.slice('access_token='.length) ?? null
+        );
     }
 }

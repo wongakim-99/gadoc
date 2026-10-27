@@ -21,8 +21,8 @@ export function useDocumentFileUpload(teamId: string) {
         }
     };
 
-    const uploadImage = async (file: File): Promise<string> => {
-        const response = await documentApi.uploadDocumentImage(teamId, file);
+    const uploadImage = async (documentId: string, file: File): Promise<string> => {
+        const response = await documentApi.uploadDocumentImage(teamId, documentId, file);
         const url = unwrapApiData<{ url: string }>(response)?.url;
         if (!url) throw new Error('이미지 업로드에 실패했습니다.');
         return url;

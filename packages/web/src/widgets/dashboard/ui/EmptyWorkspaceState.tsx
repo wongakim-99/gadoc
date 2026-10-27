@@ -6,7 +6,7 @@ export function EmptyWorkspaceState() {
             <p className="text-sm font-medium text-action-text">Workspace Ready</p>
             <h2 className="mt-3 text-2xl font-bold text-white">첫 워크스페이스를 열어보세요</h2>
             <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-text-secondary">
-                Slacord는 채팅, 이슈, 문서를 같은 흐름으로 묶습니다. 먼저 워크스페이스를 만들고 기본 채널부터 열면
+                GaDoc는 채팅, 이슈, 문서를 같은 흐름으로 묶습니다. 먼저 워크스페이스를 만들고 기본 채널부터 열면
                 됩니다.
             </p>
             <Link

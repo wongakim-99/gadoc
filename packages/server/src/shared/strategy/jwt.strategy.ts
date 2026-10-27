@@ -1,3 +1,4 @@
+import { jwtSecret } from '../lib/security-config';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
@@ -19,7 +20,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                 ExtractJwt.fromAuthHeaderAsBearerToken(),
             ]),
             ignoreExpiration: false,
-            secretOrKey: configService.get<string>('JWT_SECRET') ?? 'slacord-secret-key',
+            algorithms: ['HS256'],
+            secretOrKey: jwtSecret(configService.get<string>('JWT_SECRET')),
         });
     }
 

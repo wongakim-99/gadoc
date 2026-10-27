@@ -49,6 +49,6 @@ import { MessageAccessService } from './application/services/message-access.serv
         MessageGateway,
         MessageBroadcastListener,
     ],
-    exports: [MESSAGE_REPOSITORY, SendMessageUseCase, MessageGateway],
+    exports: [MessageAccessService, MESSAGE_REPOSITORY, SendMessageUseCase, MessageGateway],
 })
 export class MessageModule {}

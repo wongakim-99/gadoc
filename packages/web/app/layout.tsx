@@ -1,32 +1,53 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist } from 'next/font/google';
+import { Geist, Noto_Sans_KR } from 'next/font/google';
 import { siteConfig } from '@/src/shared/config/site';
 import { DesktopRuntimeBadge } from '@/src/widgets/desktop/ui/DesktopRuntimeBadge';
 import { DesktopDragBar } from '@/src/widgets/desktop/ui/DesktopDragBar';
 import { DesktopNavigation } from '@/src/widgets/desktop/ui/DesktopNavigation';
 import './globals.css';
+import './brand.css';
 
 const geist = Geist({
     subsets: ['latin'],
     display: 'swap',
-    weight: ['400', '500', '600', '700', '800'],
+    variable: '--font-geist',
 });
 
+const korean = Noto_Sans_KR({ subsets: ['latin'], display: 'swap', variable: '--font-korean' });
+
 export const metadata: Metadata = {
-    title: `${siteConfig.name} | Team Collaboration Cloud`,
+    metadataBase: new URL(siteConfig.url),
+    title: { default: `${siteConfig.name} | ${siteConfig.tagline}`, template: `%s | ${siteConfig.name}` },
     description: siteConfig.description,
+    applicationName: siteConfig.name,
+    openGraph: {
+        title: `가닥 GaDoc | ${siteConfig.tagline}`,
+        description: siteConfig.description,
+        siteName: siteConfig.name,
+        locale: 'ko_KR',
+        type: 'website',
+        images: [
+            { url: '/brand/gadoc-social.png', width: 1200, height: 630, alt: 'GaDoc. Where work comes together.' },
+        ],
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: `GaDoc | ${siteConfig.tagline}`,
+        description: siteConfig.description,
+        images: ['/brand/gadoc-social.png'],
+    },
     icons: {
         icon: [
             { url: '/icon.svg', type: 'image/svg+xml' },
-            { url: '/assets/slacord-bot-icon.png', sizes: '512x512', type: 'image/png' },
+            { url: '/brand/gadoc-icon.png', sizes: '512x512', type: 'image/png' },
         ],
         shortcut: ['/icon.svg'],
-        apple: [{ url: '/assets/slacord-bot-icon.png', sizes: '180x180', type: 'image/png' }],
+        apple: [{ url: '/brand/gadoc-apple.png', sizes: '180x180', type: 'image/png' }],
     },
 };
 
 export const viewport: Viewport = {
-    themeColor: '#0f0c09',
+    themeColor: '#181b20',
 };
 
 export default function RootLayout({
@@ -35,7 +56,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="ko" className={geist.className} data-scroll-behavior="smooth">
+        <html lang="ko" className={`${geist.variable} ${korean.variable}`} data-scroll-behavior="smooth">
             <body>
                 <DesktopNavigation />
                 <DesktopDragBar />

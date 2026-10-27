@@ -1,5 +1,6 @@
 'use client';
 
+import { privateFileUrl } from '@/src/shared/lib/private-files';
 import type { Attachment } from '@/src/entities/message/types';
 import { formatAttachmentSize, getAttachmentKind } from '@/src/entities/message/lib/attachmentPresentation';
 
@@ -25,18 +26,20 @@ export function MessageAttachments({ attachments }: Props) {
                 </div>
             ) : null}
             <div className="flex flex-col gap-2">
-            {otherAttachments.map((attachment) => (
-                <a
-                    key={attachment.url}
-                    href={attachment.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-between gap-3 rounded-xl border border-border-primary bg-black/20 px-3 py-2 text-sm text-text-secondary transition-colors hover:border-slack-green/40 hover:text-white"
-                >
-                    <span className="truncate">{attachment.name}</span>
-                    <span className="shrink-0 text-xs text-text-tertiary">{formatAttachmentSize(attachment.size)}</span>
-                </a>
-            ))}
+                {otherAttachments.map((attachment) => (
+                    <a
+                        key={attachment.url}
+                        href={privateFileUrl(attachment.url)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-between gap-3 rounded-xl border border-border-primary bg-black/20 px-3 py-2 text-sm text-text-secondary transition-colors hover:border-slack-green/40 hover:text-white"
+                    >
+                        <span className="truncate">{attachment.name}</span>
+                        <span className="shrink-0 text-xs text-text-tertiary">
+                            {formatAttachmentSize(attachment.size)}
+                        </span>
+                    </a>
+                ))}
             </div>
         </div>
     );
@@ -47,19 +50,34 @@ function MediaAttachmentCard({ attachment }: { attachment: Attachment }) {
 
     return (
         <div className="overflow-hidden rounded-2xl border border-border-primary bg-black/20">
-            <a href={attachment.url} target="_blank" rel="noreferrer" className="block bg-bg-primary">
+            <a href={privateFileUrl(attachment.url)} target="_blank" rel="noreferrer" className="block bg-bg-primary">
                 {kind === 'image' ? (
-                    <img src={attachment.url} alt={attachment.name} className="h-56 w-full object-cover" loading="lazy" />
+                    <img
+                        src={privateFileUrl(attachment.url)}
+                        alt={attachment.name}
+                        className="h-56 w-full object-cover"
+                        loading="lazy"
+                    />
                 ) : kind === 'video' ? (
-                    <video src={attachment.url} controls preload="metadata" className="h-56 w-full bg-black object-cover" />
+                    <video
+                        src={privateFileUrl(attachment.url)}
+                        controls
+                        preload="metadata"
+                        className="h-56 w-full bg-black object-cover"
+                    />
                 ) : kind === 'audio' ? (
                     <div className="flex h-28 items-center px-4">
-                        <audio src={attachment.url} controls className="w-full" preload="metadata" />
+                        <audio src={privateFileUrl(attachment.url)} controls className="w-full" preload="metadata" />
                     </div>
                 ) : null}
             </a>
             <div className="flex items-center justify-between gap-3 px-3 py-2.5">
-                <a href={attachment.url} target="_blank" rel="noreferrer" className="truncate text-sm font-medium text-white hover:text-action-text">
+                <a
+                    href={privateFileUrl(attachment.url)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="truncate text-sm font-medium text-white hover:text-action-text"
+                >
                     {attachment.name}
                 </a>
                 <span className="shrink-0 text-xs text-text-tertiary">{formatAttachmentSize(attachment.size)}</span>

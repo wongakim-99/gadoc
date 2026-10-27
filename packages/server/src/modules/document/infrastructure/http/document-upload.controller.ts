@@ -1,4 +1,15 @@
-import { BadRequestException, Controller, ForbiddenException, Param, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { safeUploadContent } from '../../../../shared/storage/infrastructure/upload-content';
+import {
+    BadRequestException,
+    Body,
+    Controller,
+    ForbiddenException,
+    Param,
+    Post,
+    UploadedFile,
+    UseGuards,
+    UseInterceptors,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../../../shared/guards/jwt-auth.guard';
@@ -20,7 +31,11 @@ export class DocumentUploadController {
 
     @Post(':documentId/file')
     @TeamRole('member')
-    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
+    @UseInterceptors(
+        FileInterceptor('file', {
+            limits: { fileSize: 20 * 1024 * 1024, files: 1, fields: 8, parts: 9, fieldSize: 16 * 1024 },
+        }),
+    )
     @ApiConsumes('multipart/form-data')
     @ApiOperation({ summary: '문서 첨부 파일 업로드' })
     async uploadFile(
@@ -33,7 +48,7 @@ export class DocumentUploadController {
         if (!file?.buffer) throw new BadRequestException('업로드할 파일이 필요합니다.');
         const document = await this.getDocumentsUseCase.executeOne(documentId);
         if (document.teamId !== teamId) throw new ForbiddenException('이 문서에 파일을 업로드할 권한이 없습니다.');
-        if (!document.canEdit(user.userId, access.role)) {
+        if (!document.canView(user.userId, access.role) || !document.canEdit(user.userId, access.role)) {
             throw new ForbiddenException('이 문서에 파일을 업로드할 권한이 없습니다.');
         }
         return this.uploadUseCase.execute({ teamId, documentId, file });
@@ -41,15 +56,25 @@ export class DocumentUploadController {
 
     @Post('upload/image')
     @TeamRole('writable')
-    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
+    @UseInterceptors(
+        FileInterceptor('file', {
+            limits: { fileSize: 20 * 1024 * 1024, files: 1, fields: 8, parts: 9, fieldSize: 16 * 1024 },
+        }),
+    )
     @ApiConsumes('multipart/form-data')
     @ApiOperation({ summary: '에디터 인라인 이미지 업로드' })
     async uploadImage(
         @Param('teamId') teamId: string,
+        @Body('documentId') documentId: string,
+        @CurrentUser() user: { userId: string },
+        @TeamAccess() access: TeamAccessContext,
         @UploadedFile() file?: any,
     ) {
+        if (typeof documentId !== 'string' || !/^[a-f0-9]{24}$/.test(documentId))
+            throw new BadRequestException('이미지를 연결할 문서가 필요합니다.');
         if (!file?.buffer) throw new BadRequestException('업로드할 파일이 필요합니다.');
-        if (!file.mimetype?.startsWith('image/')) throw new BadRequestException('이미지 파일만 업로드할 수 있습니다.');
-        return this.uploadUseCase.execute({ teamId, file });
+        if (!safeUploadContent(file.buffer, file.mimetype).mimeType.startsWith('image/'))
+            throw new BadRequestException('이미지 파일만 업로드할 수 있습니다.');
+        return this.uploadFile(teamId, documentId, user, access, file);
     }
 }

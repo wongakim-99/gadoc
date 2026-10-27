@@ -23,14 +23,14 @@ class ProbeController {
 describe('global team access and controller authentication order', () => {
     let app: INestApplication;
     const access = { requireMember: jest.fn() };
-    const jwt = new JwtService({ secret: 'local-guard-regression' });
+    const jwt = new JwtService({ secret: 'local-guard-regression-0123456789abcdef' });
 
     beforeAll(async () => {
         const module = await Test.createTestingModule({
             controllers: [ProbeController],
             providers: [
                 JwtStrategy,
-                { provide: ConfigService, useValue: { get: () => 'local-guard-regression' } },
+                { provide: ConfigService, useValue: { get: () => 'local-guard-regression-0123456789abcdef' } },
                 { provide: TeamAccessService, useValue: access },
                 { provide: APP_GUARD, useClass: TeamAccessGuard },
             ],

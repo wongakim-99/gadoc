@@ -1,3 +1,4 @@
+import { corsOrigin } from '../../../../shared/lib/security-config';
 import type { NotificationPublisher } from '../../application/ports/notification-publisher.port';
 import {
     ConnectedSocket,
@@ -15,7 +16,7 @@ import { TEAM_REPOSITORY, type ITeamRepository } from '../../../team/domain/team
 import type { NotificationEntity } from '../../domain/notification.entity';
 import { authenticateSocketUser, type SocketUser } from '../../../../shared/lib/socket-auth';
 
-@WebSocketGateway({ namespace: '/notification', cors: { origin: '*' } })
+@WebSocketGateway({ namespace: '/notification', cors: { origin: corsOrigin, credentials: true } })
 export class NotificationGateway implements OnGatewayConnection, OnGatewayDisconnect, NotificationPublisher {
     @WebSocketServer()
     server: Server;

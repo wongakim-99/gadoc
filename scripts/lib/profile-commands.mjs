@@ -7,37 +7,37 @@ export function resolveProfileCommand(target, env) {
   switch (target) {
     case "server:dev":
       return {
-        command: "yarn",
-        args: ["workspace", "@slacord/server", "start:dev"],
+        command: "pnpm",
+        args: ["--filter", "@slacord/server", "start:dev"],
         cwd: repoRoot,
       };
     case "server:start":
       return {
-        command: "yarn",
-        args: ["workspace", "@slacord/server", "start:prod"],
+        command: "pnpm",
+        args: ["--filter", "@slacord/server", "start:prod"],
         cwd: repoRoot,
       };
     case "web:dev":
       return {
-        command: "npx",
-        args: ["next", "dev", "--port", String(webPort)],
+        command: "pnpm",
+        args: ["exec", "next", "dev", "--port", String(webPort)],
         cwd: path.join(repoRoot, "packages", "web"),
       };
     case "web:build":
       return {
-        command: "npx",
-        args: ["next", "build"],
+        command: "pnpm",
+        args: ["exec", "next", "build"],
         cwd: path.join(repoRoot, "packages", "web"),
       };
     case "web:start":
       return {
-        command: "npx",
-        args: ["next", "start", "--port", String(webPort)],
+        command: "pnpm",
+        args: ["exec", "next", "start", "--port", String(webPort)],
         cwd: path.join(repoRoot, "packages", "web"),
       };
     case "verify:e2e":
       return {
-        command: "yarn",
+        command: "pnpm",
         args: ["test:e2e:web"],
         cwd: repoRoot,
       };

@@ -332,7 +332,7 @@ export function useHuddle(currentUserId: string, channelId: string) {
                     const access = await window.slacordDesktop.requestMediaAccess('microphone');
                     if (!access.microphone) {
                         store.setError(
-                            '마이크 권한이 거부되었습니다. 시스템 환경설정 > 개인정보 보호 > 마이크에서 Slacord를 허용해주세요.',
+                            '마이크 권한이 꺼져 있습니다. 시스템 설정 > 개인정보 보호 > 마이크에서 GaDoc을 허용해 주세요.',
                         );
                         return;
                     }
@@ -414,7 +414,7 @@ export function useHuddle(currentUserId: string, channelId: string) {
                     const access = await window.slacordDesktop.requestMediaAccess('camera');
                     if (!access.camera) {
                         store.setError(
-                            '카메라 권한이 거부되었습니다. 시스템 환경설정 > 개인정보 보호 > 카메라에서 Slacord를 허용해주세요.',
+                            '카메라 권한이 꺼져 있습니다. 시스템 설정 > 개인정보 보호 > 카메라에서 GaDoc을 허용해 주세요.',
                         );
                         return;
                     }

@@ -1,3 +1,4 @@
+import { confluencePageUrl, confluenceSite } from '../../../../shared/lib/outbound-url';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import axios from 'axios';
 
@@ -12,11 +13,14 @@ interface ConfluencePage {
 @Injectable()
 export class ConfluenceApiClient {
     async getSpacePages(input: { siteUrl: string; email: string; apiToken: string; spaceKey: string }) {
-        const siteUrl = input.siteUrl.replace(/\/+$/, '');
+        const siteUrl = confluenceSite(input.siteUrl);
         const auth = Buffer.from(`${input.email}:${input.apiToken}`).toString('base64');
         const headers = { Authorization: `Basic ${auth}`, Accept: 'application/json' };
         const spaceResponse = await axios.get(`${siteUrl}/wiki/api/v2/spaces`, {
             headers,
+            maxRedirects: 0,
+            timeout: 15_000,
+            maxContentLength: 8 * 1024 * 1024,
             params: { keys: input.spaceKey, limit: 1 },
         });
         const space = spaceResponse.data?.results?.[0];
@@ -24,8 +28,18 @@ export class ConfluenceApiClient {
 
         const pages: ConfluencePage[] = [];
         let nextPath = `/wiki/api/v2/pages?space-id=${space.id}&body-format=storage&limit=100`;
+        const visited = new Set<string>();
         while (nextPath) {
-            const response = await axios.get(nextPath.startsWith('http') ? nextPath : `${siteUrl}${nextPath}`, { headers });
+            const pageUrl = confluencePageUrl(nextPath, siteUrl);
+            if (visited.has(pageUrl) || visited.size >= 100)
+                throw new BadRequestException('Confluence 페이지 가져오기 한도를 초과했습니다.');
+            visited.add(pageUrl);
+            const response = await axios.get(pageUrl, {
+                headers,
+                maxRedirects: 0,
+                timeout: 15_000,
+                maxContentLength: 8 * 1024 * 1024,
+            });
             for (const page of response.data?.results ?? []) {
                 pages.push({
                     id: String(page.id),

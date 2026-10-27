@@ -43,6 +43,44 @@ The private key stays in the host's `~/.ssh/slacord-actions-deploy` and GitHub
 Secrets. The setup command checks readiness without restarting services.
 Repository administrators can run it again after changing the remote handler.
 
+Setup installs the exact pnpm version from `packageManager`. Every release uses
+`pnpm install --frozen-lockfile --prod=false`; the source archive must include
+both `pnpm-lock.yaml` and `pnpm-workspace.yaml`. No Yarn runtime is used.
+
+Dedicated storage credentials can be staged in
+`/app/slacord-deploy/private/server.env` (directory 0700, file 0600).
+Only `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_ENDPOINT`, and `MINIO_BUCKET`
+are accepted. Overrides apply only to the new backend, not the frontend, and
+do not replace the existing MongoDB or JWT settings. Never commit this file.
+
+Before making `slacord` private, deploy the authenticated `/api/files` reader
+and verify existing inline references. The first startup snapshots legacy
+document references into `legacy_file_bindings` in the existing database;
+objects are not moved and a separate database is not created. The application
+cannot modify bucket policies. Blog and other tenant policies are out of scope.
+
+On the existing MinIO host, use the scoped provisioning helper in this order:
+
+```bash
+node scripts/deploy/provision-gadoc-storage.mjs prepare
+node scripts/deploy/provision-gadoc-storage.mjs install
+# Deploy main, then verify authorized upload/read and existing inline attachments.
+node scripts/deploy/provision-gadoc-storage.mjs privatize <verified-main-sha>
+```
+
+`prepare` creates `gadoc-app` with only object Get/Put for `slacord/chat/*`
+and `slacord/docs/*` in the `slacord` bucket. Its generated secret stays in
+`~/.config/gadoc/minio-server.env` (0600). Existing accounts without that local
+file are not silently rotated. `install` stages credentials without restarting
+PM2. `privatize` requires the exact live release and an authenticated file reader;
+it changes only the `slacord` anonymous policy. It does not itself prove that an
+authorized user can read files: complete that check before running it.
+
+Do not roll back to code that automatically makes the bucket public after this
+transition. A safe rollback must preserve the authenticated reader and dedicated
+account. Anonymous shared links intentionally stop working; orphaned legacy
+inline files fail closed until their ownership is resolved explicitly.
+
 For a pipeline-only bootstrap commit, set the `production` environment variable
 `SLACORD_PREPARE_ONLY_SHA` to that commit before pushing it. That one SHA builds
 but does not activate. Later main commits deploy normally, without another toggle.
@@ -67,8 +105,9 @@ contain credentials and must stay private. Old release directories can be
 removed after confirming neither the current nor rollback PM2 configuration
 references them.
 
-This deploys application code only. It does not create/migrate databases, rebuild
-the runtime image, recreate the container, or change Nginx. Docker container
+This deploys application code and runs its startup migrations inside the existing
+database. It does not provision a separate database, rebuild the runtime image,
+recreate the container, or change Nginx. Docker container
 restart uses the saved PM2 configuration. Recreating the container from its old
 image loses application releases and SSH setup: rerun setup and deploy from main
 after such an infrastructure change. The existing MongoDB volume is independent.

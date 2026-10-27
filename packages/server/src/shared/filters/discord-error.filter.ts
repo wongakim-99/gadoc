@@ -22,15 +22,15 @@ export class DiscordErrorFilter implements ExceptionFilter {
 
         // 500번대 에러만 디스코드 알림
         if (status >= 500) {
-            this.discord.notifyError(req.method, req.originalUrl, status, message, stack).catch(() => {});
-            this.logger.error(`${req.method} ${req.originalUrl} ${status} - ${message}`);
+            this.discord.notifyError(req.method, req.path, status, message, stack).catch(() => {});
+            this.logger.error(`${req.method} ${req.path} ${status} - ${message}`);
         }
 
         res.status(status).json({
             statusCode: status,
-            message,
+            message: status >= 500 ? '서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.' : message,
             timestamp: new Date().toISOString(),
-            path: req.originalUrl,
+            path: req.path,
         });
     }
 }

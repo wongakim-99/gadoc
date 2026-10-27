@@ -10,27 +10,27 @@
 
 ## Scripts
 
-- `yarn dev:desktop`
-- `yarn build:desktop`
-- `yarn dist:desktop`
-- `yarn dist:desktop:win`
-- `yarn release:desktop:mac`
-- `yarn release:desktop:win`
-- `yarn release:desktop:preflight`
-- `yarn version:all 1.0.1`
+- `pnpm dev:desktop`
+- `pnpm build:desktop`
+- `pnpm dist:desktop`
+- `pnpm dist:desktop:win`
+- `pnpm release:desktop:mac`
+- `pnpm release:desktop:win`
+- `pnpm release:desktop:preflight`
+- `pnpm version:all 1.0.1`
 
-`yarn dev:desktop` 는 모노레포 루트에서 `@slacord/web` dev 서버와 `@slacord/desktop` shell을 같이 띄우는 진입점임.
+`pnpm dev:desktop` 는 모노레포 루트에서 `@slacord/web` dev 서버와 `@slacord/desktop` shell을 같이 띄우는 진입점임.
 
 ## Local Packaging
 
-- mac DMG: `yarn dist:desktop`
-- Windows installer: `yarn dist:desktop:win`
+- mac DMG: `pnpm dist:desktop`
+- Windows installer: `pnpm dist:desktop:win`
 
 로컬 mac 패키징은 [`packages/desktop/release`](/Users/kscold/Desktop/slacord/packages/desktop/release) 에 DMG와 `latest-mac.yml` 을 남김.
 
 ## GitHub Release Flow
 
-1. `yarn version:all 1.0.1`
+1. `pnpm version:all 1.0.1`
 2. 커밋 후 `git tag v1.0.1`
 3. `git push origin main --tags`
 4. GitHub Actions가 mac DMG/ZIP, Windows NSIS EXE, update metadata를 Releases에 업로드
@@ -47,7 +47,7 @@
 릴리즈 전에 아래 명령으로 먼저 확인하는 게 안전함.
 
 ```bash
-yarn release:desktop:preflight --target=mac
+pnpm release:desktop:preflight --target=mac
 ```
 
 ## Notes
