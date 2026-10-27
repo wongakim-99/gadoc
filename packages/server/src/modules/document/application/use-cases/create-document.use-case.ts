@@ -19,6 +19,10 @@ export class CreateDocumentUseCase {
         contentFormat?: 'plain' | 'html' | 'json';
         parentId: string | null;
         createdBy: string;
+        visibility?: 'team' | 'restricted';
+        editPolicy?: 'owner_admin' | 'all' | 'restricted';
+        allowedViewerIds?: string[];
+        allowedEditorIds?: string[];
     }): Promise<DocumentEntity> {
         const doc = await this.repo.save(data);
         await this.versionRepo.save({

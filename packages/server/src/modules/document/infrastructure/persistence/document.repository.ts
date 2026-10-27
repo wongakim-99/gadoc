@@ -93,8 +93,11 @@ export class DocumentRepository implements IDocumentRepository {
         return this.toEntity(doc as DocumentDocument);
     }
 
-    async update(id: string, data: { title?: string; content?: string; contentFormat?: 'plain' | 'html' | 'json'; updatedBy: string; visibility?: 'team' | 'restricted'; editPolicy?: 'owner_admin' | 'all' | 'restricted'; allowedViewerIds?: string[]; allowedEditorIds?: string[] }): Promise<DocumentEntity | null> {
-        const doc = await this.model.findByIdAndUpdate(id, { $set: data }, { new: true }).lean();
+    async update(id: string, data: { title?: string; content?: string; contentFormat?: 'plain' | 'html' | 'json'; parentId?: string | null; updatedBy: string; visibility?: 'team' | 'restricted'; editPolicy?: 'owner_admin' | 'all' | 'restricted'; allowedViewerIds?: string[]; allowedEditorIds?: string[] }, expectedUpdatedAt?: Date): Promise<DocumentEntity | null> {
+        const doc = await this.model.findOneAndUpdate(
+            { _id: id, ...(expectedUpdatedAt ? { updatedAt: expectedUpdatedAt, archivedAt: null } : {}) },
+            { $set: data }, { new: true },
+        ).lean();
         return doc ? this.toEntity(doc as DocumentDocument) : null;
     }
 

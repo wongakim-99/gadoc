@@ -42,7 +42,7 @@ import { StorageModule } from '../../shared/storage/storage.module';
         TeamModule,
         StorageModule,
     ],
-    exports: [DOCUMENT_REPOSITORY],
+    exports: [DOCUMENT_REPOSITORY, CreateDocumentUseCase, UpdateDocumentUseCase, UploadDocumentFileUseCase],
     controllers: [DocumentController, DocumentUploadController],
     providers: [
         { provide: DOCUMENT_REPOSITORY, useClass: DocumentRepository },

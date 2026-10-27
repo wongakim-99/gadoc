@@ -46,7 +46,7 @@ export function unwrapApiData<T>(response: ApiResponse<unknown>): T | null {
  * 공통 fetch 래퍼
  * - credentials: 'include'를 자동으로 추가
  */
-async function apiFetch<T = any>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
+export async function apiFetch<T = any>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
     const isFormData = typeof FormData !== 'undefined' && options?.body instanceof FormData;
     const response = await fetch(toApiUrl(url), {
         ...options,

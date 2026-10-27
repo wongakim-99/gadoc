@@ -11,6 +11,10 @@ export interface IDocumentRepository {
         contentFormat?: 'plain' | 'html' | 'json';
         parentId: string | null;
         createdBy: string;
+        visibility?: 'team' | 'restricted';
+        editPolicy?: 'owner_admin' | 'all' | 'restricted';
+        allowedViewerIds?: string[];
+        allowedEditorIds?: string[];
     }): Promise<DocumentEntity>;
     upsertExternal(data: {
         teamId: string;
@@ -24,7 +28,7 @@ export interface IDocumentRepository {
         externalId: string;
         externalUrl: string | null;
     }): Promise<DocumentEntity>;
-    update(id: string, data: { title?: string; content?: string; contentFormat?: 'plain' | 'html' | 'json'; updatedBy: string; visibility?: 'team' | 'restricted'; editPolicy?: 'owner_admin' | 'all' | 'restricted'; allowedViewerIds?: string[]; allowedEditorIds?: string[] }): Promise<DocumentEntity | null>;
+    update(id: string, data: { title?: string; content?: string; contentFormat?: 'plain' | 'html' | 'json'; parentId?: string | null; updatedBy: string; visibility?: 'team' | 'restricted'; editPolicy?: 'owner_admin' | 'all' | 'restricted'; allowedViewerIds?: string[]; allowedEditorIds?: string[] }, expectedUpdatedAt?: Date): Promise<DocumentEntity | null>;
     archiveById(id: string, archivedBy: string): Promise<DocumentEntity | null>;
     restoreById(id: string): Promise<DocumentEntity | null>;
     archiveByParentId(parentId: string, archivedBy: string): Promise<number>;
