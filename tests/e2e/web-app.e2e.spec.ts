@@ -329,7 +329,8 @@ test.describe.serial("slacord web e2e", () => {
     await expect(
       ownerPage.getByText(`안녕 @${fixture.owner.username}`),
     ).toBeVisible();
-    await notificationButton.click();
+    await ownerPage.getByRole("button", { name: "알림 패널 닫기" }).click();
+    await expect(ownerPage.getByRole("dialog", { name: "알림", exact: true })).toBeHidden();
 
     await unreadLink.click();
     await ownerPage.waitForURL(
