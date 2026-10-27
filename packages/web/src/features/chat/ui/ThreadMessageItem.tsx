@@ -3,6 +3,7 @@
 import { getAvatarColor } from '@/src/shared/lib/avatar';
 import type { Message } from '@/src/entities/message/types';
 import { MessageActionToggle } from './MessageActionToggle';
+import { MessageAttachments } from './MessageAttachments';
 
 interface Props {
     canDelete: boolean;
@@ -30,6 +31,7 @@ export function ThreadMessageItem({ canDelete, message, onDelete, showDeleteButt
                     <span className="text-[11px] text-text-tertiary">{time}</span>
                 </div>
                 {message.content ? <p className="mt-0.5 break-words whitespace-pre-wrap text-[14px] leading-relaxed text-white/90">{message.content}</p> : null}
+                <MessageAttachments attachments={message.attachments} />
             </div>
             {canDelete && onDelete ? (
                 <div className="absolute right-2 top-1 flex items-center gap-1">

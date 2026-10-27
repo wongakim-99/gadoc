@@ -1,5 +1,6 @@
 import { getAvatarColor } from '@/src/shared/lib/avatar';
 import type { Message } from '@/src/entities/message/types';
+import { MessageAttachments } from './MessageAttachments';
 
 interface Props {
     message: Message;
@@ -23,6 +24,7 @@ export function ThreadParentMessage({ message }: Props) {
                     <span className="text-[11px] text-text-tertiary">{time}</span>
                 </div>
                 {message.content ? <p className="mt-0.5 break-words whitespace-pre-wrap text-[14px] leading-relaxed text-white/90">{message.content}</p> : null}
+                <MessageAttachments attachments={message.attachments} />
             </div>
         </div>
     );

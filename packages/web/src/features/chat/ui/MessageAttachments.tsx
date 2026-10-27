@@ -1,27 +1,37 @@
 'use client';
 
+import { useState } from 'react';
+import { Download, ImageOff } from 'lucide-react';
 import { privateFileUrl } from '@/src/shared/lib/private-files';
 import type { Attachment } from '@/src/entities/message/types';
 import { formatAttachmentSize, getAttachmentKind } from '@/src/entities/message/lib/attachmentPresentation';
+import { AttachmentImageViewer } from './AttachmentImageViewer';
 
 interface Props {
     attachments: Attachment[];
 }
 
 export function MessageAttachments({ attachments }: Props) {
+    const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
     if (attachments.length === 0) {
         return null;
     }
 
     const mediaAttachments = attachments.filter((attachment) => getAttachmentKind(attachment) !== 'other');
     const otherAttachments = attachments.filter((attachment) => getAttachmentKind(attachment) === 'other');
+    const images = mediaAttachments.filter((attachment) => getAttachmentKind(attachment) === 'image');
+    const selectedIndex = images.findIndex((attachment) => attachment.url === selectedUrl);
 
     return (
         <div className="mt-2 space-y-3">
             {mediaAttachments.length > 0 ? (
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid max-w-3xl grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-3">
                     {mediaAttachments.map((attachment) => (
-                        <MediaAttachmentCard key={attachment.url} attachment={attachment} />
+                        <MediaAttachmentCard
+                            key={attachment.url}
+                            attachment={attachment}
+                            onOpen={() => setSelectedUrl(attachment.url)}
+                        />
                     ))}
                 </div>
             ) : null}
@@ -30,8 +40,10 @@ export function MessageAttachments({ attachments }: Props) {
                     <a
                         key={attachment.url}
                         href={privateFileUrl(attachment.url)}
+                        download={attachment.name}
                         target="_blank"
                         rel="noreferrer"
+                        aria-label={`${attachment.name} 다운로드`}
                         className="flex items-center justify-between gap-3 rounded-xl border border-border-primary bg-black/20 px-3 py-2 text-sm text-text-secondary transition-colors hover:border-slack-green/40 hover:text-white"
                     >
                         <span className="truncate">{attachment.name}</span>
@@ -41,46 +53,78 @@ export function MessageAttachments({ attachments }: Props) {
                     </a>
                 ))}
             </div>
+            {selectedIndex >= 0 && (
+                <AttachmentImageViewer
+                    images={images}
+                    index={selectedIndex}
+                    onChange={(index) => setSelectedUrl(images[index].url)}
+                    onClose={() => setSelectedUrl(null)}
+                />
+            )}
         </div>
     );
 }
 
-function MediaAttachmentCard({ attachment }: { attachment: Attachment }) {
+function MediaAttachmentCard({ attachment, onOpen }: { attachment: Attachment; onOpen: () => void }) {
+    const [failed, setFailed] = useState(false);
     const kind = getAttachmentKind(attachment);
+    const url = privateFileUrl(attachment.url);
 
     return (
-        <div className="overflow-hidden rounded-2xl border border-border-primary bg-black/20">
-            <a href={privateFileUrl(attachment.url)} target="_blank" rel="noreferrer" className="block bg-bg-primary">
-                {kind === 'image' ? (
-                    <img
-                        src={privateFileUrl(attachment.url)}
-                        alt={attachment.name}
-                        className="h-56 w-full object-cover"
-                        loading="lazy"
-                    />
-                ) : kind === 'video' ? (
-                    <video
-                        src={privateFileUrl(attachment.url)}
-                        controls
-                        preload="metadata"
-                        className="h-56 w-full bg-black object-cover"
-                    />
-                ) : kind === 'audio' ? (
-                    <div className="flex h-28 items-center px-4">
-                        <audio src={privateFileUrl(attachment.url)} controls className="w-full" preload="metadata" />
-                    </div>
-                ) : null}
-            </a>
+        <div className="min-w-0 overflow-hidden rounded-xl border border-border-primary bg-bg-secondary">
+            {kind === 'image' ? (
+                <button
+                    type="button"
+                    aria-label={`${attachment.name} 사진 보기`}
+                    onClick={onOpen}
+                    className="flex min-h-24 w-full cursor-zoom-in items-center justify-center bg-black/20 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-action-text"
+                >
+                    {failed ? (
+                        <span className="flex items-center gap-2 p-5 text-sm text-text-secondary">
+                            <ImageOff size={18} aria-hidden="true" /> 사진을 불러오지 못했습니다
+                        </span>
+                    ) : (
+                        <img
+                            src={url}
+                            alt={attachment.name}
+                            className="max-h-80 w-full object-contain"
+                            loading="lazy"
+                            onError={() => setFailed(true)}
+                        />
+                    )}
+                </button>
+            ) : kind === 'video' ? (
+                <video src={url} controls preload="metadata" className="max-h-80 w-full bg-black object-contain" />
+            ) : kind === 'audio' ? (
+                <div className="flex min-h-24 items-center px-3">
+                    <audio src={url} controls className="w-full min-w-0" preload="metadata" />
+                </div>
+            ) : null}
             <div className="flex items-center justify-between gap-3 px-3 py-2.5">
+                {kind === 'image' ? (
+                    <button
+                        type="button"
+                        onClick={onOpen}
+                        className="truncate text-left text-sm text-white hover:text-action-text"
+                    >
+                        {attachment.name}
+                    </button>
+                ) : (
+                    <span className="truncate text-sm text-white">{attachment.name}</span>
+                )}
+                <span className="ml-auto shrink-0 text-xs text-text-tertiary">
+                    {formatAttachmentSize(attachment.size)}
+                </span>
                 <a
-                    href={privateFileUrl(attachment.url)}
+                    href={url}
+                    download={attachment.name}
                     target="_blank"
                     rel="noreferrer"
-                    className="truncate text-sm font-medium text-white hover:text-action-text"
+                    aria-label={`${attachment.name} 다운로드`}
+                    className="shrink-0 rounded p-1 text-text-secondary hover:bg-bg-hover hover:text-white focus-visible:outline-2 focus-visible:outline-action-text"
                 >
-                    {attachment.name}
+                    <Download size={16} aria-hidden="true" />
                 </a>
-                <span className="shrink-0 text-xs text-text-tertiary">{formatAttachmentSize(attachment.size)}</span>
             </div>
         </div>
     );
