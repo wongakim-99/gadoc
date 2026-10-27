@@ -444,6 +444,9 @@ test.describe.serial("slacord web e2e", () => {
     await loginWithSession(page, fixture.owner);
     await page.goto(`/${fixture.teamId}/channel/${fixture.channelId}`);
 
+    // The keyboard listener is installed after hydration; wait for live channel data, not just SSR HTML.
+    await expect(page.getByText(targetContent, { exact: true })).toBeVisible();
+
     await page.keyboard.press(
       process.platform === "darwin" ? "Meta+K" : "Control+K",
     );

@@ -10,7 +10,7 @@
     "shell": "concurrently -k \"pnpm watch\" \"wait-on tcp:3002 file:dist/main.js && cross-env SLACORD_DESKTOP_START_URL=http://localhost:3002/auth/login electron .\"",
     "watch": "tsup --config tsup.config.ts --watch",
     "build": "tsup --config tsup.config.ts",
-    "test": "vitest run",
+    "test": "node ../../scripts/prepare-electron.mjs && vitest run",
     "dist:dir": "pnpm build && electron-builder --dir --publish never",
     "dist:dmg": "pnpm build && electron-builder --mac dmg zip --publish never",
     "dist:win": "pnpm build && electron-builder --win nsis --publish never",

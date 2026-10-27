@@ -116,6 +116,13 @@ async function main() {
     run("docker", [
       "exec",
       "ubuntu-slacord",
+      "chown",
+      "root:root",
+      "/app/slacord-deploy/private/server.env",
+    ]);
+    run("docker", [
+      "exec",
+      "ubuntu-slacord",
       "chmod",
       "600",
       "/app/slacord-deploy/private/server.env",
