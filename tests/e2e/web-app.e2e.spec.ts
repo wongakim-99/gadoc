@@ -431,6 +431,9 @@ test.describe.serial("slacord web e2e", () => {
     await loginWithSession(page, fixture.owner);
     await page.goto(`/${fixture.teamId}/channel/${fixture.channelId}`);
 
+    // The channel composer appears after the authenticated client shell is ready.
+    await expect(page.getByRole("textbox", { name: /메시지 보내기/ })).toBeEditable();
+    await page.getByRole("button", { name: "전체 검색", exact: true }).focus();
     await page.keyboard.press(
       process.platform === "darwin" ? "Meta+K" : "Control+K",
     );
@@ -442,8 +445,7 @@ test.describe.serial("slacord web e2e", () => {
       .getByPlaceholder("채널, 메시지, 문서, 이슈 검색")
       .fill(targetContent);
     const messageResult = page
-      .getByRole("option", { name: new RegExp(targetContent) })
-      .first();
+      .getByRole("option", { name: new RegExp(`^${targetContent}.*#${fixture.channelName}$`) });
     await expect(messageResult).toBeVisible();
 
     await messageResult.click();
