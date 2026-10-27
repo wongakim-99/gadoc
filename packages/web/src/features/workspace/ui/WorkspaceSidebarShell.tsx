@@ -77,11 +77,11 @@ export function WorkspaceSidebarShell({
             >
                 <Link
                     href="/dashboard"
-                    aria-label="Slacord 홈"
-                    title="Slacord · 워크스페이스 목록"
+                    aria-label="GaDoc 홈"
+                    title="GaDoc · 워크스페이스 목록"
                     className={`shrink-0 rounded-md ${collapsed ? 'lg:hidden' : ''}`}
                 >
-                    <Image src="/logo-workspace.svg" alt="Slacord" width={32} height={32} />
+                    <Image src="/logo-workspace.svg" alt="GaDoc" width={32} height={32} />
                 </Link>
                 <Link
                     href="/dashboard"
@@ -90,7 +90,7 @@ export function WorkspaceSidebarShell({
                     className={`flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold ${hideCollapsed}`}
                 >
                     <span className="min-w-0">
-                        <span className="block text-[11px] font-medium leading-4 text-text-tertiary">Slacord</span>
+                        <span className="block text-[11px] font-medium leading-4 text-text-tertiary">GaDoc</span>
                         <span className="block truncate text-[13px] leading-5">{teamName}</span>
                     </span>
                     <ChevronsUpDown size={14} className="shrink-0 text-text-tertiary" />

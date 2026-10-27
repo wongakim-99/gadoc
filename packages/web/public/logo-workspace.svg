@@ -1,18 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
-  <!-- Rounded square base -->
-  <rect x="2" y="2" width="36" height="36" rx="10" fill="#20242b"/>
-  <rect x="2" y="2" width="36" height="36" rx="10" stroke="#9db6ff" stroke-width="1.5"/>
-
-  <!-- Chat bubble top-left -->
-  <rect x="8" y="9" width="16" height="10" rx="5" fill="#9db6ff"/>
-  <circle cx="13" cy="14" r="1.2" fill="#20242b"/>
-  <circle cx="16" cy="14" r="1.2" fill="#20242b"/>
-  <circle cx="19" cy="14" r="1.2" fill="#20242b"/>
-
-  <!-- Chat bubble bottom-right -->
-  <rect x="16" y="21" width="16" height="10" rx="5" fill="#edf0f5"/>
-  <rect x="20" y="25" width="8" height="1.5" rx="0.75" fill="#20242b"/>
-
-  <!-- Connection line -->
-  <line x1="20" y1="19" x2="20" y2="21" stroke="#9db6ff" stroke-width="1.2" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+  <rect x="1" y="1" width="62" height="62" rx="17" fill="#20242B" stroke="#657DA8" stroke-width="2"/>
+  <path d="M16 16H23C35 16 29 32 42 32H49" stroke="#A8BDFF" stroke-width="5" stroke-linecap="round"/>
+  <path d="M16 48H23C35 48 29 32 42 32H49" stroke="#A8BDFF" stroke-width="5" stroke-linecap="round"/>
+  <path d="M15 32H49" stroke="#EDF0F5" stroke-width="5" stroke-linecap="round"/>
 </svg>

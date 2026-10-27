@@ -17,13 +17,13 @@ export function NotificationPermissionButton() {
         try {
             if (mode === 'desktop') {
                 const shown = await window.slacordDesktop?.notify(
-                    'Slacord 알림 테스트',
+                    'GaDoc 알림 테스트',
                     '메시지와 멘션 알림을 이곳에서 받을 수 있습니다.',
                 );
                 setFeedback(
                     shown
                         ? '테스트 알림을 보냈습니다. 보이지 않으면 시스템 알림 설정을 확인해주세요.'
-                        : '시스템 설정에서 Slacord 알림을 허용해주세요.',
+                        : '시스템 설정에서 GaDoc 알림을 허용해주세요.',
                 );
             } else {
                 const permission = await Notification.requestPermission();

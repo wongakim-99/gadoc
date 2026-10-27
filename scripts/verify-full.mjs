@@ -9,13 +9,27 @@ const managedChildren = new Set();
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const runtimeProfile =
-    args.profileName || process.env.SLACORD_PROFILE || "local-container";
+    args.profileName || process.env.SLACORD_PROFILE || "isolated-test";
   const mockProfile =
     args.mockProfileName ||
     process.env.SLACORD_MOCK_PROFILE ||
-    "local-container-discord-mock";
+    "isolated-discord-mock";
   const runtime = await loadProfileEnv({ profileName: runtimeProfile });
   const mock = await loadProfileEnv({ profileName: mockProfile });
+
+  if (
+    process.env.SLACORD_VERIFY_ALLOW_SHARED_DATA !== "1" &&
+    [runtime, mock].some(
+      ({ env }) =>
+        !/^mongodb:\/\/127\.0\.0\.1:27127\/gadoc_verify(?:[?]|$)/.test(
+          env.MONGODB_URI,
+        ) || env.MINIO_BUCKET !== "gadoc-verify",
+    )
+  ) {
+    throw new Error(
+      "verify:full requires isolated test storage. Shared data needs explicit SLACORD_VERIFY_ALLOW_SHARED_DATA=1.",
+    );
+  }
 
   console.log("Runtime profile");
   console.log(JSON.stringify(runtime.summary, null, 2));
@@ -26,16 +40,37 @@ async function main() {
 
   installSignalHandlers();
 
-  await runStep("Document core test", "yarn", ["test:document-core"], runtime.env);
+  await runStep(
+    "Document core test",
+    "pnpm",
+    ["test:document-core"],
+    runtime.env,
+  );
   await runStep(
     "Playwright browser 준비",
-    "yarn",
+    "pnpm",
     ["test:e2e:web:prepare"],
     runtime.env,
   );
-  await runStep("Server unit test", "yarn", ["test:server"], runtime.env);
-  await runStep("Server build", "yarn", ["build:server"], runtime.env);
-  await runStep("Web unit test", "yarn", ["test:web"], runtime.env);
+  await runStep(
+    "Deployment and storage policy safety",
+    "node",
+    [
+      "--test",
+      "scripts/test/deploy-ubuntu.test.mjs",
+      "scripts/test/gadoc-storage-policy.test.mjs",
+    ],
+    runtime.env,
+  );
+  await runStep("Server unit test", "pnpm", ["test:server"], runtime.env);
+  await runStep("Server build", "pnpm", ["build:server"], runtime.env);
+  await runStep(
+    "Legacy file permission migration",
+    "node",
+    ["--test", "scripts/test/legacy-file-bindings.integration.mjs"],
+    runtime.env,
+  );
+  await runStep("Web unit test", "pnpm", ["test:web"], runtime.env);
   await runStep(
     "Web build",
     "node",
@@ -48,8 +83,8 @@ async function main() {
     ],
     runtime.env,
   );
-  await runStep("Desktop unit test", "yarn", ["test:desktop"], runtime.env);
-  await runStep("Desktop build", "yarn", ["build:desktop"], runtime.env);
+  await runStep("Desktop unit test", "pnpm", ["test:desktop"], runtime.env);
+  await runStep("Desktop build", "pnpm", ["build:desktop"], runtime.env);
 
   let serverProcess;
   let webProcess;
@@ -69,11 +104,11 @@ async function main() {
     webProcess = await startManagedProcess(
       "web app",
       resolveProfileCommand("web:start", runtime.env),
-      runtime.env,
+      { ...runtime.env, NODE_ENV: "production" },
     );
     await waitForUrl(runtime.env.SLACORD_E2E_BASE_URL, "web app");
 
-    await runStep("Web E2E", "yarn", ["test:e2e:web"], runtime.env);
+    await runStep("Web E2E", "pnpm", ["test:e2e:web"], runtime.env);
     await runStep(
       "Live surface",
       "node",

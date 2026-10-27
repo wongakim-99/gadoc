@@ -27,7 +27,11 @@ export class MessageUploadController {
     ) {}
 
     @Post('attachment')
-    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
+    @UseInterceptors(
+        FileInterceptor('file', {
+            limits: { fileSize: 20 * 1024 * 1024, files: 1, fields: 8, parts: 9, fieldSize: 16 * 1024 },
+        }),
+    )
     @ApiConsumes('multipart/form-data')
     @ApiBody({
         schema: {

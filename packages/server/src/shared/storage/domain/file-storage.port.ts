@@ -1,3 +1,5 @@
+import type { Readable } from 'node:stream';
+
 export interface UploadBinaryInput {
     buffer: Buffer;
     objectName: string;
@@ -12,7 +14,18 @@ export interface StoredFile {
     size: number;
 }
 
+export interface PrivateFile {
+    stream: Readable;
+    mimeType: string;
+    disposition: string;
+    size: number;
+    start: number;
+    end: number;
+    partial: boolean;
+}
+
 export interface IFileStorage {
+    read(key: string, range?: string): Promise<PrivateFile>;
     upload(input: UploadBinaryInput): Promise<StoredFile>;
 }
 

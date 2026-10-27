@@ -158,11 +158,18 @@ test("document and chat exchange durable references without sending drafts autom
   await expect(page.locator(".connection-panes")).toHaveClass(/is-reversed/);
   await page.screenshot({ path: testInfo.outputPath("document-chat.png") });
   await composer.fill("전송하지 않은 초안");
-  page.once("dialog", (dialog) => dialog.dismiss());
+  const dismissed = page
+    .waitForEvent("dialog")
+    .then((dialog) => dialog.dismiss());
   await page.getByRole("button", { name: "분할 닫기" }).click();
+  await dismissed;
+  await expect(page.getByRole("button", { name: "분할 닫기" })).toBeEnabled();
   await expect(composer).toHaveValue("전송하지 않은 초안");
-  page.once("dialog", (dialog) => dialog.accept());
+  const accepted = page
+    .waitForEvent("dialog")
+    .then((dialog) => dialog.accept());
   await page.getByRole("button", { name: "분할 닫기" }).click();
+  await accepted;
   await expect(page.locator("iframe")).toHaveCount(0);
   await page.reload();
   await expect(page.locator(".bn-editor a")).toHaveAttribute(
@@ -327,6 +334,7 @@ test("closing a document pane flushes edits and preserves the pane on save failu
   await page.getByRole("button", { name: "분할 닫기" }).click();
   await expect(title).toHaveValue("저장 실패에도 유지할 초안");
   await expect(side.getByRole("alert").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "분할 닫기" })).toBeEnabled();
   await page.unroute(
     `**/api/team/${fixture.teamId}/document/${fixture.documentId}`,
   );

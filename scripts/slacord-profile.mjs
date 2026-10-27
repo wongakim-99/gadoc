@@ -40,6 +40,9 @@ async function main() {
   }
 
   const descriptor = resolveProfileCommand(target, env);
+  if (target === "web:build" || target === "web:start")
+    env.NODE_ENV = "production";
+  if (target === "web:dev") env.NODE_ENV = "development";
   await runCommand(descriptor.command, descriptor.args, {
     cwd: descriptor.cwd,
     env,

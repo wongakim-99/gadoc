@@ -1,3 +1,4 @@
+import { isAllowedOrigin } from './security-config';
 import { JwtService } from '@nestjs/jwt';
 import { UnauthorizedException } from '@nestjs/common';
 import type { Socket } from 'socket.io';
@@ -9,11 +10,12 @@ export interface SocketUser {
 }
 
 export function authenticateSocketUser(jwtService: JwtService, client: Socket): SocketUser {
+    if (!isAllowedOrigin(client.handshake.headers.origin)) throw new UnauthorizedException('Origin is not allowed');
     const token = extractSocketToken(client);
     if (!token) {
         throw new UnauthorizedException('Missing token');
     }
-    const payload = jwtService.verify(token) as {
+    const payload = jwtService.verify(token, { algorithms: ['HS256'] }) as {
         sub: string;
         email: string;
         username?: string;
@@ -34,9 +36,11 @@ function extractSocketToken(client: Socket) {
     if (!cookieHeader) {
         return null;
     }
-    return cookieHeader
-        .split(';')
-        .map((value) => value.trim())
-        .find((value) => value.startsWith('access_token='))
-        ?.slice('access_token='.length) ?? null;
+    return (
+        cookieHeader
+            .split(';')
+            .map((value) => value.trim())
+            .find((value) => value.startsWith('access_token='))
+            ?.slice('access_token='.length) ?? null
+    );
 }

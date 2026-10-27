@@ -53,12 +53,14 @@ export function DocumentEditorPanel({
             dictionary: ko,
             initialContent: [{ type: 'paragraph' }],
             uploadFile: async (file) => {
-                const url = unwrapApiData<{ url: string }>(await documentApi.uploadDocumentImage(teamId, file))?.url;
+                const url = unwrapApiData<{ url: string }>(
+                    await documentApi.uploadDocumentFile(teamId, documentId, file),
+                )?.url;
                 if (!url) throw new Error('이미지 업로드에 실패했습니다.');
                 return url;
             },
         },
-        [teamId],
+        [teamId, documentId],
     );
 
     useEffect(() => {

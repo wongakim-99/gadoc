@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { corsOrigin } from './shared/lib/security-config';
+import { securityMiddleware } from './shared/http/security.middleware';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { HttpLoggingInterceptor } from './shared/interceptors/http-logging.interceptor';
@@ -15,14 +17,15 @@ import { DiscordNotifyService } from './modules/discord/discord-notify.service';
 async function bootstrap() {
     const logger = new Logger('Bootstrap');
 
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, { rawBody: true });
 
     app.use(cookieParser());
+    app.use(securityMiddleware);
     app.useGlobalInterceptors(new HttpLoggingInterceptor());
     app.useGlobalFilters(new DiscordErrorFilter(app.get(DiscordNotifyService)));
 
     app.enableCors({
-        origin: true,
+        origin: corsOrigin,
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
@@ -39,13 +42,15 @@ async function bootstrap() {
 
     // Swagger 문서
     const config = new DocumentBuilder()
-        .setTitle('Slacord API')
+        .setTitle('GaDoc API')
         .setDescription('팀 올인원 협업 툴 API')
         .setVersion('1.0')
         .addBearerAuth(undefined, 'JWT-Auth')
         .build();
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/docs', app, document);
+    if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_API_DOCS === 'true') {
+        const document = SwaggerModule.createDocument(app, config);
+        SwaggerModule.setup('api/docs', app, document);
+    }
 
     const host = process.env.HOST ?? '0.0.0.0';
     const port = process.env.PORT ?? 8082;

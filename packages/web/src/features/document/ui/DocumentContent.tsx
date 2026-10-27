@@ -56,6 +56,7 @@ export function DocumentContent({ doc, onQuoteSelection }: Props) {
                 >
                     <BlockEditor
                         teamId={doc.teamId}
+                        documentId={doc.id}
                         initialContent={doc.content}
                         onChange={() => {}}
                         editable={false}

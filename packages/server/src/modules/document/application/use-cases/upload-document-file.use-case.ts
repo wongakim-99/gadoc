@@ -25,10 +25,10 @@ export class UploadDocumentFileUseCase {
         @Inject(CLOCK) private readonly clock: Clock,
     ) {}
 
-    async execute(input: { teamId: string; documentId?: string; file: UploadFile }): Promise<DocumentFileResult> {
+    async execute(input: { teamId: string; documentId: string; file: UploadFile }): Promise<DocumentFileResult> {
         const fileName = input.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-') || 'file';
         const datePath = this.clock.now().toISOString().slice(0, 10);
-        const subPath = input.documentId ? `doc/${input.documentId}` : 'inline';
+        const subPath = `doc/${input.documentId}`;
         const objectName = `slacord/docs/${input.teamId}/${subPath}/${datePath}/${Date.now()}-${randomUUID()}-${fileName}`;
 
         const stored = await this.fileStorage.upload({

@@ -18,7 +18,11 @@ export function parseDesktopRelease(value: unknown): DesktopRelease | null {
 
     const version = release.tag_name.slice(1);
     const prefix = `https://github.com/kscold/slacord/releases/download/${release.tag_name}/`;
-    const names = new Set(['x64.exe', 'arm64.dmg', 'arm64.zip'].map((suffix) => `Slacord-${version}-${suffix}`));
+    const names = new Set(
+        ['GaDoc', 'Slacord'].flatMap((brand) =>
+            ['x64.exe', 'arm64.dmg', 'arm64.zip'].map((suffix) => `${brand}-${version}-${suffix}`),
+        ),
+    );
     const assets = release.assets.flatMap((value: unknown) => {
         if (!value || typeof value !== 'object') return [];
         const asset = value as Record<string, unknown>;

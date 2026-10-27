@@ -1,42 +1,42 @@
 {
   "name": "@slacord/desktop",
   "version": "1.0.10",
-  "description": "Slacord \ub370\uc2a4\ud06c\ud1b1 \uc571 (Electron + DMG)",
+  "description": "GaDoc 데스크톱 앱 (Electron + DMG)",
   "author": "kscold",
   "private": true,
   "main": "dist/main.js",
   "scripts": {
-    "dev": "yarn shell",
-    "shell": "concurrently -k \"yarn watch\" \"wait-on tcp:3002 file:dist/main.js && cross-env SLACORD_DESKTOP_START_URL=http://localhost:3002/auth/login electron .\"",
+    "dev": "pnpm shell",
+    "shell": "concurrently -k \"pnpm watch\" \"wait-on tcp:3002 file:dist/main.js && cross-env SLACORD_DESKTOP_START_URL=http://localhost:3002/auth/login electron .\"",
     "watch": "tsup --config tsup.config.ts --watch",
     "build": "tsup --config tsup.config.ts",
-    "test": "vitest run",
-    "dist:dir": "yarn build && electron-builder --dir --publish never",
-    "dist:dmg": "yarn build && electron-builder --mac dmg zip --publish never",
-    "dist:win": "yarn build && electron-builder --win nsis --publish never",
-    "release:mac": "yarn build && electron-builder --mac dmg zip --publish always",
-    "release:win": "yarn build && electron-builder --win nsis --publish always",
+    "test": "node ../../scripts/prepare-electron.mjs && vitest run",
+    "dist:dir": "pnpm build && electron-builder --dir --publish never",
+    "dist:dmg": "pnpm build && electron-builder --mac dmg zip --publish never",
+    "dist:win": "pnpm build && electron-builder --win nsis --publish never",
+    "release:mac": "pnpm build && electron-builder --mac dmg zip --publish always",
+    "release:win": "pnpm build && electron-builder --win nsis --publish always",
     "clean": "rm -rf dist release",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@slacord/contracts": "1.0.10",
+    "@slacord/contracts": "workspace:*",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.6.2"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
     "cross-env": "^10.1.0",
-    "electron": "39.2.3",
+    "electron": "45.0.0",
     "electron-builder": "^26.0.12",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4",
+    "vitest": "^4.1.12",
     "wait-on": "^9.0.3"
   },
   "build": {
     "appId": "com.kscold.slacord",
-    "productName": "Slacord",
+    "productName": "GaDoc",
     "asar": true,
     "files": [
       "dist/**/*",
@@ -53,7 +53,6 @@
       }
     ],
     "artifactName": "${productName}-${version}-${arch}.${ext}",
-    "electronVersion": "39.2.3",
     "electronUpdaterCompatibility": ">=2.16",
     "publish": [
       {
@@ -84,11 +83,12 @@
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.inherit.plist",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "\ud5c8\ub4e4(\uc74c\uc131 \ud1b5\ud654)\uc744 \uc704\ud574 \ub9c8\uc774\ud06c \uc811\uadfc\uc774 \ud544\uc694\ud569\ub2c8\ub2e4.",
-        "NSCameraUsageDescription": "\uc601\uc0c1 \ud1b5\ud654\ub97c \uc704\ud574 \uce74\uba54\ub77c \uc811\uadfc\uc774 \ud544\uc694\ud569\ub2c8\ub2e4."
+        "NSMicrophoneUsageDescription": "허들(음성 통화)을 위해 마이크 접근이 필요합니다.",
+        "NSCameraUsageDescription": "영상 통화를 위해 카메라 접근이 필요합니다."
       }
     },
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",

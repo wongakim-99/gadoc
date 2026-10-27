@@ -1,44 +1,44 @@
-import http from 'node:http';
-import path from 'node:path';
-import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
-import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
+import http from "node:http";
+import path from "node:path";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 
 const requireFromThisFile = createRequire(import.meta.url);
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
-const packageRoot = path.resolve(currentDir, '../..');
-const electronBinary = requireFromThisFile('electron');
+const packageRoot = path.resolve(currentDir, "../..");
+const electronBinary = requireFromThisFile("electron");
 
 function createSmokeServer() {
-    let resolveReady: ((payload: Record<string, string>) => void) | null = null;
-    const readyPromise = new Promise<Record<string, string>>((resolve) => {
-        resolveReady = resolve;
+  let resolveReady: ((payload: Record<string, string>) => void) | null = null;
+  const readyPromise = new Promise<Record<string, string>>((resolve) => {
+    resolveReady = resolve;
+  });
+
+  let webRevision = 1;
+  const server = http.createServer((request, response) => {
+    if (request.url === "/__web_update__") {
+      webRevision = 2;
+      response.writeHead(204).end();
+      return;
+    }
+    if (request.url === "/favicon.ico") {
+      response.writeHead(204).end();
+      return;
+    }
+
+    if (request.url?.startsWith("/__desktop_ready__")) {
+      const url = new URL(request.url, "http://127.0.0.1");
+      resolveReady?.(Object.fromEntries(url.searchParams.entries()));
+      response.writeHead(204).end();
+      return;
+    }
+
+    response.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
     });
-
-    let webRevision = 1;
-    const server = http.createServer((request, response) => {
-        if (request.url === '/__web_update__') {
-            webRevision = 2;
-            response.writeHead(204).end();
-            return;
-        }
-        if (request.url === '/favicon.ico') {
-            response.writeHead(204).end();
-            return;
-        }
-
-        if (request.url?.startsWith('/__desktop_ready__')) {
-            const url = new URL(request.url, 'http://127.0.0.1');
-            resolveReady?.(Object.fromEntries(url.searchParams.entries()));
-            response.writeHead(204).end();
-            return;
-        }
-
-        response.writeHead(200, {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Cache-Control': 'no-store',
-        });
-        response.end(`<!doctype html>
+    response.end(`<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
@@ -61,113 +61,125 @@ function createSmokeServer() {
     </script>
   </body>
 </html>`);
-    }) as http.Server & {
-        waitForReady: () => Promise<Record<string, string>>;
-    };
+  }) as http.Server & {
+    waitForReady: () => Promise<Record<string, string>>;
+  };
 
-    (server as any).waitForReady = () => readyPromise;
-    return server;
+  (server as any).waitForReady = () => readyPromise;
+  return server;
 }
 
-describe('desktop launch smoke', () => {
-    let server: http.Server & {
-        waitForReady: () => Promise<Record<string, string>>;
+describe("desktop launch smoke", () => {
+  let server: http.Server & {
+    waitForReady: () => Promise<Record<string, string>>;
+  };
+  let baseUrl = "";
+
+  beforeAll(async () => {
+    // Invoke the JS CLI directly: Windows cannot exec a pnpm.cmd shim.
+    const tsupPackagePath = requireFromThisFile.resolve("tsup/package.json");
+    const tsupBin = requireFromThisFile(tsupPackagePath).bin.tsup as string;
+    execFileSync(
+      process.execPath,
+      [
+        path.resolve(path.dirname(tsupPackagePath), tsupBin),
+        "--config",
+        "tsup.config.ts",
+      ],
+      { cwd: packageRoot, stdio: "pipe" },
+    );
+    server = createSmokeServer();
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => resolve());
+    });
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      throw new Error("스모크 서버 포트를 확인하지 못했어요.");
+    }
+    baseUrl = `http://127.0.0.1:${address.port}/auth/login`;
+  });
+
+  afterAll(async () => {
+    if (!server?.listening) return;
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) reject(error);
+        else resolve();
+      });
+    });
+  });
+
+  it("앱 재빌드 없이 새 웹 버전을 로드하고 preload IPC를 유지함", async () => {
+    const logs: string[] = [];
+    const appEnv: NodeJS.ProcessEnv = {
+      ...process.env,
+      ELECTRON_DISABLE_SECURITY_WARNINGS: "1",
+      ELECTRON_ENABLE_LOGGING: "1",
+      SLACORD_DESKTOP_START_URL: baseUrl,
     };
-    let baseUrl = '';
-
-    beforeAll(async () => {
-        // Invoke the JS CLI directly: Windows cannot exec a yarn.cmd shim.
-        const tsupPackagePath = requireFromThisFile.resolve('tsup/package.json');
-        const tsupBin = requireFromThisFile(tsupPackagePath).bin.tsup as string;
-        execFileSync(
-            process.execPath,
-            [path.resolve(path.dirname(tsupPackagePath), tsupBin), '--config', 'tsup.config.ts'],
-            { cwd: packageRoot, stdio: 'pipe' },
-        );
-        server = createSmokeServer();
-        await new Promise<void>((resolve) => {
-            server.listen(0, '127.0.0.1', () => resolve());
-        });
-        const address = server.address();
-        if (!address || typeof address === 'string') {
-            throw new Error('스모크 서버 포트를 확인하지 못했어요.');
-        }
-        baseUrl = `http://127.0.0.1:${address.port}/auth/login`;
+    delete appEnv.ELECTRON_RUN_AS_NODE;
+    const app = spawn(electronBinary, [".", "--no-sandbox", "--disable-gpu"], {
+      cwd: packageRoot,
+      env: appEnv,
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
-    afterAll(async () => {
-        if (!server?.listening) return;
-        await new Promise<void>((resolve, reject) => {
-            server.close((error) => {
-                if (error) reject(error);
-                else resolve();
-            });
-        });
+    app.stdout?.on("data", (chunk) => {
+      logs.push(String(chunk));
+    });
+    app.stderr?.on("data", (chunk) => {
+      logs.push(String(chunk));
     });
 
-    it('앱 재빌드 없이 새 웹 버전을 로드하고 preload IPC를 유지함', async () => {
-        const logs: string[] = [];
-        const appEnv: NodeJS.ProcessEnv = {
-            ...process.env,
-            ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
-            ELECTRON_ENABLE_LOGGING: '1',
-            SLACORD_DESKTOP_START_URL: baseUrl,
-        };
-        delete appEnv.ELECTRON_RUN_AS_NODE;
-        const app = spawn(electronBinary, ['.', '--no-sandbox', '--disable-gpu'], {
-            cwd: packageRoot,
-            env: appEnv,
-            stdio: ['ignore', 'pipe', 'pipe'],
-        });
+    try {
+      const ready = await Promise.race([
+        server.waitForReady(),
+        new Promise<Record<string, string>>((_, reject) => {
+          const timeout = setTimeout(() => {
+            reject(
+              new Error(
+                `Electron 스모크 준비 콜백을 기다리다 시간 초과가 났어요.\n${logs.join("")}`,
+              ),
+            );
+          }, 40000);
+          app.once("exit", (code) => {
+            clearTimeout(timeout);
+            reject(
+              new Error(
+                `Electron 프로세스가 먼저 종료됐어요. code=${code}\n${logs.join("")}`,
+              ),
+            );
+          });
+        }),
+      ]);
 
-        app.stdout?.on('data', (chunk) => {
-            logs.push(String(chunk));
-        });
-        app.stderr?.on('data', (chunk) => {
-            logs.push(String(chunk));
-        });
-
-        try {
-            const ready = await Promise.race([
-                server.waitForReady(),
-                new Promise<Record<string, string>>((_, reject) => {
-                    const timeout = setTimeout(() => {
-                        reject(new Error(`Electron 스모크 준비 콜백을 기다리다 시간 초과가 났어요.\n${logs.join('')}`));
-                    }, 40000);
-                    app.once('exit', (code) => {
-                        clearTimeout(timeout);
-                        reject(new Error(`Electron 프로세스가 먼저 종료됐어요. code=${code}\n${logs.join('')}`));
-                    });
-                }),
-            ]);
-
-            expect(ready).toEqual({
-                revision: '2',
-                bridge: '2',
-                desktop: '1',
-                notify: '1',
-                updater: '1',
-                href: '/auth/login',
-            });
-        } finally {
-            await stopProcess(app);
-        }
-    }, 60000);
+      expect(ready).toEqual({
+        revision: "2",
+        bridge: "2",
+        desktop: "1",
+        notify: "1",
+        updater: "1",
+        href: "/auth/login",
+      });
+    } finally {
+      await stopProcess(app);
+    }
+  }, 60000);
 });
 
 async function stopProcess(process: ChildProcess) {
-    if (process.exitCode !== null) return;
-    process.kill('SIGTERM');
-    await new Promise<void>((resolve) => {
-        const fallback = setTimeout(() => {
-            if (process.exitCode === null) {
-                process.kill('SIGKILL');
-                resolve();
-            }
-        }, 5000);
-        process.once('exit', () => {
-            clearTimeout(fallback);
-            resolve();
-        });
+  if (process.exitCode !== null) return;
+  process.kill("SIGTERM");
+  await new Promise<void>((resolve) => {
+    const fallback = setTimeout(() => {
+      if (process.exitCode === null) {
+        process.kill("SIGKILL");
+        resolve();
+      }
+    }, 5000);
+    process.once("exit", () => {
+      clearTimeout(fallback);
+      resolve();
     });
+  });
 }

@@ -1,3 +1,4 @@
+import { bridgeWebhookUrl } from '../../../../shared/lib/outbound-url';
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { TEAM_REPOSITORY, type ITeamRepository } from '../../domain/team.port';
 import {
@@ -18,22 +19,28 @@ export class UpdateBridgeConfigUseCase {
         if (!team.hasAdminAccess(actorId)) throw new BadRequestException('외부 브리지 설정을 변경할 권한이 없습니다.');
 
         const normalized = normalizeBridgeConfig(config);
-        const enabledTargets = ['slack', 'discord'].filter((platform) => normalized[platform as keyof BridgeWorkerConfig].enabled);
-        const result = await this.teamRepo.updateBridgeConfig(teamId, normalized, createTeamAuditLogEntry({
-            actorId,
-            category: 'delivery',
-            action: 'bridge_config_updated',
-            summary: 'Slack/Discord 브리지 설정을 저장함',
-            target: enabledTargets.length > 0 ? enabledTargets.join(', ') : 'disabled',
-            metadata: {
-                slackEnabled: normalized.slack.enabled,
-                slackRelayAnnouncements: normalized.slack.relayAnnouncements,
-                slackRelayGithub: normalized.slack.relayGithub,
-                discordEnabled: normalized.discord.enabled,
-                discordRelayAnnouncements: normalized.discord.relayAnnouncements,
-                discordRelayGithub: normalized.discord.relayGithub,
-            },
-        }));
+        const enabledTargets = ['slack', 'discord'].filter(
+            (platform) => normalized[platform as keyof BridgeWorkerConfig].enabled,
+        );
+        const result = await this.teamRepo.updateBridgeConfig(
+            teamId,
+            normalized,
+            createTeamAuditLogEntry({
+                actorId,
+                category: 'delivery',
+                action: 'bridge_config_updated',
+                summary: 'Slack/Discord 브리지 설정을 저장함',
+                target: enabledTargets.length > 0 ? enabledTargets.join(', ') : 'disabled',
+                metadata: {
+                    slackEnabled: normalized.slack.enabled,
+                    slackRelayAnnouncements: normalized.slack.relayAnnouncements,
+                    slackRelayGithub: normalized.slack.relayGithub,
+                    discordEnabled: normalized.discord.enabled,
+                    discordRelayAnnouncements: normalized.discord.relayAnnouncements,
+                    discordRelayGithub: normalized.discord.relayGithub,
+                },
+            }),
+        );
         if (!result) throw new BadRequestException('외부 브리지 설정 저장에 실패했습니다.');
         return result;
     }
@@ -50,7 +57,8 @@ function normalizeTargetConfig(label: string, target?: BridgeWorkerTargetConfig 
     const defaults = createDefaultBridgeWorkerConfig();
     const merged = { ...defaults.slack, ...(target ?? {}) };
     const webhookUrl = (merged.webhookUrl ?? '').trim();
-    const shouldValidateWebhook = merged.enabled || merged.relayAnnouncements || merged.relayGithub || webhookUrl.length > 0;
+    const shouldValidateWebhook =
+        merged.enabled || merged.relayAnnouncements || merged.relayGithub || webhookUrl.length > 0;
 
     if (shouldValidateWebhook) {
         assertWebhookUrl(label, webhookUrl);
@@ -65,16 +73,5 @@ function normalizeTargetConfig(label: string, target?: BridgeWorkerTargetConfig 
 }
 
 function assertWebhookUrl(label: string, webhookUrl: string) {
-    if (!webhookUrl) {
-        throw new BadRequestException(`${label} webhook URL을 입력해 주세요.`);
-    }
-
-    try {
-        const parsed = new URL(webhookUrl);
-        if (!['http:', 'https:'].includes(parsed.protocol)) {
-            throw new Error('unsupported protocol');
-        }
-    } catch {
-        throw new BadRequestException(`${label} webhook URL 형식이 올바르지 않습니다.`);
-    }
+    bridgeWebhookUrl(label, webhookUrl);
 }

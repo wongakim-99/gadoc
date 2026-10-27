@@ -58,7 +58,7 @@ test("create nested pages, preserve parent edits, retry failures and navigate th
     name: "워크스페이스 사이드바",
   });
   await expect(
-    sidebar.getByRole("img", { name: "Slacord", exact: true }),
+    sidebar.getByRole("img", { name: "GaDoc", exact: true }),
   ).toBeVisible();
   await expect(
     sidebar.getByRole("link", {

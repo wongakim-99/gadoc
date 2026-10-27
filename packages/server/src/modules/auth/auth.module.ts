@@ -1,3 +1,4 @@
+import { AuthRateLimitGuard } from '../../shared/guards/auth-rate-limit.guard';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
@@ -10,6 +11,7 @@ import { LoginUseCase } from './application/use-cases/login.use-case';
 import { RegisterUseCase } from './application/use-cases/register.use-case';
 import { GetMeUseCase } from './application/use-cases/get-me.use-case';
 import { AuthController } from './infrastructure/http/auth.controller';
+import { jwtSecret } from '../../shared/lib/security-config';
 import { JwtStrategy } from '../../shared/strategy/jwt.strategy';
 
 @Module({
@@ -19,7 +21,7 @@ import { JwtStrategy } from '../../shared/strategy/jwt.strategy';
         JwtModule.registerAsync({
             imports: [ConfigModule],
             useFactory: (configService: ConfigService) => ({
-                secret: configService.get<string>('JWT_SECRET') ?? 'slacord-secret-key',
+                secret: jwtSecret(configService.get<string>('JWT_SECRET')),
                 signOptions: { expiresIn: '7d' },
             }),
             inject: [ConfigService],
@@ -27,6 +29,7 @@ import { JwtStrategy } from '../../shared/strategy/jwt.strategy';
     ],
     controllers: [AuthController],
     providers: [
+        AuthRateLimitGuard,
         { provide: USER_REPOSITORY, useClass: UserRepository },
         LoginUseCase,
         RegisterUseCase,

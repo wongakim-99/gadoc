@@ -1,3 +1,4 @@
+import { withPrivateFiles } from '@/src/shared/lib/private-files';
 /**
  * Slacord API 클라이언트
  * - 순수 HttpOnly 쿠키 기반 인증
@@ -90,7 +91,7 @@ async function apiFetch<T = any>(url: string, options?: RequestInit): Promise<Ap
         throw new ApiError(message || '요청에 실패했습니다.', response.status);
     }
     if (!data || typeof data !== 'object') throw new Error('서버 응답을 처리하지 못했습니다.');
-    return data;
+    return withPrivateFiles(data);
 }
 
 /**
@@ -587,9 +588,10 @@ export const documentApi = {
     async getArchivedDocuments(teamId: string) {
         return apiFetch(`/api/team/${teamId}/document/archived/list`);
     },
-    async uploadDocumentImage(teamId: string, file: File) {
+    async uploadDocumentImage(teamId: string, documentId: string, file: File) {
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('documentId', documentId);
         return apiFetch(`/api/team/${teamId}/document/upload/image`, { method: 'POST', body: formData });
     },
     async uploadDocumentFile(teamId: string, documentId: string, file: File) {

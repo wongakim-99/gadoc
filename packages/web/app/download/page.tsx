@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { MarketingHeader } from '@/src/widgets/marketing/ui/MarketingHeader';
+import { ProductFooter } from '@/src/widgets/marketing/ui/ProductFooter';
 import { siteConfig } from '@/src/shared/config/site';
 import { getDesktopRelease } from '@/src/features/desktop-download/api/getDesktopRelease';
 
@@ -28,27 +30,30 @@ export default async function DownloadPage() {
     const release = await getDesktopRelease();
     const availablePackages = release
         ? packages.flatMap((item) => {
-              const asset = release.assets.find((asset) => asset.name === `Slacord-${release.version}-${item.suffix}`);
+              const asset = release.assets.find((asset) =>
+                  ['GaDoc', 'Slacord'].some((brand) => asset.name === `${brand}-${release.version}-${item.suffix}`),
+              );
               return asset ? [{ ...item, hint: asset.name, href: asset.href }] : [];
           })
         : [];
     return (
-        <div className="min-h-screen bg-[radial-gradient(circle_at_top,#2b1d11_0%,#120f0b_42%,#0c0a08_100%)] px-4 py-16 sm:px-6 sm:py-20">
-            <div className="mx-auto max-w-6xl space-y-12">
+        <div className="gadoc-marketing">
+            <MarketingHeader />
+            <main className="gadoc-container space-y-12 py-16">
                 <div className="grid gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.9fr)] lg:items-end">
                     <div className="max-w-3xl">
                         <p className="marketing-kicker">Desktop Download</p>
                         <h1 className="marketing-display mt-5 text-[clamp(3rem,6vw,5.3rem)] text-white">
                             브라우저 밖에서도
                             <br />
-                            <span className="text-brand-200">바로 이어지는 Slacord</span>
+                            <span className="text-brand-200">함께 일하는 GaDoc</span>
                         </h1>
                         <p className="marketing-lead mt-6 max-w-2xl text-[1.05rem]">
                             설치 후 로그인하면 바로 워크스페이스로 이어집니다. Windows는 앱 안에서 업데이트까지 바로
                             이어지고, macOS는 당분간 다운로드 페이지에서 새 설치 파일을 다시 받는 기준으로 운영합니다.{' '}
                             {release && (
                                 <>
-                                    현재 공개 버전은{' '}
+                                    기존 이름으로 배포된 설치 파일은 그대로 제공됩니다. 현재 공개 버전은{' '}
                                     <span className="font-semibold text-white">v{release.version}</span>입니다.
                                 </>
                             )}
@@ -73,11 +78,11 @@ export default async function DownloadPage() {
                             className="marketing-card rounded-[30px] p-7 transition hover:border-brand-300/40 hover:bg-bg-hover"
                         >
                             <p className="marketing-kicker text-[11px]">Installer</p>
-                            <p className="mt-3 inline-flex rounded-full border border-white/10 px-3 py-1 text-[11px] text-[#d8c4a8]">
+                            <p className="mt-3 inline-flex rounded-full border border-white/10 px-3 py-1 text-[11px] text-text-secondary">
                                 {item.status}
                             </p>
                             <h2 className="mt-5 text-[2rem] font-bold tracking-[-0.05em] text-white">{item.title}</h2>
-                            <p className="mt-3 font-mono text-[0.95rem] text-[#d4c2af]">{item.hint}</p>
+                            <p className="mt-3 font-mono text-[0.95rem] text-text-secondary">{item.hint}</p>
                             <p className="marketing-caption mt-4 text-sm">{item.description}</p>
                             <span className="mt-8 inline-flex rounded-full bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white">
                                 다운로드
@@ -115,7 +120,8 @@ export default async function DownloadPage() {
                         업데이트 알림이 보이더라도 다운로드 페이지에서 최신 DMG를 받는 쪽이 가장 안전합니다.
                     </p>
                 </div>
-            </div>
+            </main>
+            <ProductFooter />
         </div>
     );
 }
