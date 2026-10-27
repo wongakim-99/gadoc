@@ -24,5 +24,6 @@ import { DatabaseService } from './database.service';
     ],
     controllers: [DatabaseController, DatabaseContainerController],
     providers: [DatabaseContainerService, DatabaseService, DatabaseGateway, ContentChangeInterceptor],
+    exports: [DatabaseService, DatabaseContainerService],
 })
 export class DatabaseModule {}

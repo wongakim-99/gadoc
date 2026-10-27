@@ -26,6 +26,7 @@ export function McpSettingsPanel({ teamId, canWrite }: { teamId: string; canWrit
     const [days, setDays] = useState(30);
     const [write, setWrite] = useState(false);
     const [files, setFiles] = useState(false);
+    const [databaseWrite, setDatabaseWrite] = useState(false);
     const [secret, setSecret] = useState('');
     const [busy, setBusy] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -75,8 +76,9 @@ export function McpSettingsPanel({ teamId, canWrite }: { teamId: string; canWrit
         setSecret('');
         setNotice('');
         try {
-            const scopes: Scope[] = ['documents:read'];
+            const scopes: Scope[] = ['documents:read', 'databases:read'];
             if (canWrite && write) scopes.push('documents:write');
+            if (canWrite && databaseWrite) scopes.push('databases:write');
             if (canWrite && files) scopes.push('files:write');
             const response = await apiFetch<Token & { token: string }>(`${base}/tokens`, {
                 method: 'POST',
@@ -163,7 +165,7 @@ export function McpSettingsPanel({ teamId, canWrite }: { teamId: string; canWrit
                     <fieldset className="space-y-3 text-sm">
                         <legend className="mb-3 text-text-secondary">허용할 작업</legend>
                         <label className="flex items-center gap-2">
-                            <input type="checkbox" checked disabled /> 문서 조회와 검색
+                            <input type="checkbox" checked disabled /> 문서·데이터베이스 조회와 검색
                         </label>
                         <label className="flex items-center gap-2">
                             <input
@@ -184,7 +186,11 @@ export function McpSettingsPanel({ teamId, canWrite }: { teamId: string; canWrit
                             문서에 파일 첨부
                         </label>
                     </fieldset>
-                    {(write || files) && (
+                    <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={databaseWrite} disabled={!canWrite} onChange={(event) => setDatabaseWrite(event.target.checked)} />
+                        데이터베이스·일정 편집
+                    </label>
+                    {(write || files || databaseWrite) && (
                         <p className="text-xs leading-5 text-amber-200">
                             쓰기 권한을 켜면 AI가 실제 문서를 변경할 수 있습니다. 사용하는 AI 도구에서도 실행 전 확인을
                             켜 두세요.

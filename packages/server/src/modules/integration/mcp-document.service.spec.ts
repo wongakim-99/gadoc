@@ -3,7 +3,7 @@ import { McpDocumentService } from './mcp-document.service';
 import type { McpIdentity } from './integration-token.service';
 
 describe('MCP document authorization', () => {
-    const documents = { findById: jest.fn(), findByTeam: jest.fn() };
+    const documents = { findById: jest.fn(), findMetadataByTeam: jest.fn() };
     const create = { execute: jest.fn() };
     const update = { execute: jest.fn() };
     const upload = { execute: jest.fn() };
@@ -21,7 +21,7 @@ describe('MCP document authorization', () => {
         expect(upload.execute).not.toHaveBeenCalled();
     });
     it('filters private documents from searches and checks edit permission separately', async () => {
-        documents.findByTeam.mockResolvedValue([doc(), doc({ id: 'public', title: 'Public', visibility: 'team', editPolicy: 'owner_admin' })]);
+        documents.findMetadataByTeam.mockResolvedValue([doc(), doc({ id: 'public', title: 'Public', visibility: 'team', editPolicy: 'owner_admin' })]);
         expect((await service.list(identity, {})).items.map((row) => row.id)).toEqual(['public']);
         documents.findById.mockResolvedValue(doc({ visibility: 'team', editPolicy: 'owner_admin' }));
         await expect(service.update(identity, { documentId: 'doc', content: 'new', expectedUpdatedAt: new Date().toISOString() })).rejects.toThrow();

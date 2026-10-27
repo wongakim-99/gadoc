@@ -3,6 +3,12 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { IntegrationTokenService, type McpIdentity, type McpScope } from './integration-token.service';
 import { McpDocumentService } from './mcp-document.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { CONTENT_CHANGED } from '../../shared/interceptors/content-change.interceptor';
+import { DatabaseService } from '../knowledge-database/database.service';
+import { DatabaseContainerService } from '../knowledge-database/container.service';
+import { GetTeamMembersUseCase } from '../team/application/use-cases/get-team-members.use-case';
+import { registerDatabaseTools } from './mcp-database.tools';
 
 const objectId = z.string().regex(/^[a-f0-9]{24}$/);
 const title = z.string().trim().min(1).max(200);
@@ -14,6 +20,10 @@ export class McpServerService {
     constructor(
         private readonly tokens: IntegrationTokenService,
         private readonly documents: McpDocumentService,
+        private readonly databases: DatabaseService,
+        private readonly containers: DatabaseContainerService,
+        private readonly members: GetTeamMembersUseCase,
+        private readonly events: EventEmitter2,
     ) {}
 
     create(identity: McpIdentity) {
@@ -49,6 +59,7 @@ export class McpServerService {
                     try {
                         this.tokens.requireScope(identity, scope);
                         const result = await action(args as z.output<z.ZodObject<S>>);
+                        if (scope.endsWith(':write')) this.events.emit(CONTENT_CHANGED, { teamId: identity.teamId });
                         await this.tokens.record(identity, name, 'success');
                         return {
                             content: [{ type: 'text' as const, text: JSON.stringify(result) }],
@@ -128,6 +139,7 @@ export class McpServerService {
             },
             (input) => this.documents.upload(identity, input),
         );
+        registerDatabaseTools(register, identity, this.databases, this.containers, this.members);
         return server;
     }
 }

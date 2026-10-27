@@ -27,7 +27,7 @@ export class McpDocumentService {
 
     async list(identity: McpIdentity, input: { query?: string; offset?: number; limit?: number }) {
         const query = input.query?.toLocaleLowerCase() ?? '';
-        const docs = (await this.documents.findByTeam(identity.teamId)).filter(
+        const docs = (await this.documents.findMetadataByTeam(identity.teamId)).filter(
             (doc) =>
                 !doc.isArchived &&
                 doc.canView(identity.userId, identity.role) &&

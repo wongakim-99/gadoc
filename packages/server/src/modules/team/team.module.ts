@@ -47,6 +47,6 @@ import { AuthModule } from '../auth/auth.module';
         UpdateMemberAccessUseCase,
         TeamAccessService,
     ],
-    exports: [TEAM_REPOSITORY, TeamAccessService],
+    exports: [TEAM_REPOSITORY, TeamAccessService, GetTeamMembersUseCase],
 })
 export class TeamModule {}
