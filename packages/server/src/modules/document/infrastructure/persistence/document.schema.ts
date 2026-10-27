@@ -8,6 +8,12 @@ export class Doc {
     @Prop({ default: false }) inheritPermissions?: boolean;
     static readonly name = 'Document';
 
+    @Prop({ type: Buffer, select: false })
+    collaborationState?: Buffer;
+
+    @Prop({ type: Date, select: false })
+    collaborationCheckpointAt?: Date;
+
     @Prop({ required: true, index: true })
     teamId: string;
 

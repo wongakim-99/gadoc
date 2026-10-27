@@ -3,12 +3,14 @@ import type { IDocumentRepository } from '../../domain/document.port';
 import { DOCUMENT_REPOSITORY } from '../../domain/document.port';
 import type { IDocumentVersionRepository } from '../../domain/document-version.port';
 import { DOCUMENT_VERSION_REPOSITORY } from '../../domain/document-version.port';
+import { DocumentCollaborationService } from '../../collaboration/document-collaboration.service';
 
 @Injectable()
 export class RestoreDocumentVersionUseCase {
     constructor(
         @Inject(DOCUMENT_REPOSITORY) private readonly docRepo: IDocumentRepository,
         @Inject(DOCUMENT_VERSION_REPOSITORY) private readonly versionRepo: IDocumentVersionRepository,
+        private readonly collaboration: DocumentCollaborationService,
     ) {}
 
     async execute(documentId: string, versionId: string, updatedBy: string) {
@@ -26,12 +28,16 @@ export class RestoreDocumentVersionUseCase {
             contentFormat: current.contentFormat,
             savedBy: updatedBy,
         });
-        const restored = await this.docRepo.update(documentId, {
-            title: version.title,
-            content: version.content,
-            contentFormat: version.contentFormat,
-            updatedBy,
-        });
+        const restored = await this.collaboration.updateSnapshot(
+            documentId,
+            {
+                title: version.title,
+                content: version.content,
+                contentFormat: version.contentFormat,
+                updatedBy,
+            },
+            current.updatedAt,
+        );
         if (!restored) throw new BadRequestException('문서를 복원할 수 없습니다.');
         return restored;
     }

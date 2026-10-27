@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { DOCUMENT_REPOSITORY, type IDocumentRepository } from '../../domain/document.port';
 import { ConfluenceApiClient } from '../../infrastructure/external/confluence-api.client';
 import { confluenceStorageToHtml } from '../../infrastructure/external/confluence-storage-to-text';
+import { DocumentCollaborationService } from '../../collaboration/document-collaboration.service';
 
 interface ImportInput {
     teamId: string;
@@ -18,6 +19,7 @@ export class ImportConfluenceSpaceUseCase {
     constructor(
         @Inject(DOCUMENT_REPOSITORY) private readonly repo: IDocumentRepository,
         private readonly confluenceClient: ConfluenceApiClient,
+        private readonly collaboration: DocumentCollaborationService,
     ) {}
 
     async execute(input: ImportInput) {
@@ -25,9 +27,32 @@ export class ImportConfluenceSpaceUseCase {
         const filtered = filterPages(pages, input.rootPageId);
         const ordered = [...filtered].sort((left, right) => depthOf(filtered, left.id) - depthOf(filtered, right.id));
         const docIdByPageId = new Map<string, string>();
+        const existing = new Map(
+            (await this.repo.findMetadataByTeam(input.teamId))
+                .filter((doc) => doc.externalSource === 'confluence')
+                .map((doc) => [doc.externalId, doc]),
+        );
 
         for (const page of ordered) {
-            const parentId = page.parentId ? docIdByPageId.get(page.parentId) ?? null : null;
+            const parentId = page.parentId ? (docIdByPageId.get(page.parentId) ?? null) : null;
+            const previous = existing.get(page.id);
+            if (previous) {
+                await this.collaboration.authorize(input.teamId, previous.id, input.requestedBy, true);
+                const updated = await this.collaboration.updateSnapshot(
+                    previous.id,
+                    {
+                        title: page.title,
+                        content: confluenceStorageToHtml(page.content),
+                        contentFormat: 'html',
+                        parentId,
+                        updatedBy: input.requestedBy,
+                    },
+                    previous.updatedAt,
+                );
+                if (!updated) throw new Error('가져오는 중 문서가 변경되었습니다. 다시 시도해 주세요.');
+                docIdByPageId.set(page.id, updated.id);
+                continue;
+            }
             const doc = await this.repo.upsertExternal({
                 teamId: input.teamId,
                 title: page.title,

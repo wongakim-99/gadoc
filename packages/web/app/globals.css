@@ -716,6 +716,24 @@
 }
 
 /* Editor menus may be rendered in a portal outside the workspace shell. */
+.document-workspace .slacord-blocknote .bn-block-content[data-content-type='database'] {
+    margin-block: 0.75rem;
+    min-width: 0;
+}
+.document-workspace .slacord-blocknote .ProseMirror-selectednode > .bn-block-content[data-content-type='database'] > *,
+.document-workspace .slacord-blocknote .bn-block-content[data-content-type='database'].ProseMirror-selectednode > * {
+    outline: 1px solid var(--workspace-accent);
+    outline-offset: 4px;
+}
+.document-workspace [data-inline-database] {
+    font-size: 14px;
+    line-height: 1.5;
+    user-select: text;
+}
+.document-workspace [data-inline-database] :is(button, [role='tab']) {
+    user-select: none;
+}
+
 body:has(.workspace-shell) .bn-container[data-color-scheme='dark'] {
     --bn-colors-menu-background: var(--color-bg-secondary);
     --bn-colors-menu-text: var(--color-text-primary);
