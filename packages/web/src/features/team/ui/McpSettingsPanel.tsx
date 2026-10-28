@@ -2,8 +2,9 @@
 import { copyText } from '@/src/shared/lib/copyText';
 import { publicAppUrl } from '@/lib/runtime-config';
 
-import { useEffect, useState } from 'react';
-import { Copy, KeyRound, Plus, ShieldCheck } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
+import { Check, Copy, Eye, EyeOff, KeyRound, Plus, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
 import { ConfirmationDialog } from '@/src/shared/ui/ConfirmationDialog';
 
@@ -18,8 +19,14 @@ type Token = {
     lastUsedAt: string | null;
 };
 type Activity = { tool: string; outcome: 'success' | 'error'; createdAt: string; tokenId: string };
+type CopyTarget = 'endpoint' | 'secret';
 const inputClass =
     'w-full rounded-lg border border-border-primary bg-bg-primary px-3 py-2 text-sm text-text-primary focus:border-brand-400 focus:outline-none';
+const copiedLabels: Record<CopyTarget, string> = {
+    endpoint: '서버 주소를 복사했습니다.',
+    secret: '연결 키를 복사했습니다.',
+};
+const COPIED_FEEDBACK_MS = 2000;
 
 export function McpSettingsPanel({ teamId, canWrite }: { teamId: string; canWrite: boolean }) {
     const [tokens, setTokens] = useState<Token[]>([]);
@@ -35,8 +42,13 @@ export function McpSettingsPanel({ teamId, canWrite }: { teamId: string; canWrit
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
     const [revoking, setRevoking] = useState<Token | null>(null);
+    const [copied, setCopied] = useState<CopyTarget | null>(null);
+    const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+    const endpointField = useRef<HTMLInputElement>(null);
     const endpoint = `${publicAppUrl()}/api/mcp`;
     const base = `/api/team/${teamId}/integrations`;
+
+    useEffect(() => () => clearTimeout(copiedTimer.current), []);
 
     useEffect(() => {
         let active = true;
@@ -60,15 +72,26 @@ export function McpSettingsPanel({ teamId, canWrite }: { teamId: string; canWrit
         };
     }, [base]);
 
-    async function copy(value: string, label: string) {
+    async function copy(value: string, target: CopyTarget) {
         setNotice('');
         setError('');
+        clearTimeout(copiedTimer.current);
         try {
             await copyText(value);
-            setNotice(`${label} 복사했습니다.`);
+            setCopied(target);
+            copiedTimer.current = setTimeout(() => setCopied(null), COPIED_FEEDBACK_MS);
+            return true;
         } catch {
-            setError('클립보드에 접근하지 못했습니다. 내용을 선택해 복사해 주세요.');
+            setCopied(null);
+            setError('자동 복사가 차단됐습니다. 선택된 내용을 Ctrl+C(⌘C)로 직접 복사해 주세요.');
+            return false;
         }
+    }
+
+    async function copyEndpoint() {
+        if (await copy(endpoint, 'endpoint')) return;
+        endpointField.current?.focus();
+        endpointField.current?.select();
     }
 
     async function create(event: React.FormEvent) {
@@ -78,6 +101,7 @@ export function McpSettingsPanel({ teamId, canWrite }: { teamId: string; canWrit
         setError('');
         setSecret('');
         setNotice('');
+        setCopied(null);
         try {
             const scopes: Scope[] = ['documents:read', 'databases:read'];
             if (canWrite && write) scopes.push('documents:write');
@@ -131,6 +155,9 @@ export function McpSettingsPanel({ teamId, canWrite }: { teamId: string; canWrit
                     {notice}
                 </p>
             )}
+            <p role="status" className="sr-only">
+                {copied ? copiedLabels[copied] : ''}
+            </p>
             <div className="grid gap-6 xl:grid-cols-2">
                 <form
                     onSubmit={create}
@@ -190,7 +217,12 @@ export function McpSettingsPanel({ teamId, canWrite }: { teamId: string; canWrit
                         </label>
                     </fieldset>
                     <label className="flex items-center gap-2 text-sm">
-                        <input type="checkbox" checked={databaseWrite} disabled={!canWrite} onChange={(event) => setDatabaseWrite(event.target.checked)} />
+                        <input
+                            type="checkbox"
+                            checked={databaseWrite}
+                            disabled={!canWrite}
+                            onChange={(event) => setDatabaseWrite(event.target.checked)}
+                        />
                         데이터베이스·일정 편집
                     </label>
                     {(write || files || databaseWrite) && (
@@ -215,14 +247,26 @@ export function McpSettingsPanel({ teamId, canWrite }: { teamId: string; canWrit
                     <label className="block space-y-2 text-sm">
                         <span>MCP 서버 주소</span>
                         <div className="flex gap-2">
-                            <input aria-label="MCP 서버 주소" value={endpoint} readOnly className={inputClass} />
+                            <input
+                                ref={endpointField}
+                                aria-label="MCP 서버 주소"
+                                value={endpoint}
+                                readOnly
+                                onFocus={(event) => event.currentTarget.select()}
+                                className={inputClass}
+                            />
                             <button
                                 type="button"
-                                aria-label="MCP 주소 복사"
-                                onClick={() => void copy(endpoint, '서버 주소를')}
-                                className="rounded-lg border border-border-primary p-2"
+                                aria-label={copied === 'endpoint' ? 'MCP 주소 복사됨' : 'MCP 주소 복사'}
+                                title={copied === 'endpoint' ? '복사됨' : '복사'}
+                                onClick={() => void copyEndpoint()}
+                                className={`rounded-lg border p-2 transition-colors ${
+                                    copied === 'endpoint'
+                                        ? 'border-success/50 bg-success/10 text-success'
+                                        : 'border-border-primary hover:bg-bg-secondary'
+                                }`}
                             >
-                                <Copy size={16} />
+                                {copied === 'endpoint' ? <Check size={16} /> : <Copy size={16} />}
                             </button>
                         </div>
                     </label>
@@ -231,29 +275,16 @@ export function McpSettingsPanel({ teamId, canWrite }: { teamId: string; canWrit
                         <code className="break-all">Authorization: Bearer 발급받은_연결_키</code>
                     </div>
                     {secret && (
-                        <div className="space-y-3 rounded-lg border border-brand-400/40 bg-brand-500/10 p-4">
-                            <p className="text-sm font-medium">연결 키는 지금 한 번만 표시됩니다.</p>
-                            <input
-                                aria-label="발급된 MCP 연결 키"
-                                type="password"
-                                readOnly
-                                value={secret}
-                                className={inputClass}
-                                autoComplete="off"
-                            />
-                            <div className="flex flex-wrap gap-3">
-                                <button
-                                    type="button"
-                                    className="text-sm underline"
-                                    onClick={() => void copy(secret, '연결 키를')}
-                                >
-                                    연결 키 복사
-                                </button>
-                                <button type="button" className="text-sm underline" onClick={() => setSecret('')}>
-                                    확인했어요, 숨기기
-                                </button>
-                            </div>
-                        </div>
+                        <IssuedSecret
+                            key={secret}
+                            secret={secret}
+                            copied={copied === 'secret'}
+                            onCopy={() => copy(secret, 'secret')}
+                            onDismiss={() => {
+                                setSecret('');
+                                setCopied(null);
+                            }}
+                        />
                     )}
                     <div className="flex gap-2 text-xs leading-6 text-text-secondary">
                         <ShieldCheck size={16} className="mt-1 shrink-0" />
@@ -349,6 +380,79 @@ export function McpSettingsPanel({ teamId, canWrite }: { teamId: string; canWrit
                 confirmLabel="연결 폐기"
                 tone="danger"
             />
+        </div>
+    );
+}
+
+function IssuedSecret({
+    secret,
+    copied,
+    onCopy,
+    onDismiss,
+}: {
+    secret: string;
+    copied: boolean;
+    onCopy: () => Promise<boolean>;
+    onDismiss: () => void;
+}) {
+    const [revealed, setRevealed] = useState(false);
+    const field = useRef<HTMLInputElement>(null);
+
+    async function copySecret() {
+        if (await onCopy()) return;
+        // Browsers refuse to copy from password inputs, so reveal the key before handing it to the user.
+        flushSync(() => setRevealed(true));
+        field.current?.focus();
+        field.current?.select();
+    }
+
+    return (
+        <div className="space-y-3 rounded-lg border border-brand-400/40 bg-brand-500/10 p-4">
+            <p className="text-sm font-medium">연결 키는 지금 한 번만 표시됩니다.</p>
+            <div className="relative">
+                <input
+                    ref={field}
+                    aria-label="발급된 MCP 연결 키"
+                    type={revealed ? 'text' : 'password'}
+                    readOnly
+                    value={secret}
+                    onFocus={(event) => event.currentTarget.select()}
+                    className={`${inputClass} pr-10 font-mono`}
+                    autoComplete="off"
+                    spellCheck={false}
+                />
+                <button
+                    type="button"
+                    aria-label={revealed ? '연결 키 가리기' : '연결 키 보기'}
+                    aria-pressed={revealed}
+                    title={revealed ? '가리기' : '보기'}
+                    onClick={() => setRevealed((current) => !current)}
+                    className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-text-secondary hover:text-text-primary"
+                >
+                    {revealed ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <button
+                    type="button"
+                    onClick={() => void copySecret()}
+                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                        copied
+                            ? 'border-success/50 bg-success/10 text-success'
+                            : 'border-transparent bg-brand-500 text-white hover:bg-brand-600'
+                    }`}
+                >
+                    {copied ? <Check size={16} /> : <Copy size={16} />}
+                    {copied ? '복사했어요' : '연결 키 복사'}
+                </button>
+                <button
+                    type="button"
+                    onClick={onDismiss}
+                    className="rounded-lg border border-border-primary px-3 py-2 text-sm text-text-secondary hover:bg-bg-secondary hover:text-text-primary"
+                >
+                    확인했어요, 숨기기
+                </button>
+            </div>
         </div>
     );
 }
