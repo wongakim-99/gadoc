@@ -40,6 +40,7 @@ test('issue deletion and announcement/channel editing preserve failures and enfo
     });
     const issueId = issue!.data!.id;
     await page.goto(`/${f.teamId}/issues?issue=${issueId}`);
+    await page.getByRole('dialog', { name: '이슈 상세', exact: true }).getByRole('button', { name: '편집', exact: true }).click();
     await page.getByRole('dialog', { name: '이슈 수정', exact: true }).getByRole('button', { name: '삭제', exact: true }).click();
     const failDelete = async (route: import('playwright/test').Route) => route.request().method() === 'DELETE'
         ? route.fulfill({ status: 503, json: { success: false, message: '삭제 실패' } }) : route.fallback();
