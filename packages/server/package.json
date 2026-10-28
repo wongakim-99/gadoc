@@ -3,6 +3,7 @@
     "version": "1.1.1",
     "description": "GaDoc 백엔드 서버 (NestJS + 헥사고날 아키텍처)",
     "private": true,
+    "license": "UNLICENSED",
     "scripts": {
         "build": "pnpm --filter @slacord/document-core build && nest build",
         "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",

@@ -3,6 +3,7 @@
   "version": "1.1.1",
   "description": "GaDoc 런타임 간 공유 계약 타입",
   "private": true,
+  "license": "UNLICENSED",
   "types": "index.d.ts",
   "scripts": {
     "clean": "true"

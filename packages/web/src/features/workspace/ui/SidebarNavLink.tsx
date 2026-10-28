@@ -36,12 +36,18 @@ export function SidebarNavLink({ href, label, active, icon, unreadCount = 0, men
                 {icon}
                 <span className="min-w-0 flex-1 truncate">{label}</span>
                 {showMentionBadge ? (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white">
+                    <span
+                        title={`멘션 ${mentionCount}개`}
+                        className="flex h-[18px] min-w-[18px] items-center justify-center rounded-md border border-action/20 bg-action/10 px-1 text-[10px] font-medium tabular-nums text-action-text"
+                    >
                         @{mentionCount > 9 ? '9+' : mentionCount}
                     </span>
                 ) : null}
                 {showUnreadBadge ? (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-action px-1.5 text-[11px] font-bold text-white">
+                    <span
+                        title={`읽지 않은 메시지 ${unreadCount}개`}
+                        className="flex h-[18px] min-w-[18px] items-center justify-center rounded-md bg-bg-tertiary px-1 text-[10px] font-medium tabular-nums text-text-secondary"
+                    >
                         {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                 ) : null}

@@ -139,9 +139,19 @@ test("issue reference drag is separate from Kanban status movement", async ({
     )?.data?.find((issue) => issue.id === issueId)?.status;
   expect(await status()).toBe("todo");
   await page.getByRole("button", { name: "분할 닫기" }).click();
-  await card.locator("[data-rfd-drag-handle-draggable-id]").focus();
+  await expect(page.locator(".issue-board-columns")).toBeVisible();
+  await expect(page.locator(".issue-board-stacked")).toBeHidden();
+  const handle = card.locator("[data-rfd-drag-handle-draggable-id]");
+  await expect(handle).toBeVisible();
+  await handle.focus();
+  await expect(handle).toBeFocused();
   await page.keyboard.press("Space");
+  await expect(card).toHaveCSS("position", "fixed");
+  const start = (await card.boundingBox())!;
   await page.keyboard.press("ArrowRight");
+  await expect
+    .poll(async () => (await card.boundingBox())!.x)
+    .toBeGreaterThan(start.x + 100);
   await page.keyboard.press("Space");
   await expect.poll(status).toBe("in_progress");
 });

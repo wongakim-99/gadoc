@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
 import { clearSentMessageDraft, useMessageDraft, type DraftScope } from './messageDraft';
+import { clipboardFiles } from './clipboardFiles';
 
 interface Props {
     draftScope: DraftScope;
@@ -123,6 +124,16 @@ export function useMessageComposer({ draftScope, members, onTyping, onUpload, on
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
+    const handlePaste = useCallback(
+        (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+            const files = clipboardFiles(event.clipboardData);
+            if (!files.length) return;
+            event.preventDefault();
+            appendFiles(files);
+        },
+        [appendFiles],
+    );
+
     const handleDragEnter = useCallback((event: React.DragEvent<HTMLElement>) => {
         if (!hasFilesTransfer(event.dataTransfer)) return;
         event.preventDefault();
@@ -165,6 +176,7 @@ export function useMessageComposer({ draftScope, members, onTyping, onUpload, on
         handleDragOver,
         handleDrop,
         handleFileChange,
+        handlePaste,
         isDraggingFiles,
         isSending,
         sendError,
