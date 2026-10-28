@@ -4,7 +4,10 @@ import { createReactBlockSpec } from '@blocknote/react';
 import { documentMermaidConfig } from '@slacord/document-core';
 import type { DocumentBlockEditor } from './documentBlockSchema';
 
-let renderQueue = Promise.resolve();
+import { createDiagramRenderQueue, DiagramRenderTimeout } from '../model/diagramRenderQueue';
+
+const renderDiagram = createDiagramRenderQueue();
+let renderSequence = 0;
 function MermaidView({
     code,
     editable,
@@ -19,6 +22,7 @@ function MermaidView({
     const [svg, setSvg] = useState('');
     const [error, setError] = useState('');
     const [zoom, setZoom] = useState(1);
+    const [attempt, setAttempt] = useState(0);
     useEffect(() => {
         let current = true;
         setSvg('');
@@ -35,46 +39,51 @@ function MermaidView({
                         )
                     )
                         throw new Error('외부 리소스, HTML, 클릭 동작과 설정 지시문은 사용할 수 없습니다.');
-                    const mermaid = (await import('mermaid')).default;
-                    if (!current) return;
-                    const colors = getComputedStyle(document.documentElement);
-                    mermaid.initialize({
-                        startOnLoad: false,
-                        securityLevel: 'strict',
-                        maxTextSize: 10000,
-                        maxEdges: 100,
-                        suppressErrorRendering: true,
-                        flowchart: { htmlLabels: false },
-                        theme: 'base',
-                        themeVariables: {
-                            primaryColor: colors.getPropertyValue('--color-bg-secondary').trim(),
-                            primaryTextColor: colors.getPropertyValue('--color-text-primary').trim(),
-                            primaryBorderColor: colors.getPropertyValue('--color-border-primary').trim(),
-                            lineColor: colors.getPropertyValue('--color-text-secondary').trim(),
-                            fontFamily: getComputedStyle(document.body).fontFamily,
-                        },
+                    const rendered = await renderDiagram(async (isActive) => {
+                        const mermaid = (await import('mermaid')).default;
+                        if (!current || !isActive()) return '';
+                        const colors = getComputedStyle(document.documentElement);
+                        mermaid.initialize({
+                            startOnLoad: false,
+                            securityLevel: 'strict',
+                            maxTextSize: 10000,
+                            maxEdges: 100,
+                            suppressErrorRendering: true,
+                            flowchart: { htmlLabels: false },
+                            theme: 'base',
+                            themeVariables: {
+                                primaryColor: colors.getPropertyValue('--color-bg-secondary').trim(),
+                                primaryTextColor: colors.getPropertyValue('--color-text-primary').trim(),
+                                primaryBorderColor: colors.getPropertyValue('--color-border-primary').trim(),
+                                lineColor: colors.getPropertyValue('--color-text-secondary').trim(),
+                                fontFamily: getComputedStyle(document.body).fontFamily,
+                            },
+                        });
+                        container = document.createElement('div');
+                        container.style.cssText = 'position:fixed;left:-10000px;top:0;visibility:hidden';
+                        document.body.appendChild(container);
+                        const result = await mermaid.render('diagram' + id + ++renderSequence, code, container);
+                        return result.svg;
                     });
-                    container = document.createElement('div');
-                    container.style.cssText = 'position:fixed;left:-10000px;top:0;visibility:hidden';
-                    document.body.appendChild(container);
-                    const result = await mermaid.render('diagram' + id, code, container);
-                    if (current) setSvg(result.svg);
-                } catch {
+                    if (current) setSvg(rendered);
+                } catch (caught) {
                     if (current)
                         setError(
-                            '다이어그램을 표시할 수 없습니다. 문법과 크기를 확인해 주세요. 외부 리소스와 실행 지시문은 지원하지 않습니다. 원문은 유지됩니다.',
+                            caught instanceof DiagramRenderTimeout
+                                ? '다이어그램 표시 시간이 5초를 초과했습니다. 코드를 줄이거나 다시 시도해 주세요. 원문은 유지됩니다.'
+                                : '다이어그램을 표시할 수 없습니다. 문법과 크기를 확인해 주세요. 외부 리소스와 실행 지시문은 지원하지 않습니다. 원문은 유지됩니다.',
                         );
                 } finally {
                     container?.remove();
                 }
             };
-            renderQueue = renderQueue.then(run, run);
+            void run();
         }, 350);
         return () => {
             current = false;
             clearTimeout(timer);
         };
-    }, [code, id]);
+    }, [code, id, attempt]);
     const source = svg ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) : '';
     return (
         <section
@@ -143,9 +152,16 @@ function MermaidView({
                 />
             )}
             {error && (
-                <p role="alert" className="p-3 text-sm text-error">
-                    {error}
-                </p>
+                <div role="alert" className="p-3 text-sm text-error">
+                    <p>{error}</p>
+                    <button
+                        type="button"
+                        className="mt-2 rounded px-2 py-1 text-text-primary hover:bg-bg-hover"
+                        onClick={() => setAttempt((value) => value + 1)}
+                    >
+                        다시 렌더링
+                    </button>
+                </div>
             )}
             {mode === 'preview' && (
                 <div className="max-h-[600px] overflow-auto p-4">
