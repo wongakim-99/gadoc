@@ -727,6 +727,29 @@ test("rollback verification rejects retained desired env and confirms health/sav
   assert.equal(saves, 1);
 });
 
+test("rollback verification tolerates regenerated PM2 metadata while preserving effective environment checks", async (t) => {
+  const { apps, release } = fixture(t);
+  const restored = structuredClone(apps);
+  apps[0].pm2_env.env.unique_id = "synthetic-old-process-id";
+  restored[0].pm2_env.env.unique_id = "synthetic-new-process-id";
+  apps[0].pm2_env.env.PWD = "/previous/process/path";
+  restored[0].pm2_env.env.PWD = "/restored/process/path";
+  await verifyRollbackRuntime(apps, "https://example.test", release, {
+    readApps: () => restored,
+    verify: async () => {},
+    save: () => {},
+  });
+  restored[0].pm2_env.env.MINIO_SECRET_KEY = "synthetic-new";
+  await assert.rejects(
+    verifyRollbackRuntime(apps, "https://example.test", release, {
+      readApps: () => restored,
+      verify: async () => {},
+      save: () => {},
+    }),
+    /rollback_unverified/,
+  );
+});
+
 for (const kind of ["regular", "broken-symlink", "directory"]) {
   test(`pending ${kind} blocks mutations and CI prepare/deploy without consuming the snapshot`, async (t) => {
     const { manager, state, ecosystem, originalEcosystem } = fixture(t);

@@ -11,6 +11,7 @@ import {
   assertNoPendingEnvironmentApply,
   snapshotApps,
   verifyRelease,
+  runtimeEnvironment,
 } from "./deploy-ubuntu.mjs";
 
 // These paths cannot be supplied over SSH or stdin.
@@ -280,14 +281,12 @@ export async function verifyRollbackRuntime(
       )
     )
       fail("rollback_unverified");
-    for (const key of new Set([
-      ...Object.keys(before.env || {}),
-      ...MANAGED_KEYS,
-    ])) {
+    const beforeEnv = runtimeEnvironment(apps[index]);
+    const afterEnv = runtimeEnvironment(running[index]);
+    for (const key of new Set([...Object.keys(beforeEnv), ...MANAGED_KEYS])) {
       if (
-        Object.hasOwn(before.env || {}, key) !==
-          Object.hasOwn(after.env || {}, key) ||
-        String(before.env?.[key]) !== String(after.env?.[key])
+        Object.hasOwn(beforeEnv, key) !== Object.hasOwn(afterEnv, key) ||
+        String(beforeEnv[key]) !== String(afterEnv[key])
       )
         fail("rollback_unverified");
     }
