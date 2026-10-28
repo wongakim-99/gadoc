@@ -215,6 +215,9 @@ jobs:
       - name: Test legacy attachment permission migration
         run: node --test scripts/test/legacy-file-bindings.integration.mjs
 
+      - name: Test user activity persistence and access control
+        run: node --test scripts/test/user-activity.integration.mjs
+
       - name: Start backend
         run: |
           pnpm start:server > /tmp/slacord-server.log 2>&1 &
