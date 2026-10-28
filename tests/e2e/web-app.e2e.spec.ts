@@ -216,9 +216,13 @@ test.describe.serial("slacord web e2e", () => {
     await page.getByRole("button", { name: "해결됨" }).click();
     await expect(page.getByText(editedCommentContent)).toBeVisible();
 
-    await page.getByRole("button", { name: "삭제" }).first().click();
-    await page.getByRole("button", { name: "삭제하기" }).click();
+    const discussion = page.getByRole("region", { name: "문서 토론", exact: true });
+    await discussion.getByRole("article").filter({ hasText: editedCommentContent })
+      .getByRole("button", { name: "삭제", exact: true }).first().click();
+    await page.getByRole("dialog", { name: "이 코멘트를 삭제할까요?", exact: true })
+      .getByRole("button", { name: "삭제하기", exact: true }).click();
     await expect(page.getByText("삭제된 코멘트입니다.")).toBeVisible();
+    await expect(page.getByText("문서 검증 본문", { exact: true })).toBeVisible();
   });
 
   test("이슈를 만들고 서버 검색 필터로 찾은 뒤 수정 모달을 연다", async ({
