@@ -1,75 +1,93 @@
-# Slacord Desktop
+# 가독 GaDoc 데스크톱
 
-## Stack
+가독 데스크톱은 웹 서비스를 표시하는 Electron 앱이다. 소스와 관련 문서는
+**kscold(김승찬) / Colding**의 독점 소유이며 [LICENSE](../LICENSE)를 따른다.
+MIT 라이선스가 아니다.
 
-- `packages/desktop`: Electron main process + preload
-- `packages/contracts`: web/desktop 공유 IPC 타입
-- hosted web app 로드: `https://slacord.cloud/auth/login`
-- `electron-builder` 기반 DMG 생성
-- `electron-updater` 기반 GitHub Releases 업데이트 체크
+## 지원 플랫폼과 현재 정책
 
-## Scripts
+| 플랫폼              | 공개 설치 파일           | 업데이트                        |
+| ------------------- | ------------------------ | ------------------------------- |
+| macOS Apple Silicon | arm64 DMG, 릴리즈용 ZIP  | 새 DMG 수동 설치                |
+| Windows x64         | NSIS EXE                 | 앱 내 확인·다운로드·재시작 적용 |
+| Linux / Intel Mac   | 현재 전용 설치 파일 없음 | 웹 서비스 사용                  |
 
-- `pnpm dev:desktop`
-- `pnpm build:desktop`
-- `pnpm dist:desktop`
-- `pnpm dist:desktop:win`
-- `pnpm release:desktop:mac`
-- `pnpm release:desktop:win`
-- `pnpm release:desktop:preflight`
-- `pnpm version:all 1.0.1`
+현재 공개 버전 1.1.1은 macOS 서명·공증과 Windows 코드 서명이 없는 릴리즈다.
+CI가 여러 OS에서 통과하는 것과 각 OS용 서명된 설치 파일을 제공하는 것은 다르다.
+최신 배포 파일과 실제 서명 상태는 [GitHub Releases](https://github.com/kscold/gadoc/releases/latest)에서 확인한다.
 
-`pnpm dev:desktop` 는 모노레포 루트에서 `@slacord/web` dev 서버와 `@slacord/desktop` shell을 같이 띄우는 진입점임.
+Gatekeeper·SmartScreen 경고가 발생할 수 있다. 릴리즈의 `SHA256SUMS.txt`를 확인하고,
+설치가 차단되면 웹 서비스를 사용한다. 시스템 보안 설정을 일괄 해제하지 않는다.
+Apple 계정 로그인이나 서명 환경 변수 설정만으로 공증이 완료된 것으로 안내하지 않는다.
 
-## Local Packaging
+## 구성과 호환성
 
-- mac DMG: `pnpm dist:desktop`
-- Windows installer: `pnpm dist:desktop:win`
+- [desktop](../packages/desktop/package.json): Electron main process·preload, electron-builder 패키징, electron-updater.
+- [contracts](../packages/contracts/package.json): 웹·데스크톱의 공유 IPC 계약.
+- 앱은 현재 `https://slacord.cloud/auth/login`의 웹을 표시한다.
+- 새 제품 이름·파일 이름은 GaDoc이며, 기존 앱 ID `com.kscold.slacord`와 설치·업데이트 식별자는 유지한다.
+- 기존 Slacord 프로필은 호환성을 위해 재사용하고 새 설치는 GaDoc 프로필을 사용한다.
+- 원격 웹 콘텐츠에는 `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`를 유지한다.
 
-로컬 mac 패키징은 [`packages/desktop/release`](/Users/kscold/Desktop/slacord/packages/desktop/release) 에 DMG와 `latest-mac.yml` 을 남김.
+웹 배포만으로 설치된 Electron 실행 파일이 교체되지는 않는다. 네이티브 창·권한·시작 주소를
+수정했다면 새 설치 파일이 필요하다. 버전별 변경은 [릴리즈 기록](./releases/v1.1.1.md)을 참고한다.
 
-## GitHub Release Flow
+## 개발과 로컬 패키징
 
-1. `pnpm version:all 1.0.1`
-2. 커밋 후 `git tag v1.0.1`
-3. `git push origin main --tags`
-4. GitHub Actions가 mac DMG/ZIP, Windows NSIS EXE, update metadata를 Releases에 업로드
+소스 사용 허가를 받은 개발자는 모노레포 루트에서 실행한다. Node·pnpm 버전과
+서버·저장소 준비는 [README](../README.md)와 [실행 프로필](./runtime-profiles.md)을 따른다.
 
-워크플로우는 태그 버전과 [`packages/desktop/package.json`](/Users/kscold/Desktop/slacord/packages/desktop/package.json) 버전이 다르면 실패하도록 잡아둠.
+```bash
+pnpm dev:desktop
+pnpm test:desktop
+pnpm build:desktop
+pnpm dist:desktop
+pnpm dist:desktop:win
+```
 
-## Release Prerequisites
+`pnpm dev:desktop`은 웹 개발 서버와 Electron shell을 함께 띄운다. 백엔드·MongoDB·저장소는
+별도로 준비해야 한다. 로컬 패키징 결과는 `packages/desktop/release/`에 저장되며,
+`dist:desktop` 계열 명령은 릴리즈를 공개하지 않는다. macOS 패키징은 Mac 환경에서 진행한다.
 
-- `GH_TOKEN`: GitHub Releases 업로드/업데이트 메타데이터
-- `CSC_LINK`, `CSC_KEY_PASSWORD`: macOS signing 인증서
-- `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`: notarization
-- Windows 코드사인 시 `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`
+## 서명과 공증 준비
 
-릴리즈 전에 아래 명령으로 먼저 확인하는 게 안전함.
+| 용도               | 필요한 환경 변수                                           |
+| ------------------ | ---------------------------------------------------------- |
+| GitHub 릴리즈 게시 | `GH_TOKEN`                                                 |
+| macOS 서명         | `CSC_LINK`, `CSC_KEY_PASSWORD`                             |
+| Apple 공증         | `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` |
+| Windows 서명       | `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`                     |
+
+인증서·비밀번호는 GitHub Secrets 또는 승인된 비밀 저장소에서 전달한다.
+소스·문서·PR 본문에 값을 기록하지 않는다. macOS 사전 점검은 다음 명령을 사용한다.
 
 ```bash
 pnpm release:desktop:preflight --target=mac
 ```
 
-## Notes
+현재 릴리즈 워크플로우는 `--allow-unsigned`로 서명 정보가 전혀 없는 그룹을 허용하지만,
+일부만 설정된 그룹은 실패시킨다. 서명 없는 릴리즈에는 경고를 공개하며,
+서명·공증 검증이 끝나기 전에는 macOS 자동 업데이트를 활성화된 기능으로 안내하지 않는다.
+서명된 첫 버전으로 전환할 때는 기존 미서명 앱에서 한 번 수동 설치가 필요할 수 있다.
 
-- 코드사인 없이도 로컬 DMG는 만들 수 있지만, macOS 자동업데이트는 서명·공증된 앱 기준으로 잡는 게 맞음.
-- electron-builder 공식 문서 기준으로 mac 자동업데이트는 `dmg` 와 `zip` 둘 다 살아 있어야 안정적임.
-- Windows 설치파일은 NSIS `.exe` 기준으로 GitHub Releases에 올라가게 잡았음.
-- remote content를 로드하므로 `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true` 조합 유지해야 함.
+## 릴리즈 순서
 
-## Current Operation Policy
+1. [릴리즈 체크리스트](./desktop-release-checklist.md)에 따라 테스트·빌드·필수 CI를 통과시킨다.
+2. 검토된 변경을 `main`에 반영하고 배포한 커밋을 확인한다.
+3. `pnpm version:all <version>`으로 자체 패키지 버전을 맞추고 릴리즈 설명·다운로드 안내도 갱신한다.
+4. 검증한 커밋에 태그를 만들고 **해당 태그 하나만** `git push origin refs/tags/vX.Y.Z`로 전송한다. `vX.Y.Z`는 실제 버전으로 바꾼다.
+5. GitHub Actions가 macOS DMG/ZIP과 Windows NSIS 파일을 만들고, 필수 파일·버전·업데이트 메타데이터를 검증한 뒤 릴리즈를 공개한다.
+6. 공개 설치 파일, 체크섬, 서명·공증 결과와 다운로드 페이지를 확인한다.
 
-- Windows: 앱 안에서 업데이트 확인, 다운로드, 재시작 적용까지 계속 지원
-- macOS: Apple Developer 서명·공증 전까지는 다운로드 페이지에서 새 DMG를 다시 설치하는 기준으로 운영
-- 그래서 현재 웹 다운로드 페이지와 앱 안 안내 문구도 같은 기준으로 맞춰둠
-- macOS 자동 업데이트 라인은 서명 시크릿 준비 뒤 다시 여는 게 맞음
+전체 태그를 한꺼번에 push하지 않는다. 다른 클론에 남은 폐기 태그가 원격에 다시 생성될 수 있다.
+이미 공개한 릴리즈 파일을 덮어쓰지 않는다. `release:desktop:mac`·`release:desktop:win`은
+게시 권한을 사용하는 명령이므로 단순 로컬 빌드 대신 실행하지 않는다.
 
-## macOS Signing Checklist
+## 서비스 도메인을 변경할 때
 
-1. Apple Developer 계정에서 `Developer ID Application` 인증서를 `.p12` 로 export
-2. `CSC_LINK`, `CSC_KEY_PASSWORD` 를 GitHub Secrets에 등록
-3. `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` 를 GitHub Secrets에 등록
-4. 태그 릴리즈를 올리면 GitHub Actions가 서명 + 공증까지 같이 진행
-5. 서명 없는 예전 앱에서 서명된 첫 버전으로 넘어갈 때는 한 번 수동 재설치가 필요할 수 있음
+시작 URL과 허용 origin은 [데스크톱 설정](../packages/desktop/src/main/config.ts)에 포함된다.
+DNS만 바꾸거나 임의의 환경 변수를 설정하는 것으로 배포된 앱의 허용 도메인이 바뀌지는 않는다.
 
-상세 순서는 [`docs/desktop-release-checklist.md`](/Users/kscold/Desktop/slacord/docs/desktop-release-checklist.md) 참고
+서비스 도메인을 확정하고 HTTPS·API·Socket 연결·인증을 검증한 뒤, 앱의 시작 URL과
+허용 origin을 함께 수정하고 새 버전을 빌드·서명·공증한다. 다운로드 파일의 위치만 바꾸는 경우와
+앱 안의 설정을 수정하는 경우를 구분한다. 기존 사용자 전환 계획 없이 이전 도메인을 즉시 없애지 않는다.

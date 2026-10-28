@@ -3,6 +3,7 @@
     "version": "1.1.1",
     "description": "GaDoc 웹 프론트엔드 (Next.js)",
     "private": true,
+    "license": "UNLICENSED",
     "scripts": {
         "dev": "pnpm --filter @slacord/document-core build && next dev --port 3002",
         "build": "pnpm --filter @slacord/document-core build && next build",
