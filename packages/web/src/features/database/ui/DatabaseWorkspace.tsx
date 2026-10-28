@@ -539,13 +539,14 @@ export function DatabaseWorkspace({
             className={inline ? 'group/database min-w-0 bg-bg-primary' : 'flex h-full min-h-0 flex-col'}
         >
             <header className={inline ? 'flex items-center justify-between gap-3 pb-2' : 'workspace-topbar'}>
-                <div>
+                <div className="flex min-w-0 flex-1 items-center gap-3">
                     {!inline && (
-                        <Link href={`/${teamId}/docs`} className="text-xs text-text-secondary">
+                        <Link href={`/${teamId}/docs`} className="shrink-0 text-sm text-text-secondary">
                             문서
                         </Link>
                     )}
-                    <h2 aria-label={database?.name ?? '데이터베이스'}>
+                    {!inline && <span aria-hidden="true" className="text-text-tertiary">/</span>}
+                    <h2 className="min-w-0 flex-1" aria-label={database?.name ?? '데이터베이스'}>
                         {database ? (
                             <DatabasePageTitle
                                 key={database.id}

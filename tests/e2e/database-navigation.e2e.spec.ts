@@ -23,6 +23,21 @@ test('database records stay in the table and a reordered title retains its cell 
     await expect(sidebar.getByRole('link', { name: '탐색 검증 데이터베이스', exact: true })).toBeVisible();
     await expect(sidebar.getByRole('link', { name: '데이터베이스 전용 항목', exact: true })).toHaveCount(0);
     await expect(page.getByLabel('데이터베이스 전용 항목 페이지 이름')).toBeVisible();
+    const actionCenters = await sidebar.locator('.workspace-inline-open').evaluateAll(buttons => buttons.map(button => {
+        const rect = button.getBoundingClientRect();
+        return rect.x + rect.width / 2;
+    }));
+    expect(actionCenters.length).toBeGreaterThan(2);
+    expect(Math.max(...actionCenters) - Math.min(...actionCenters)).toBeLessThanOrEqual(1);
+    const add = sidebar.getByRole('link', { name: '페이지 추가', exact: true });
+    const addBounds = await add.boundingBox();
+    expect(addBounds!.width).toBe(32);
+    expect(addBounds!.x + addBounds!.width / 2).toBe(actionCenters[0]);
+    await expect(sidebar.locator('[aria-current="location"]')).toHaveCSS('box-shadow', 'none');
+
+    const brandBounds = await sidebar.getByTestId('workspace-brand-header').boundingBox();
+    const headerBounds = await page.locator('[data-database-instance] > header').boundingBox();
+    expect(Math.abs(brandBounds!.height - headerBounds!.height)).toBeLessThanOrEqual(1);
     const headers = page.getByRole('columnheader');
     await headers.nth(0).dragTo(headers.nth(2));
     await expect(headers.nth(2)).toContainText('이름');

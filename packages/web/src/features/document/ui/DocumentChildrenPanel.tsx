@@ -12,8 +12,8 @@ interface Props {
 export function DocumentChildrenPanel({ teamId, children, onCreate, creating }: Props) {
     if (children.length === 0 && !onCreate) return null;
     return (
-        <section aria-label="하위 페이지" className="mt-10 border-t border-border-primary pt-5">
-            <div className="mb-4 flex items-center justify-between">
+        <section aria-label="하위 페이지" className="mt-4 border-t border-border-primary py-3">
+            <div className="flex min-h-9 items-center justify-between">
                 <div>
                     <h2 className="text-xs font-medium text-text-tertiary">
                         하위 페이지 {children.length > 0 ? children.length : ''}
@@ -25,7 +25,7 @@ export function DocumentChildrenPanel({ teamId, children, onCreate, creating }: 
                     <Link
                         key={child.id}
                         href={`/${teamId}/docs/${child.id}`}
-                        className="flex items-center gap-2 rounded px-2 py-2 text-sm text-text-primary hover:bg-bg-hover"
+                        className="flex min-h-10 items-center gap-2 rounded-control py-2 text-sm text-text-primary hover:bg-bg-hover focus-visible:outline-2 focus-visible:outline-action active:bg-bg-active"
                     >
                         <FileText size={16} className="shrink-0 text-text-tertiary" />
                         <span className="truncate underline decoration-border-primary underline-offset-4">
@@ -38,7 +38,7 @@ export function DocumentChildrenPanel({ teamId, children, onCreate, creating }: 
                         type="button"
                         disabled={creating}
                         onClick={onCreate}
-                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-sm text-text-secondary hover:bg-bg-hover disabled:opacity-50"
+                        className="flex min-h-10 w-full items-center gap-2 rounded-control py-2 text-sm text-text-secondary hover:bg-bg-hover focus-visible:outline-2 focus-visible:outline-action active:bg-bg-active disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <Plus size={16} />
                         {creating ? '하위 페이지 생성 중…' : '하위 페이지 추가'}

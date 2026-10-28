@@ -1,5 +1,7 @@
 'use client';
 import Link from 'next/link';
+import { useProjects } from '@/src/features/project/model/useProjects';
+import { useProjectScope } from '@/src/features/project/model/useProjectScope';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
@@ -10,6 +12,13 @@ import { DocumentTree } from '@/src/widgets/document/ui/DocumentTree';
 import { DocumentLoading } from '@/src/features/document/ui/DocumentLoading';
 export function DocumentNavigation({ teamId, canWrite }: { teamId: string; canWrite: boolean }) {
     const pathname = usePathname();
+    const { projectId } = useProjectScope(teamId);
+    const { projects } = useProjects(teamId);
+    const scopedProject = projects.find((project) => project.id === projectId);
+    const rootId = scopedProject?.documentId;
+    const visibleIds = new Set<string>(rootId ? [rootId] : []);
+    // Resolve descendants regardless of API ordering.
+
     const [documents, setDocuments] = useState<DocumentNode[]>([]);
     const [databases, setDatabases] = useState<KnowledgeDatabase[]>([]);
     const [loading, setLoading] = useState(true);
@@ -54,9 +63,33 @@ export function DocumentNavigation({ teamId, canWrite }: { teamId: string; canWr
         };
     }, [teamId, pathname]);
 
+    if (rootId) {
+        let changed = true;
+        while (changed) {
+            changed = false;
+            for (const doc of documents) {
+                if (doc.parentId && visibleIds.has(doc.parentId) && !visibleIds.has(doc.id)) {
+                    visibleIds.add(doc.id);
+                    changed = true;
+                }
+            }
+        }
+    }
+    const visibleDocuments = rootId
+        ? documents
+              .filter((doc) => visibleIds.has(doc.id))
+              .map((doc) => (doc.id === rootId ? { ...doc, parentId: null } : doc))
+        : scopedProject
+          ? []
+          : documents;
+    const visibleDatabases = rootId
+        ? databases.filter((db) => db.parentDocumentId && visibleIds.has(db.parentDocumentId))
+        : scopedProject
+          ? []
+          : databases;
     const tree = (
         <>
-            <div className="mb-3 flex items-center justify-between px-1">
+            <div className="mb-3 flex min-h-8 items-center justify-between pl-3">
                 <Link className="text-xs font-medium text-neutral-400 hover:text-white" href={`/${teamId}/docs`}>
                     페이지
                 </Link>
@@ -64,7 +97,7 @@ export function DocumentNavigation({ teamId, canWrite }: { teamId: string; canWr
                     <Link
                         href={`/${teamId}/docs?create=1`}
                         aria-label="페이지 추가"
-                        className="rounded p-1 text-neutral-400 hover:bg-white/10 hover:text-white"
+                        className="flex h-8 w-8 items-center justify-center rounded-control text-text-tertiary hover:bg-bg-hover hover:text-text-primary"
                     >
                         <Plus size={16} />
                     </Link>
@@ -77,7 +110,12 @@ export function DocumentNavigation({ teamId, canWrite }: { teamId: string; canWr
                 </p>
             )}
             {!loading && !error && (
-                <DocumentTree documents={documents} databases={databases} teamId={teamId} canCreate={canWrite} />
+                <DocumentTree
+                    documents={visibleDocuments}
+                    databases={visibleDatabases}
+                    teamId={teamId}
+                    canCreate={canWrite}
+                />
             )}
         </>
     );
