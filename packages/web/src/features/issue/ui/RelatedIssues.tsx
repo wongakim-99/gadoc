@@ -62,15 +62,15 @@ export function RelatedIssues({
         }
     };
     return (
-        <section aria-label="연결된 이슈" className="my-4 rounded-control border border-border-primary p-3 text-sm">
-            <div className="mb-2 flex items-center justify-between gap-3">
-                <h3 className="font-medium text-text-primary">연결된 이슈</h3>
+        <section aria-label="연결된 이슈" className="my-4 border-t border-border-primary py-3 text-sm">
+            <div className="flex min-h-9 items-center justify-between gap-3">
+                <h3 className="text-xs font-medium text-text-secondary">연결된 이슈{state.items.length > 0 && <span className="ml-2 tabular-nums text-text-tertiary">{state.items.length}</span>}</h3>
                 {canWrite && (
                     <button
                         type="button"
                         disabled={busy}
                         onClick={() => void choose()}
-                        className="text-xs text-action-text"
+                        className="min-h-9 rounded-control px-2 text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary focus-visible:outline-2 focus-visible:outline-action active:bg-bg-active disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         이슈 연결
                     </button>
@@ -88,14 +88,12 @@ export function RelatedIssues({
             >
                 {state.loading ? (
                     <p role="status">불러오는 중…</p>
-                ) : state.items.length === 0 && !state.error ? (
-                    <p className="text-xs text-text-tertiary">연결된 이슈가 없습니다.</p>
                 ) : null}
-                <ul className="space-y-2">
+                <ul className="divide-y divide-border-primary">
                     {state.items.map((issue) => (
                         <li
                             key={issue.id}
-                            className="flex min-w-0 flex-wrap items-center gap-2 rounded-control bg-bg-primary p-2"
+                            className="flex min-h-10 min-w-0 flex-wrap items-center gap-2 py-2"
                         >
                             <span className="shrink-0 rounded border border-border-primary px-2 py-0.5 text-xs text-text-secondary">
                                 {ISSUE_STATUS_LABELS[issue.status]}
@@ -107,7 +105,7 @@ export function RelatedIssues({
                                     disabled={busy}
                                     aria-label={`${issue.title} 연결 해제`}
                                     onClick={() => void mutate(issue.id, true)}
-                                    className="text-xs text-text-tertiary"
+                                    className="ml-auto min-h-9 rounded-control px-2 text-xs text-text-tertiary hover:bg-bg-hover focus-visible:outline-2 focus-visible:outline-action active:bg-bg-active"
                                 >
                                     해제
                                 </button>
@@ -151,9 +149,6 @@ export function RelatedIssues({
                         새로고침
                     </button>
                 </p>
-            )}
-            {state.items.length > 0 && (
-                <p className="mt-2 text-[11px] text-text-tertiary">이슈 원본 상태 · 변경 시 및 30초마다 갱신</p>
             )}
             {state.items.length === 100 && (
                 <p className="mt-1 text-xs text-text-tertiary">최근 변경된 이슈 최대 100개를 표시합니다.</p>

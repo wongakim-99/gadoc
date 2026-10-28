@@ -1,6 +1,5 @@
 'use client';
-
-import { useRef } from 'react';
+import { Plus, X } from 'lucide-react';
 
 interface Props {
     open: boolean;
@@ -14,16 +13,9 @@ export function CreateChannelButton({ open, onToggle }: Props) {
             onClick={onToggle}
             aria-label={open ? '채널 만들기 취소' : '채널 만들기'}
             title={open ? '취소' : '채널 만들기'}
-            className={`rounded p-0.5 transition hover:bg-bg-hover ${open ? 'text-white' : 'text-text-tertiary hover:text-white'}`}
+            className={`flex h-8 w-8 items-center justify-center rounded-control hover:bg-bg-hover ${open ? 'text-white' : 'text-text-tertiary hover:text-white'}`}
         >
-            <svg
-                className={`h-3.5 w-3.5 transition-transform duration-150 ${open ? 'rotate-45' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-            >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            {open ? <X size={16} /> : <Plus size={16} />}
         </button>
     );
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { Plus } from 'lucide-react';
 import { DatabaseWorkspace } from '@/src/features/database/ui/DatabaseWorkspace';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { use } from 'react';
@@ -128,15 +129,7 @@ function DocumentIndex({ teamId }: { teamId: string }) {
                 <div>
                     <h2 className="text-xl font-bold text-white">문서</h2>
                 </div>
-                {canWrite ? (
-                    <button
-                        disabled={saving || loading}
-                        onClick={() => void handleCreate()}
-                        className="px-4 py-2 rounded-lg bg-slack-green text-white text-sm font-medium hover:bg-slack-green/90 transition-colors"
-                    >
-                        {saving ? '생성 중…' : '새 페이지'}
-                    </button>
-                ) : null}
+
             </div>
 
             <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6">
@@ -160,6 +153,15 @@ function DocumentIndex({ teamId }: { teamId: string }) {
                         <DocumentTree documents={docs} databases={databases} teamId={teamId} canCreate={canWrite} />
                     )
                 )}
+                {canWrite ? (
+                    <button
+                        disabled={saving || loading}
+                        onClick={() => void handleCreate()}
+                        className="flex min-h-9 items-center gap-2 rounded-control px-2 py-2 text-sm text-text-secondary hover:bg-bg-hover disabled:opacity-50"
+                    >
+                        <Plus size={16} aria-hidden="true" />{saving ? '생성 중…' : '새 페이지'}
+                    </button>
+                ) : null}
             </div>
         </div>
     );
