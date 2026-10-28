@@ -34,43 +34,96 @@ test("linked blocks keep independent views and persist view edits without a save
   const first = page.locator("[data-inline-database]").nth(0);
   const second = page.locator("[data-inline-database]").nth(1);
   await expect(first.getByRole("table")).toBeVisible();
-  const search=async(block:typeof first,value?:string)=>{
-    await block.getByRole("button",{name:"검색",exact:true}).click();
-    const input=page.getByRole("dialog",{name:"검색",exact:true}).getByLabel("데이터베이스 검색");
-    if(value!==undefined)await input.fill(value);
-    const actual=await input.inputValue();await page.keyboard.press("Escape");return actual;
+  const search = async (block: typeof first, value?: string) => {
+    await block.getByRole("button", { name: "검색", exact: true }).click();
+    const input = page
+      .getByRole("dialog", { name: "검색", exact: true })
+      .getByLabel("데이터베이스 검색");
+    if (value !== undefined) await input.fill(value);
+    const actual = await input.inputValue();
+    await page.keyboard.press("Escape");
+    return actual;
   };
-  const options=async()=>{
-    await first.getByRole("button",{name:"보기 옵션",exact:true}).click();
-    const menu=page.getByRole("dialog",{name:"보기 옵션",exact:true});
-    if(!await menu.getByLabel("현재 보기 이름").isVisible())await menu.getByText("보기 설정",{exact:true}).click();
+  const options = async () => {
+    await first.getByRole("button", { name: "보기 옵션", exact: true }).click();
+    const menu = page.getByRole("dialog", { name: "보기 옵션", exact: true });
+    if (!(await menu.getByLabel("현재 보기 이름").isVisible()))
+      await menu.getByText("보기 설정", { exact: true }).click();
     return menu;
   };
-  let menu=await options();
-  await menu.getByLabel("현재 보기 이름").fill("검토 대기");await page.keyboard.press("Escape");
-  await search(first,"검토");expect(await search(second)).toBe("");
-  menu=await options();
-  await menu.getByRole("button",{name:"보기 복제",exact:true}).click();
+  let menu = await options();
+  await menu.getByLabel("현재 보기 이름").fill("검토 대기");
+  await page.keyboard.press("Escape");
+  await search(first, "검토");
+  expect(await search(second)).toBe("");
+  menu = await options();
+  await menu.getByRole("button", { name: "보기 복제", exact: true }).click();
   await menu.getByLabel("현재 보기 이름").fill("전체 문서");
-  await menu.getByText("열 설정",{exact:true}).click();
-  await menu.getByRole("checkbox",{name:"담당자",exact:true}).uncheck();await page.keyboard.press("Escape");
-  await first.getByLabel("상태 열 계산",{exact:true}).selectOption("count");
-  await search(first,"");
-  await expect(first.getByRole("button",{name:"담당자 속성 편집",exact:true})).toHaveCount(0);
-  await first.getByRole("button",{name:"검토 대기",exact:true}).click();
+  await menu.getByText("열 설정", { exact: true }).click();
+  await menu.getByRole("checkbox", { name: "담당자", exact: true }).uncheck();
+  await page.keyboard.press("Escape");
+  await first.getByLabel("상태 열 계산", { exact: true }).selectOption("count");
+  await search(first, "");
+  await expect(
+    first.getByRole("button", { name: "담당자 속성 편집", exact: true }),
+  ).toHaveCount(0);
+  await first.getByRole("button", { name: "검토 대기", exact: true }).click();
   expect(await search(first)).toBe("검토");
-  await expect(first.getByLabel("상태 열 계산",{exact:true})).toHaveValue("");
-  await expect(first.getByRole("button",{name:"담당자 속성 편집",exact:true})).toBeVisible();
-  await expect.poll(async()=>{
-    const doc=(await jsonFetch<{content:string}>(`/team/${f.teamId}/document/${f.documentId}`,{token:f.owner.token}))!.data!;
-    const blocks=JSON.parse(doc.content).filter((block:{type:string})=>block.type==='database');
-    return blocks.length===2 && !!blocks[0].props.viewState && !!blocks[1].props.viewState && JSON.parse(blocks[0].props.viewState).views.length===2 && JSON.parse(blocks[1].props.viewState).views.length===1;
-  }).toBe(true);
+  await expect(first.getByLabel("상태 열 계산", { exact: true })).toHaveValue(
+    "",
+  );
+  await expect(
+    first.getByRole("button", { name: "담당자 속성 편집", exact: true }),
+  ).toBeVisible();
+  // A duplicated view can be persisted before its later rename and column edits.
+  // Wait for the actual final configuration, not only the earlier view count.
+  await expect
+    .poll(async () => {
+      const doc = (await jsonFetch<{ content: string }>(
+        `/team/${f.teamId}/document/${f.documentId}`,
+        { token: f.owner.token },
+      ))!.data!;
+      const blocks = JSON.parse(doc.content).filter(
+        (block: { type: string }) => block.type === "database",
+      );
+      if (
+        blocks.length !== 2 ||
+        !blocks.every((block: any) => block.props.viewState)
+      )
+        return null;
+      const a = JSON.parse(blocks[0].props.viewState),
+        b = JSON.parse(blocks[1].props.viewState);
+      const review = a.views.find((view: any) => view.name === "검토 대기");
+      const all = a.views.find((view: any) => view.name === "전체 문서");
+      return {
+        firstCount: a.views.length,
+        secondCount: b.views.length,
+        activeName: a.views.find((view: any) => view.id === a.activeId)?.name,
+        reviewQuery: review?.query,
+        allQuery: all?.query,
+        calculation: all?.calculations?.status,
+        ownerHidden: all?.hiddenProperties?.includes("owner"),
+      };
+    })
+    .toEqual({
+      firstCount: 2,
+      secondCount: 1,
+      activeName: "검토 대기",
+      reviewQuery: "검토",
+      allQuery: "",
+      calculation: "count",
+      ownerHidden: true,
+    });
   await page.reload();
-  expect(await search(first)).toBe("검토");expect(await search(second)).toBe("");
-  await first.getByRole("button",{name:"전체 문서",exact:true}).click();
-  await expect(first.getByLabel("상태 열 계산",{exact:true})).toHaveValue("count");
-  await expect(first.getByRole("button",{name:"담당자 속성 편집",exact:true})).toHaveCount(0);
+  expect(await search(first)).toBe("검토");
+  expect(await search(second)).toBe("");
+  await first.getByRole("button", { name: "전체 문서", exact: true }).click();
+  await expect(first.getByLabel("상태 열 계산", { exact: true })).toHaveValue(
+    "count",
+  );
+  await expect(
+    first.getByRole("button", { name: "담당자 속성 편집", exact: true }),
+  ).toHaveCount(0);
   expect(await search(first)).toBe("");
   await first.getByRole("button", { name: "새 페이지", exact: true }).click();
   await first.getByLabel("제목 없음 페이지 이름").fill("동기화 업무");
@@ -101,14 +154,23 @@ test("slash database stays in the document and survives reload with editable row
   await page.keyboard.press("Control+End");
   await page.keyboard.press("Enter");
   await page.keyboard.type("/database");
-  await page.getByRole("option", { name: "데이터베이스 빈 데이터베이스 추가", exact: true }).click();
+  await page
+    .getByRole("option", {
+      name: "데이터베이스 빈 데이터베이스 추가",
+      exact: true,
+    })
+    .click();
   const block = page.locator("[data-inline-database]").first();
   await expect(block.getByRole("table")).toBeVisible();
   await expect(page.getByLabel("본문 데이터베이스 이름")).toHaveCount(0);
-  await block.getByLabel("데이터베이스 제목", { exact: true }).fill("문서 안 프로젝트");
+  await block
+    .getByLabel("데이터베이스 제목", { exact: true })
+    .fill("문서 안 프로젝트");
   await block.getByLabel("데이터베이스 제목", { exact: true }).press("Enter");
-  await expect(block.getByRole('columnheader')).toHaveCount(2);
-  await expect(block.getByRole('button',{name:'담당자 속성 편집',exact:true})).toHaveCount(0);
+  await expect(block.getByRole("columnheader")).toHaveCount(2);
+  await expect(
+    block.getByRole("button", { name: "담당자 속성 편집", exact: true }),
+  ).toHaveCount(0);
   await block.getByRole("button", { name: "새 페이지", exact: true }).click();
   await block.getByLabel("제목 없음 페이지 이름").fill("첫 업무");
   await block.getByLabel("제목 없음 페이지 이름").press("Enter");

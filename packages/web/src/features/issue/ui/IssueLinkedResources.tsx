@@ -12,6 +12,7 @@ interface Resource {
     relation: 'origin' | 'reference';
     title: string;
     href: string;
+    location?: string;
 }
 export function IssueLinkedResources({
     teamId,
@@ -109,7 +110,16 @@ export function IssueLinkedResources({
                             <span className="shrink-0 text-xs text-text-tertiary">
                                 {item.relation === 'origin' ? '생성 근거' : item.kind === 'document' ? '문서' : '대화'}
                             </span>
-                            <ResourceNavigation href={item.href} title={item.title} />
+                            <div className="min-w-0 flex-1">
+                                {item.location && (
+                                    <p className="mb-1 break-words text-[11px] leading-5 text-text-tertiary">
+                                        {item.location}
+                                    </p>
+                                )}
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <ResourceNavigation href={item.href} title={item.title} />
+                                </div>
+                            </div>
                             {!readOnly && (
                                 <button
                                     type="button"
