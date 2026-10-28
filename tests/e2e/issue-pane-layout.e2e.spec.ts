@@ -16,7 +16,8 @@ test('issue board adapts to its pane width and exposes unassigned filtering', as
     });
     await page.goto('/review-team/issues');
     await expect(page.locator('.issue-board-columns')).toBeVisible();
-    await page.getByLabel('담당자 필터').selectOption('unassigned');
+    await page.getByRole('combobox', { name: '담당자 필터' }).click();
+    await page.getByRole('listbox', { name: '담당자 필터' }).getByRole('option', { name: '미할당', exact: true }).click();
     await expect.poll(() => queries.some((query) => query.includes('assigneeId=unassigned'))).toBe(true);
     await page.getByRole('button', { name: '이슈 옆에 열기', exact: true }).click();
     await expect(page.locator('.issue-board-stacked')).toBeVisible();
