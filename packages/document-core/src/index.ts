@@ -1,3 +1,5 @@
+export * from './document-layout';
+
 /**
  * Slacord's own storage contract, not a recovered Notion server schema.
  * IDs survive renames. Database containers, data sources and row pages are
