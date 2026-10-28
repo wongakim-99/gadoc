@@ -1,4 +1,4 @@
-import type { OptionColorSetting } from '@slacord/document-core';
+import type { OptionIdentity, OptionColorSetting } from '@slacord/document-core';
 import type { NumberFormat } from '@slacord/document-core';
 import type { FilterGroup, SortRule, Aggregation } from '@slacord/document-core';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
@@ -33,6 +33,7 @@ export interface DatabaseProperty {
     type: PropertyType;
     options?: string[];
     optionColors?: OptionColorSetting[];
+    optionIdentities?: OptionIdentity[];
     formula?: string;
     formulaReferences?: Array<{ name: string; id: string }>;
     targetDatabaseId?: string;

@@ -64,7 +64,7 @@ function Condition({
             ? members.map((member) => ({ id: member.userId, title: member.user?.username ?? '팀 멤버' }))
             : prop?.type === 'relation'
               ? targets
-              : prop?.options?.map((option) => ({ id: option, title: option }));
+              : prop?.options?.map((option) => ({ id: prop.optionIdentities?.find((item) => item.name === option)?.id ?? option, title: option }));
     return (
         <div className="flex flex-wrap items-center gap-2">
             <select
@@ -116,7 +116,7 @@ function Condition({
                     <select
                         aria-label="필터 값"
                         className={inputClass}
-                        value={String(rule.value ?? '')}
+                        value={prop?.optionIdentities?.find((item) => item.id === rule.value || item.legacyName === rule.value)?.id ?? String(rule.value ?? '')}
                         onChange={(e) => onChange({ ...rule, value: e.target.value })}
                     >
                         <option value="">선택</option>

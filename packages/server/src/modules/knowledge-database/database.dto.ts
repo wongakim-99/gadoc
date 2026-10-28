@@ -32,7 +32,13 @@ export class OptionColorDto {
     @IsString() @MinLength(1) @MaxLength(80) name!: string;
     @IsIn(OPTION_COLORS) color!: OptionColor;
 }
+export class RenameOptionDto {
+    @IsString() @MinLength(1) @MaxLength(100) id!: string;
+    @IsString() @MinLength(1) @MaxLength(80) name!: string;
+}
 export class AddPropertyDto {
+    @IsOptional() @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => RenameOptionDto)
+    optionRenames?: RenameOptionDto[];
     @IsOptional() @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => OptionColorDto)
     optionColors?: OptionColorDto[];
     @IsOptional() @IsIn(NUMBER_FORMATS) numberFormat?: NumberFormat;

@@ -1,3 +1,4 @@
+import { identitiesFor, isOptionProperty, optionDisplayValue, optionStoredValue, reconcileOptionIdentities } from './option-identities';
 import { IssueSourceService, ISSUE_PROPERTIES } from './issue-source.service';
 import { createHash } from 'node:crypto';
 import { CreateDocumentUseCase } from '../document/application/use-cases/create-document.use-case';
@@ -62,6 +63,8 @@ export class DatabaseService {
         if (!isMongoId(id)) throw new NotFoundException('데이터베이스를 찾을 수 없습니다.');
         const db = await this.databases.findOne({ _id: id, teamId }).lean();
         if (!db) throw new NotFoundException('데이터베이스를 찾을 수 없습니다.');
+        db.properties = db.properties.map((property) => isOptionProperty(property)
+            ? { ...property, optionIdentities: identitiesFor(property) } : property);
         if (db.parentDocumentId) await this.assertPage(teamId, userId, db.parentDocumentId, write);
         return db;
     }
@@ -217,6 +220,7 @@ export class DatabaseService {
         );
         if (!result.modifiedCount) throw new ConflictException('속성이 변경되었습니다. 새로고침 후 다시 시도하세요.');
         if (property.type === 'unique_id') await this.ensureRowNumbers(teamId, id);
+        if (isOptionProperty(property)) property.optionIdentities = identitiesFor(property);
         return property;
     }
     private async buildProperty(
@@ -309,16 +313,24 @@ export class DatabaseService {
         if (!current) throw new NotFoundException('속성을 찾을 수 없습니다.');
         if (current.type !== dto.type) throw new BadRequestException('속성 유형 변환은 별도 데이터 변환이 필요합니다.');
         if (!dto.name.trim()) throw new BadRequestException('속성 이름을 입력하세요.');
+        if (dto.optionRenames?.length && !isOptionProperty(current))
+            throw new BadRequestException('선택 속성에서만 옵션 이름을 변경할 수 있습니다.');
+        const renamedColors = current.optionColors?.map((color) => {
+            const identity = identitiesFor(current).find((option) => option.name === color.name);
+            const rename = dto.optionRenames?.find((item) => item.id === identity?.id);
+            return { ...color, name: rename?.name.trim() ?? color.name };
+        });
         const updated = {
             ...(await this.buildProperty(
                 teamId,
                 userId,
                 await this.completeProperties(teamId, userId, id),
-                { ...dto, optionColors: dto.optionColors ?? current.optionColors?.filter((item) => (dto.options ?? current.options ?? []).includes(item.name)) },
+                { ...dto, optionColors: dto.optionColors ?? renamedColors?.filter((item) => (dto.options ?? current.options ?? []).includes(item.name)) },
                 current.formulaReferences,
             )),
             id: propertyId,
         };
+        if (isOptionProperty(updated)) updated.optionIdentities = reconcileOptionIdentities(current, updated.options ?? [], dto.optionRenames);
         if (current.type === 'relation' && current.targetDatabaseId !== updated.targetDatabaseId)
             throw new BadRequestException('기존 관계의 데이터 소스는 변경할 수 없습니다. 새 관계 속성을 추가하세요.');
         if (current.inverse && updated.inverse) updated.inverse.id = current.inverse.id;
@@ -329,7 +341,8 @@ export class DatabaseService {
             const allowed = new Set(updated.options);
             if (
                 rows.some((row) => {
-                    const value = row.values[propertyId];
+                    const stored = db.sourceKind === 'issues' ? optionStoredValue(current, row.values[propertyId] ?? null) : row.values[propertyId] ?? null;
+                    const value = optionDisplayValue(updated, stored);
                     return (Array.isArray(value) ? value : value == null ? [] : [value]).some(
                         (item) => !allowed.has(String(item)),
                     );
@@ -516,6 +529,9 @@ export class DatabaseService {
                         db.properties.some((prop) => prop.id === key && !prop.archived),
                     ),
                 );
+                for (const property of db.properties) {
+                    if (Object.hasOwn(values, property.id)) values[property.id] = optionDisplayValue(property, values[property.id]);
+                }
                 const formulaErrors: Record<string, string> = {};
                 const relations: Record<string, Array<{ id: string; title: string }>> = {};
                 for (const prop of db.properties.filter((p) => !p.archived && p.type === 'relation')) {
@@ -560,7 +576,7 @@ export class DatabaseService {
                         const result = relatedRow?.values[prop.targetPropertyId ?? ''];
                         if (targetProperty?.type === 'relation' && Array.isArray(result))
                             return result.filter((id) => typeof id === 'string' && visible.has(id));
-                        return result;
+                        return targetProperty && result !== undefined ? optionDisplayValue(targetProperty, result) : result;
                     });
                     values[prop.id] = aggregateValues(targets, prop.aggregation ?? 'count');
                 }
@@ -761,7 +777,7 @@ export class DatabaseService {
             if (prop.cardinality === 'one' && value.length > 1)
                 throw new BadRequestException('기존 연결이 있어 새 페이지를 연결할 수 없습니다.');
         }
-        return { prop, value, before };
+        return { prop, value: optionStoredValue(prop, value), before };
     }
     async updateCell(
         teamId: string,

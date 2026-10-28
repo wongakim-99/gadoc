@@ -225,3 +225,5 @@ export function validateRowPatch(
 export * from './query';
 
 export * from './aggregate';
+
+export * from './option-identity';
