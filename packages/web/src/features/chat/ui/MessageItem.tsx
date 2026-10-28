@@ -13,6 +13,7 @@ import { useMessageActionMenu } from '../model/useMessageActionMenu';
 import { useMessageItemEditor } from '../model/useMessageItemEditor';
 
 interface Props {
+    idPrefix?: string;
     highlighted?: boolean;
     message: Message;
     currentUserId: string;
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export function MessageItem({
+    idPrefix = 'message',
     highlighted = false,
     message,
     currentUserId,
@@ -36,6 +38,13 @@ export function MessageItem({
     const time = new Date(message.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
     const isOwn = message.authorId === currentUserId;
     const [workOpen, setWorkOpen] = useState(false);
+    const [actionError, setActionError] = useState('');
+    const runAction = async (action: () => unknown) => {
+        setActionError('');
+        try { await action(); } catch (error) {
+            setActionError(error instanceof Error ? error.message : '변경하지 못했습니다. 다시 시도해 주세요.');
+        }
+    };
     const authorLabel = message.authorName || message.authorId.slice(-6);
     const { cancelEdit, editContent, editRef, editing, setEditContent, setEditing, startEdit } = useMessageItemEditor(
         message.content,
@@ -45,8 +54,10 @@ export function MessageItem({
     const saveEdit = async () => {
         const trimmed = editContent.trim();
         if (!trimmed || trimmed === message.content || !onEdit) return;
-        await onEdit(message.id, trimmed);
-        setEditing(false);
+        await runAction(async () => {
+            await onEdit(message.id, trimmed);
+            setEditing(false);
+        });
     };
 
     const handleEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -64,7 +75,7 @@ export function MessageItem({
 
     return (
         <div
-            id={`message-${message.id}`}
+            id={`${idPrefix}-${message.id}`}
             data-message-created-at={message.createdAt}
             data-message-id={message.id}
             ref={containerRef}
@@ -103,6 +114,7 @@ export function MessageItem({
                     onReact={(emoji) => onReact(message.id, emoji)}
                 />
                 {workOpen && <MessageWorkPanel message={message} />}
+                {actionError && <p role="alert" className="mt-1 text-xs text-error">{actionError}</p>}
             </div>
             <div className="shrink-0 pt-1 sm:hidden">
                 <MessageActionToggle onClick={toggleMenu} />
@@ -112,7 +124,7 @@ export function MessageItem({
                 <MessageActionBar
                     isOwn={isOwn}
                     message={message}
-                    onDelete={onDelete}
+                    onDelete={onDelete ? (id) => void runAction(() => onDelete(id)) : undefined}
                     onEdit={
                         onEdit
                             ? () => {
@@ -123,7 +135,7 @@ export function MessageItem({
                     }
                     onOpenThread={onOpenThread && !message.replyToId ? () => onOpenThread(message) : undefined}
                     onReact={(emoji) => onReact(message.id, emoji)}
-                    onTogglePin={onTogglePin ? () => void onTogglePin(message) : undefined}
+                    onTogglePin={onTogglePin ? () => void runAction(() => onTogglePin(message)) : undefined}
                     visible={open}
                     onRelatedWork={() => setWorkOpen((value) => !value)}
                 />

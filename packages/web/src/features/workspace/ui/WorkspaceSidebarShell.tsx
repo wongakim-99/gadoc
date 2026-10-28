@@ -11,8 +11,8 @@ import {
     MessageSquare,
     ListTodo,
     Megaphone,
-    ChevronLeft,
-    ChevronRight,
+    PanelLeftClose,
+    PanelLeftOpen,
     Search,
     Trash2,
     Menu,
@@ -24,6 +24,7 @@ import { useWorkspaceDragSource } from '../model/useWorkspaceDragSource';
 import { WorkspaceOpenButton } from './WorkspaceReferenceActions';
 import type { WorkspaceReference } from '../model/workspaceReference';
 import { workspaceAreaLabels, type WorkspaceArea } from '../model/workspaceNavigation';
+import { useSidebarCollapse } from '../model/useSidebarCollapse';
 
 export function WorkspaceSidebarShell({
     teamId,
@@ -52,7 +53,7 @@ export function WorkspaceSidebarShell({
 }) {
     const routePathname = usePathname();
     const pathname = useWorkspaceConnection()?.activePath ?? routePathname;
-    const [collapsed, setCollapsed] = useState(false);
+    const { collapsed, setCollapsed } = useSidebarCollapse(teamId);
     const [mobileOpen, setMobileOpen] = useState(false);
     useEffect(() => setMobileOpen(false), [pathname]);
     const sections = [
@@ -74,7 +75,7 @@ export function WorkspaceSidebarShell({
         >
             <div
                 data-testid="workspace-brand-header"
-                className={`flex min-h-16 shrink-0 items-center gap-2.5 border-b border-border-primary px-4 ${isDesktopMac ? 'lg:min-h-[104px] lg:pt-10 desktop-drag-region' : ''}`}
+                className="flex min-h-16 shrink-0 items-center gap-2.5 border-b border-border-primary px-4"
             >
                 <Link
                     href="/dashboard"
@@ -91,10 +92,13 @@ export function WorkspaceSidebarShell({
                     type="button"
                     aria-label={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
                     aria-expanded={!collapsed}
+                    aria-controls="workspace-context-navigation"
+                    aria-keyshortcuts="Control+Shift+\\ Meta+Shift+\\"
+                    title={`${collapsed ? '사이드바 펼치기' : '사이드바 접기'} (${isDesktopMac ? '⌘' : 'Ctrl'}+Shift+\\)`}
                     onClick={() => setCollapsed(!collapsed)}
                     className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-control text-text-secondary hover:bg-bg-hover lg:inline-flex"
                 >
-                    {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                    {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
                 </button>
                 <button
                     type="button"
@@ -142,6 +146,7 @@ export function WorkspaceSidebarShell({
                             kind={target === 'home' ? undefined : target}
                             label={workspaceAreaLabels[target]}
                             collapsed={collapsed}
+                            onClick={() => setCollapsed(false)}
                             title={workspaceAreaLabels[target]}
                             aria-label={workspaceAreaLabels[target]}
                             aria-current={area === target ? 'location' : undefined}
@@ -153,6 +158,7 @@ export function WorkspaceSidebarShell({
                     ))}
                 </nav>
                 <nav
+                    id="workspace-context-navigation"
                     aria-label={`${workspaceAreaLabels[area]} 탐색`}
                     className={`min-h-0 flex-1 overflow-y-auto px-3 py-4 ${hideCollapsed}`}
                 >

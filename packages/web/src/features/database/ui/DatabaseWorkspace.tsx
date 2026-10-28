@@ -101,6 +101,9 @@ export function DatabaseWorkspace({
     const [editingProperty, setEditingProperty] = useState<DatabaseProperty | undefined>();
     const [propertyOpen, setPropertyOpen] = useState(false);
     const [propertyAnchor, setPropertyAnchor] = useState<DOMRect>();
+    const [titleNameDraft, setTitleNameDraft] = useState<string | null>(null);
+    const draggedColumn = useRef<string | null>(null);
+    const [dropColumn, setDropColumn] = useState<string | null>(null);
     const [documents, setDocuments] = useState<Array<{ id: string; title: string }> | null>(null);
     const [query, setQuery] = useState(inline ? initialView.current.query : '');
     const [status, setStatus] = useState(inline ? initialView.current.status : '');
@@ -418,11 +421,62 @@ export function DatabaseWorkspace({
         return rank(a.id) - rank(b.id);
     });
     const tableProperties = orderedProperties.filter((prop) => !hiddenProperties.includes(prop.id));
+    const titleColumn: DatabaseProperty = { id: 'title', name: database?.titlePropertyName || '이름', type: 'text' };
+    const allColumns = [titleColumn, ...orderedProperties].sort((a, b) => {
+        const order = propertyOrder.includes('title') ? propertyOrder : ['title', ...propertyOrder];
+        const rank = (id: string) => order.includes(id) ? order.indexOf(id) : order.length;
+        return rank(a.id) - rank(b.id);
+    });
+    const tableColumns = allColumns.filter((prop) => prop.id === 'title' || !hiddenProperties.includes(prop.id));
+    const columnDragProps = (id: string) => ({
+        tabIndex: canManageViews ? 0 : -1,
+        'aria-keyshortcuts': 'Alt+Shift+ArrowLeft Alt+Shift+ArrowRight',
+        title: '드래그하여 순서 변경 · Alt+Shift+방향키',
+        draggable: canManageViews && !database?.locked && !busy,
+        onDragStart: (event: React.DragEvent) => {
+            event.stopPropagation();
+            draggedColumn.current = id;
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('application/x-gadoc-column', `${instanceId}:${id}`);
+        },
+        onDragOver: (event: React.DragEvent) => {
+            if (!draggedColumn.current || draggedColumn.current === id) return;
+            event.preventDefault();
+            event.stopPropagation();
+            event.dataTransfer.dropEffect = 'move';
+            setDropColumn(id);
+        },
+        onDrop: (event: React.DragEvent) => {
+            const source = draggedColumn.current;
+            if (!source || event.dataTransfer.getData('application/x-gadoc-column') !== `${instanceId}:${source}`) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const order = allColumns.map((prop) => prop.id);
+            const from = order.indexOf(source), to = order.indexOf(id);
+            order.splice(from, 1);
+            order.splice(to, 0, source);
+            setPropertyOrder(order);
+            draggedColumn.current = null;
+            setDropColumn(null);
+        },
+        onDragEnd: () => { draggedColumn.current = null; setDropColumn(null); },
+        onKeyDown: (event: React.KeyboardEvent) => {
+            if (!event.altKey || !event.shiftKey || !canManageViews || database?.locked) return;
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+            event.preventDefault();
+            event.stopPropagation();
+            const order = allColumns.map((prop) => prop.id);
+            const from = order.indexOf(id), to = from + (event.key === 'ArrowLeft' ? -1 : 1);
+            if (to < 0 || to >= order.length) return;
+            [order[from], order[to]] = [order[to], order[from]];
+            setPropertyOrder(order);
+        },
+    });
     const columnWidth = (id: string, fallback = 140) =>
         Math.max(120, Math.min(800, Number.isFinite(columnWidths[id]) ? columnWidths[id] : fallback));
     const setWidth = (id: string, width: number) => setColumnWidths((current) => ({ ...current, [id]: width }));
     const moveColumn = (id: string, direction: number) => {
-        const order = orderedProperties.map((prop) => prop.id),
+        const order = allColumns.map((prop) => prop.id),
             index = order.indexOf(id),
             next = index + direction;
         if (next < 0 || next >= order.length) return;
@@ -1161,11 +1215,12 @@ export function DatabaseWorkspace({
                                             <p className="mb-2 text-text-secondary">
                                                 열 경계선을 드래그하거나 방향키로 너비를 조절하세요.
                                             </p>
-                                            {orderedProperties.map((prop, index) => (
+                                            {allColumns.map((prop, index) => (
                                                 <div key={prop.id} className="flex items-center gap-2 py-1">
                                                     <label className="flex flex-1 items-center gap-2">
                                                         <input
                                                             type="checkbox"
+                                                            disabled={prop.id === 'title'}
                                                             checked={!hiddenProperties.includes(prop.id)}
                                                             onChange={(event) =>
                                                                 setHiddenProperties((current) =>
@@ -1189,7 +1244,7 @@ export function DatabaseWorkspace({
                                                     <button
                                                         type="button"
                                                         aria-label={`${prop.name} 열 오른쪽으로`}
-                                                        disabled={index === orderedProperties.length - 1}
+                                                        disabled={index === allColumns.length - 1}
                                                         onClick={() => moveColumn(prop.id, 1)}
                                                         className="px-2 disabled:opacity-30"
                                                     >
@@ -1288,9 +1343,7 @@ export function DatabaseWorkspace({
                                                     [
                                                         databaseCsv(
                                                             filtered,
-                                                            database.properties.filter(
-                                                                (property) => !hiddenProperties.includes(property.id),
-                                                            ),
+                                                            tableColumns,
                                                             workspace.members,
                                                         ),
                                                     ],
@@ -1363,21 +1416,46 @@ export function DatabaseWorkspace({
                                 >
                                     <thead className="bg-bg-primary text-text-secondary">
                                         <tr>
+                                            {tableColumns.map((prop) => prop.id === 'title' ? (
                                             <th
-                                                style={{ width: columnWidth('title', 240) }}
-                                                className="sticky left-0 z-10 bg-bg-primary border-b border-border-primary px-3 py-2 font-normal"
+                                                key="title"
+                                                {...columnDragProps('title')}
+                                                style={{ width: columnWidth('title', 240), boxShadow: dropColumn === 'title' ? 'inset 2px 0 var(--color-text-secondary)' : undefined }}
+                                                className="relative bg-bg-primary border-b border-border-primary px-3 py-2 font-normal"
                                             >
-                                                이름
+                                                {titleNameDraft !== null ? (
+                                                    <form onSubmit={async (event) => {
+                                                        event.preventDefault();
+                                                        if (!titleNameDraft.trim() || busy) return;
+                                                        const saved = await mutate(() => databaseApi.renameProperty(teamId, database.id, 'title', titleNameDraft.trim(), database.revision), '저장됨');
+                                                        if (saved) setTitleNameDraft(null);
+                                                    }}>
+                                                        <input autoFocus aria-label="제목 속성 이름" maxLength={80}
+                                                            className="w-full bg-transparent text-text-primary"
+                                                            value={titleNameDraft}
+                                                            disabled={busy}
+                                                            onChange={(event) => setTitleNameDraft(event.target.value)}
+                                                            onBlur={(event) => event.currentTarget.form?.requestSubmit()}
+                                                            onKeyDown={(event) => {
+                                                                event.stopPropagation();
+                                                                if (event.key === 'Escape') { event.preventDefault(); setTitleNameDraft(null); }
+                                                            }} />
+                                                    </form>
+                                                ) : <button type="button" className="w-full text-left"
+                                                    aria-label={`${titleColumn.name} 속성 이름 변경`}
+                                                    disabled={!canManageDatabase || database.locked || busy}
+                                                    onClick={() => setTitleNameDraft(titleColumn.name)}>{titleColumn.name}</button>}
                                                 <DatabaseColumnResize
-                                                    name="이름"
+                                                    name={titleColumn.name}
                                                     width={columnWidth('title', 240)}
                                                     onChange={(width) => setWidth('title', width)}
                                                 />
                                             </th>
-                                            {tableProperties.map((prop) => (
+                                            ) : (
                                                 <th
                                                     key={prop.id}
-                                                    style={{ width: columnWidth(prop.id) }}
+                                                    {...columnDragProps(prop.id)}
+                                                    style={{ width: columnWidth(prop.id), boxShadow: dropColumn === prop.id ? 'inset 2px 0 var(--color-text-secondary)' : undefined }}
                                                     className="relative border-b border-l border-border-primary px-3 py-2 font-normal"
                                                 >
                                                     <DatabaseColumnResize
@@ -1435,7 +1513,8 @@ export function DatabaseWorkspace({
                                                     if (!isIssueSource) setContextRow(row.documentId);
                                                 }}
                                             >
-                                                <td className="sticky left-0 z-10 bg-bg-primary px-3 py-1">
+                                                {tableColumns.map((prop) => prop.id === 'title' ? (
+                                                <td key="title" className=" bg-bg-primary px-3 py-1">
                                                     <div className="flex items-center gap-2">
                                                         {!isIssueSource && <DatabaseRowActions
                                                             teamId={teamId}
@@ -1509,7 +1588,7 @@ export function DatabaseWorkspace({
                                                         />
                                                     </div>
                                                 </td>
-                                                {tableProperties.map((prop) => (
+                                                ) : (
                                                     <td
                                                         key={prop.id}
                                                         className="border-l border-border-primary p-1 align-top"
@@ -1559,7 +1638,7 @@ export function DatabaseWorkspace({
                                     <DatabaseTableFooter
                                         rowLabel={isIssueSource ? '이슈' : '페이지'}
                                         rows={filtered}
-                                        properties={tableProperties}
+                                        properties={tableColumns}
                                         calculations={calculations}
                                         onChange={setCalculations}
                                     />

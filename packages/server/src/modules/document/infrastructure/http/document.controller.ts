@@ -318,7 +318,7 @@ export class DocumentController {
 
     @Post(':documentId/archive')
     @TeamRole('member')
-    @ApiOperation({ summary: '문서 아카이브 (소프트 삭제)' })
+    @ApiOperation({ summary: '문서를 휴지통으로 이동 (소프트 삭제)' })
     async archiveDocument(
         @Param('teamId') teamId: string,
         @Param('documentId') documentId: string,
@@ -327,14 +327,14 @@ export class DocumentController {
     ) {
         const existing = await this.getUseCase.executeOne(documentId);
         if (existing.teamId !== teamId) throw new ForbiddenException('이 문서에 접근할 권한이 없습니다.');
-        if (!existing.canDelete(user.userId, access.role)) throw new ForbiddenException('이 문서를 아카이브할 권한이 없습니다.');
+        if (!existing.canDelete(user.userId, access.role)) throw new ForbiddenException('이 문서를 삭제할 권한이 없습니다.');
         const doc = await this.archiveUseCase.execute(documentId, user.userId);
         return doc;
     }
 
     @Post(':documentId/restore')
     @TeamRole('admin')
-    @ApiOperation({ summary: '아카이브 문서 복원' })
+    @ApiOperation({ summary: '휴지통 문서 복원' })
     async restoreDocument(@Param('teamId') teamId: string, @Param('documentId') documentId: string) {
         const existing = await this.getUseCase.executeOne(documentId);
         if (existing.teamId !== teamId) throw new ForbiddenException('이 문서에 접근할 권한이 없습니다.');
@@ -344,7 +344,7 @@ export class DocumentController {
 
     @Delete(':documentId')
     @TeamRole('member')
-    @ApiOperation({ summary: '문서 영구 삭제 (아카이브 상태만)' })
+    @ApiOperation({ summary: '문서 영구 삭제 (휴지통 문서만)' })
     async deleteDocument(
         @Param('teamId') teamId: string,
         @Param('documentId') documentId: string,
@@ -354,7 +354,7 @@ export class DocumentController {
         const existing = await this.getUseCase.executeOne(documentId);
         if (existing.teamId !== teamId) throw new ForbiddenException('이 문서에 접근할 권한이 없습니다.');
         if (!existing.canDelete(user.userId, access.role)) throw new ForbiddenException('이 문서를 삭제할 권한이 없습니다.');
-        if (!existing.isArchived) throw new ForbiddenException('영구 삭제는 아카이브된 문서만 가능합니다. 먼저 아카이브하세요.');
+        if (!existing.isArchived) throw new ForbiddenException('영구 삭제는 휴지통의 문서만 가능합니다. 먼저 휴지통으로 이동하세요.');
         await this.deleteUseCase.execute(documentId);
         return;
     }

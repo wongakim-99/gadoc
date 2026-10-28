@@ -1,0 +1,36 @@
+import { test, expect } from 'playwright/test';
+import { createWorkspaceFixture } from './support/slacord-api';
+import { loginWithSession } from './support/slacord-session';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+
+test('account menu stays above its trigger and settings work across theme and viewport changes', async ({ page }) => {
+    const f = await createWorkspaceFixture();
+    await loginWithSession(page, f.owner);
+    await page.goto(`/${f.teamId}/settings?section=appearance`);
+    await expect(page.getByRole('heading', { name: '화면과 테마', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '사용자 메뉴', exact: true }).click();
+    const menu = page.getByRole('dialog', { name: '사용자 메뉴', exact: true });
+    await expect(menu.getByRole('link', { name: '내 계정', exact: true })).toBeVisible();
+    const box = await menu.boundingBox(), trigger = await page.getByRole('button', { name: '사용자 메뉴', exact: true }).boundingBox();
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(trigger!.y);
+    await page.screenshot({ path: join(tmpdir(), 'gadoc-settings-menu.png') });
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '사용자 메뉴', exact: true })).toBeFocused();
+    await page.screenshot({ path: join(tmpdir(), 'gadoc-settings-dark.png') });
+    await page.getByRole('button', { name: '라이트 테마', exact: true }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    await page.screenshot({ path: join(tmpdir(), 'gadoc-settings-light.png') });
+    await page.getByRole('button', { name: '내 계정', exact: true }).click();
+    await expect(page.getByRole('heading', { name: f.owner.username, exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '초대와 권한', exact: true }).click();
+    await expect(page.getByRole('button', { name: '초대 링크 만들기' })).toBeVisible();
+    await page.getByRole('button', { name: '화면과 테마', exact: true }).click();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByRole('heading', { name: '화면과 테마', exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: join(tmpdir(), 'gadoc-settings-mobile.png') });
+    await page.getByRole('button', { name: '다크 테마', exact: true }).click();
+});

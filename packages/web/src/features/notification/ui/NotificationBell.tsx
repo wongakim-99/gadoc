@@ -23,7 +23,11 @@ export function NotificationBell({ teamId, compact = false }: Props) {
 
     const openNotification = (notification: AppNotification) => {
         setOpen(false);
-        router.push(resolveNotificationHref(teamId, notification));
+        const href = resolveNotificationHref(teamId, notification);
+        // Reopening the same notification should restore a thread the user has closed.
+        router.push(notification.resourceType === 'message' && notification.channelId
+            ? `${href}&focus=${Date.now()}`
+            : href);
     };
 
     useEffect(() => {

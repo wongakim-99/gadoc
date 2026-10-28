@@ -8,7 +8,12 @@ const config: Config = {
         './app/**/*.{js,ts,jsx,tsx,mdx}',
     ],
     theme: {
+        fontWeight: {
+            thin: '400', extralight: '400', light: '400', normal: '400', medium: '400',
+            semibold: '700', bold: '700', extrabold: '700', black: '700',
+        },
         extend: {
+            fontFamily: { sans: ['var(--font-gadoc)'] },
             borderRadius: {
                 control: 'var(--radius-control)',
                 panel: 'var(--radius-panel)',

@@ -7,6 +7,8 @@ interface Props {
     onStartHuddle?: () => void;
     huddleActive?: boolean;
     huddleReady?: boolean;
+    onManageChannel?: () => void;
+    isArchived?: boolean;
 }
 
 export function ChannelHeader({
@@ -18,6 +20,8 @@ export function ChannelHeader({
     onStartHuddle,
     huddleActive,
     huddleReady = true,
+    onManageChannel,
+    isArchived,
 }: Props) {
     const label = channelType === 'dm' ? 'Direct Message' : channelType === 'voice' ? 'Voice Channel' : 'Channel';
 
@@ -28,6 +32,7 @@ export function ChannelHeader({
                     <h2 className="truncate text-lg font-bold text-white">
                         {channelType === 'dm' ? channelName : `# ${channelName}`}
                     </h2>
+                    {isArchived && <span className="text-xs text-text-tertiary">보관됨</span>}
                     <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-text-tertiary">
                         {label}
                     </span>
@@ -37,6 +42,7 @@ export function ChannelHeader({
                 )}
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
+                {onManageChannel && <button type="button" onClick={onManageChannel} className="rounded-lg border border-border-primary px-3 py-1.5 text-xs text-text-secondary hover:bg-bg-hover" aria-label="채널 관리">채널 관리</button>}
                 {onStartHuddle && (
                     <button
                         onClick={onStartHuddle}

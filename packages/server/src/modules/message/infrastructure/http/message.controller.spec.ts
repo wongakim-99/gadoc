@@ -54,6 +54,15 @@ describe('MessageController', () => {
         expect(result).toEqual([message]);
     });
 
+    it('알림의 단건 메시지를 채널 권한 확인 후 반환한다', async () => {
+        const message = makeMessage('reply-1');
+        mockMessageAccessService.ensureMessageInChannel.mockResolvedValue({ message });
+        expect(await controller.getMessage('channel-1', 'reply-1', { userId: 'user-1' })).toBe(message);
+        expect(mockMessageAccessService.ensureMessageInChannel).toHaveBeenCalledWith('channel-1', 'reply-1', 'user-1');
+        mockMessageAccessService.ensureMessageInChannel.mockRejectedValueOnce(new Error('forbidden'));
+        await expect(controller.getMessage('channel-2', 'reply-1', { userId: 'user-1' })).rejects.toThrow('forbidden');
+    });
+
     it('핀 변경 전에 메시지 접근 권한을 확인하고 소켓 이벤트를 보낸다', async () => {
         const message = makeMessage('message-1');
         mockPinMessageUseCase.execute.mockResolvedValue(message);

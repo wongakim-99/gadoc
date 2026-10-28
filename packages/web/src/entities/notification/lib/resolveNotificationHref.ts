@@ -10,7 +10,9 @@ export function resolveNotificationHref(teamId: string, notification: AppNotific
     }
 
     if (notification.channelId) {
-        return `/${teamId}/channel/${notification.channelId}`;
+        const query =
+            notification.resourceType === 'message' ? `?message=${encodeURIComponent(notification.resourceId)}` : '';
+        return `/${teamId}/channel/${notification.channelId}${query}`;
     }
 
     return `/${teamId}`;

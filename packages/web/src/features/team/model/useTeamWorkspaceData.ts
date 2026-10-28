@@ -185,12 +185,19 @@ export function useTeamWorkspaceData(teamId: string, options: UseTeamWorkspaceDa
         const refresh = () => {
             void ensureBase(teamId);
         };
+        const channelsChanged = (event: Event) => {
+            if ((event as CustomEvent<{ teamId?: string }>).detail?.teamId === teamId) {
+                void ensureBase(teamId, { force: true });
+            }
+        };
         refresh();
         window.addEventListener('online', refresh);
         window.addEventListener('focus', refresh);
+        window.addEventListener('gadoc:channels-changed', channelsChanged);
         return () => {
             window.removeEventListener('online', refresh);
             window.removeEventListener('focus', refresh);
+            window.removeEventListener('gadoc:channels-changed', channelsChanged);
         };
     }, [ensureBase, teamId]);
 

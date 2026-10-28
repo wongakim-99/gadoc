@@ -777,7 +777,7 @@ test.describe.serial("slacord web e2e", () => {
     await page.goto(`/${fixture.teamId}/settings`);
 
     await expect(
-      page.getByRole("heading", { name: /운영 설정을 흐름별로 정리함/ }),
+      page.getByRole("heading", { name: '전달과 연동', exact: true }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: /전달과 연동/ }),

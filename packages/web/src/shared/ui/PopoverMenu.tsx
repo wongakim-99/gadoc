@@ -9,6 +9,9 @@ export function PopoverMenu({
     open: controlled,
     onOpenChange,
     triggerClassName,
+    width = 360,
+    placement = 'bottom',
+    showHeader = true,
 }: {
     label: string;
     icon: ReactNode;
@@ -16,6 +19,9 @@ export function PopoverMenu({
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
     triggerClassName?: string;
+    width?: number;
+    placement?: 'top' | 'bottom';
+    showHeader?: boolean;
 }) {
     const [local, setLocal] = useState(false),
         [position, setPosition] = useState({ top: 0, left: 0 });
@@ -33,8 +39,8 @@ export function PopoverMenu({
             const rect = button.current?.getBoundingClientRect();
             if (rect)
                 setPosition({
-                    top: Math.min(rect.bottom + 6, window.innerHeight - 220),
-                    left: Math.max(8, Math.min(rect.right - 360, window.innerWidth - 368)),
+                    top: Math.max(8, Math.min(placement === 'top' ? rect.top - (surface.current?.offsetHeight ?? 220) - 8 : rect.bottom + 6, window.innerHeight - (surface.current?.offsetHeight ?? 220) - 8)),
+                    left: Math.max(8, Math.min(placement === 'top' ? rect.left : rect.right - width, window.innerWidth - width - 8)),
                 });
         };
         update();
@@ -44,11 +50,16 @@ export function PopoverMenu({
         };
         document.addEventListener('pointerdown', outside);
         window.addEventListener('resize', update);
+        window.addEventListener('scroll', update, true);
+        const observer = new ResizeObserver(update);
+        if (surface.current) observer.observe(surface.current);
         return () => {
             document.removeEventListener('pointerdown', outside);
             window.removeEventListener('resize', update);
+            window.removeEventListener('scroll', update, true);
+            observer.disconnect();
         };
-    }, [open]);
+    }, [open, width, placement]);
     return (
         <>
             <button
@@ -78,11 +89,12 @@ export function PopoverMenu({
                             position: 'fixed',
                             top: position.top,
                             left: position.left,
+                            width,
                             maxHeight: `calc(100vh - ${position.top + 12}px)`,
                         }}
                         className="z-[90] w-[360px] max-w-[calc(100vw-16px)] space-y-3 overflow-auto rounded-lg border border-border-primary bg-bg-primary p-3 text-sm shadow-xl"
                     >
-                        <div className="flex items-center justify-between border-b border-border-primary pb-2">
+                        {showHeader && <div className="flex items-center justify-between border-b border-border-primary pb-2">
                             <span className="font-medium">{label}</span>
                             <button
                                 type="button"
@@ -92,7 +104,7 @@ export function PopoverMenu({
                             >
                                 ×
                             </button>
-                        </div>
+                        </div>}
                         {children}
                     </div>,
                     document.body,

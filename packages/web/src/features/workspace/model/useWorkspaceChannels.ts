@@ -56,6 +56,12 @@ export function useWorkspaceChannels({ teamId, initialChannels, members, current
     }, [currentUserId, refresh]);
 
     useEffect(() => {
+        const handleChanged = () => { if (currentUserId) void refresh(); };
+        window.addEventListener('gadoc:channels-changed', handleChanged);
+        return () => window.removeEventListener('gadoc:channels-changed', handleChanged);
+    }, [currentUserId, refresh]);
+
+    useEffect(() => {
         const handleRead = (event: Event) => {
             const detail = (event as CustomEvent<WorkspaceChannelReadDetail>).detail;
             if (!detail) return;

@@ -31,6 +31,8 @@ export class Channel {
     externalId: string | null;
 
     createdAt: Date;
+    @Prop({ type: Boolean, default: false })
+    isArchived: boolean;
     updatedAt: Date;
 }
 
