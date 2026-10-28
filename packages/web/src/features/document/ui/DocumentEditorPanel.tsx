@@ -176,6 +176,7 @@ function LiveDocumentEditor({
                     editor={editor}
                     editable={canEdit}
                     className="slacord-blocknote"
+                    onClick={layoutTools.onEditorClick}
                     theme="dark"
                     onSelectionChange={() => {
                         const quote = editor.getSelectedText().replace(/\s+/g, ' ').trim().slice(0, 280);

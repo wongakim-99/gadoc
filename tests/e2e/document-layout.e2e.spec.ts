@@ -189,6 +189,21 @@ test("document picker keeps insertion position, retries failure and only offers 
   const layout = page.locator(layoutSelector);
   const target = layout.locator(":scope > .bn-block-outer").nth(1);
   await target.locator('[data-content-type="paragraph"]').click();
+  const selectedBlockId = await target
+    .locator('[data-content-type="paragraph"]')
+    .evaluate((element) =>
+      element.closest("[data-id]")?.getAttribute("data-id"),
+    );
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window
+          .getSelection()
+          ?.anchorNode?.parentElement?.closest("[data-id]")
+          ?.getAttribute("data-id"),
+      ),
+    )
+    .toBe(selectedBlockId);
   await page.route(
     `**/team/${fixture.teamId}/document`,
     (route) =>
@@ -260,4 +275,50 @@ test("hub creation makes a real editable page without changing existing document
     { token: fixture.owner.token },
   );
   expect(existing?.data?.content).toContain("문서 검증 본문");
+});
+
+test("document link captures the visible column before a pending native selection event is processed", async ({
+  page,
+}) => {
+  const fixture = await createWorkspaceFixture();
+  const source = await jsonFetch<{ id: string }>(
+    `/team/${fixture.teamId}/document`,
+    {
+      method: "POST",
+      token: fixture.owner.token,
+      body: {
+        title: "빠른 선택 링크",
+        content: "원본",
+        contentFormat: "plain",
+      },
+    },
+  );
+  await loginWithSession(page, fixture.owner);
+  await page.goto(`/${fixture.teamId}/docs/${fixture.documentId}`);
+  await expect(page.locator(".bn-editor")).toContainText("문서 검증 본문");
+  await page.getByRole("button", { name: "3열 배치", exact: true }).click();
+  const target = page
+    .locator(layoutSelector)
+    .locator(":scope > .bn-block-outer")
+    .nth(1);
+  await target
+    .locator('[data-content-type="paragraph"]')
+    .evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      range.collapse(true);
+      const selection = window.getSelection()!;
+      selection.removeAllRanges();
+      selection.addRange(range);
+      // Browsers queue selectionchange. Open synchronously to exercise that boundary.
+      const toolbar = document.querySelector('[aria-label="페이지 구성"]')!;
+      Array.from(toolbar.querySelectorAll("button"))
+        .find((button) => button.textContent?.trim() === "문서 링크")!
+        .click();
+    });
+  const picker = page.getByRole("dialog", { name: "문서 링크 추가" });
+  await picker.getByRole("button", { name: /빠른 선택 링크/ }).click();
+  await expect(
+    target.getByRole("link", { name: "빠른 선택 링크", exact: true }),
+  ).toHaveAttribute("href", `/${fixture.teamId}/docs/${source!.data!.id}`);
 });
