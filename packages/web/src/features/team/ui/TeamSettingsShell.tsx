@@ -2,7 +2,7 @@
 import { useSearchParams } from 'next/navigation';
 import { ConfluenceImportPanel } from '@/src/features/document/ui/ConfluenceImportPanel';
 import { ThemePreference } from '@/src/features/appearance/ThemePreference';
-import { NotificationPermissionButton } from '@/src/features/notification/ui/NotificationPermissionButton';
+import { NotificationSettingsPanel } from '@/src/features/notification/ui/NotificationSettingsPanel';
 import { useTeamWorkspaceData } from '../model/useTeamWorkspaceData';
 import { DiscordImportPanel } from './DiscordImportPanel';
 import { ExternalBridgeSettingsPanel } from './ExternalBridgeSettingsPanel';
@@ -32,7 +32,7 @@ export function TeamSettingsShell({ teamId }: { teamId: string }) {
                     </div>
                 </section>}
                 {active.key === 'appearance' && <section><h2 className="text-base font-bold text-text-primary">테마</h2><p className="mb-5 mt-1 text-sm text-text-secondary">이 기기의 모든 워크스페이스에 적용됩니다.</p><ThemePreference variant="cards" /></section>}
-                {active.key === 'notifications' && <section className="rounded-xl border border-border-primary bg-bg-secondary p-5"><h2 className="mb-3 text-base font-bold text-text-primary">데스크톱 알림</h2><NotificationPermissionButton /></section>}
+                {active.key === 'notifications' && <NotificationSettingsPanel key={teamId} teamId={teamId} />}
                 {active.key === 'delivery' && <><GitHubSettingsSection teamId={teamId} /><ExternalBridgeSettingsPanel teamId={teamId} /></>}
                 {active.key === 'access' && <TeamInviteSettingsPanel teamId={teamId} />}
                 {active.key === 'ai' && <McpSettingsPanel key={teamId} teamId={teamId} canWrite={workspace.canWrite} />}

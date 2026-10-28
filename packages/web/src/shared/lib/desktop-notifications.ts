@@ -1,5 +1,3 @@
-const delivered = new Map<string, number>();
-
 export async function showDesktopMessageNotification(input: {
     title: string;
     body: string;
@@ -9,17 +7,13 @@ export async function showDesktopMessageNotification(input: {
     teamId?: string;
 }) {
     if (typeof window === 'undefined') return;
+    // Incoming activity requires an authenticated server decision. Device permission
+    // tests use their own explicit user gesture in NotificationPermissionButton.
+    if (!input.id || !input.teamId) return;
     const native = window.slacordDesktop?.isDesktop && typeof window.slacordDesktop.notify === 'function';
     if (!native) {
         if (!input.force && document.visibilityState === 'visible' && document.hasFocus()) return;
         if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    }
-    if (input.id) {
-        const now = Date.now();
-        if (now - (delivered.get(input.id) ?? 0) < 60_000) return;
-        delivered.set(input.id, now);
-        for (const [key, time] of delivered) if (now - time >= 60_000) delivered.delete(key);
-        if (delivered.size > 500) delivered.delete(delivered.keys().next().value!);
     }
     try {
         if (input.id && input.teamId) {

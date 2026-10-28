@@ -1,4 +1,8 @@
+import { ChannelNotificationButton } from '@/src/features/notification/ui/ChannelNotificationButton';
+
 interface Props {
+    teamId?: string;
+    channelId?: string;
     canStartHuddle?: boolean;
     channelName: string;
     channelDescription?: string | null;
@@ -12,6 +16,8 @@ interface Props {
 }
 
 export function ChannelHeader({
+    teamId,
+    channelId,
     canStartHuddle = true,
     channelName,
     channelDescription,
@@ -42,6 +48,7 @@ export function ChannelHeader({
                 )}
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
+                {!isArchived && teamId && channelId && <ChannelNotificationButton teamId={teamId} channelId={channelId} />}
                 {onManageChannel && <button type="button" onClick={onManageChannel} className="rounded-lg border border-border-primary px-3 py-1.5 text-xs text-text-secondary hover:bg-bg-hover" aria-label="채널 관리">채널 관리</button>}
                 {onStartHuddle && (
                     <button

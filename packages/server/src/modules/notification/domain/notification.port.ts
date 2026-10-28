@@ -4,6 +4,7 @@ export interface INotificationRepository {
     deleteOwned(teamId: string, recipientId: string, id?: string): Promise<number>;
     findByRecipient(teamId: string, recipientId: string, limit: number): Promise<NotificationEntity[]>;
     countUnread(teamId: string, recipientId: string): Promise<number>;
+    findUnreadByRecipient(teamId: string, recipientId: string): Promise<NotificationEntity[]>;
     save(data: {
         teamId: string;
         recipientId: string;

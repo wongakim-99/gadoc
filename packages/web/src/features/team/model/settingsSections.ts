@@ -15,7 +15,7 @@ export const SETTINGS_SECTIONS = [
         key: 'notifications',
         group: '개인 설정',
         label: '알림',
-        description: '이 기기에서 알림을 받을 방법을 설정합니다.',
+        description: '이 워크스페이스와 각 채팅방의 내 알림을 따로 설정합니다.',
     },
     { key: 'access', group: '워크스페이스', label: '초대와 권한', description: '멤버, 역할과 초대 링크를 관리합니다.' },
     {

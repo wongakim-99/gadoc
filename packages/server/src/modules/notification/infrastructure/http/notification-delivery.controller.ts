@@ -6,6 +6,7 @@ import { Matches } from 'class-validator';
 import { JwtAuthGuard } from '../../../../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../../shared/decorators/current-user.decorator';
 import { TeamAccessService } from '../../../team/application/services/team-access.service';
+import { NotificationPreferenceService } from '../../application/services/notification-preference.service';
 
 @Schema({ collection: 'notification_deliveries', versionKey: false })
 export class NotificationDelivery {
@@ -40,6 +41,7 @@ export class NotificationDeliveryController {
     constructor(
         private readonly deliveries: NotificationDeliveryService,
         private readonly teams: TeamAccessService,
+        private readonly preferences: NotificationPreferenceService,
     ) {}
     @Post()
     async claim(
@@ -48,6 +50,8 @@ export class NotificationDeliveryController {
         @Body() input: ClaimNotificationDto,
     ) {
         await this.teams.requireMember(teamId, user.userId);
-        return this.deliveries.claim(teamId, user.userId, input.key);
+        const key = await this.preferences.deliveryKey(teamId, user.userId, input.key);
+        if (!key) return { deliver: false };
+        return this.deliveries.claim(teamId, user.userId, key);
     }
 }

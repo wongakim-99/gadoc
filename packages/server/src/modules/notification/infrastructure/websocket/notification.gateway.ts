@@ -15,6 +15,7 @@ import type { Server, Socket } from 'socket.io';
 import { TEAM_REPOSITORY, type ITeamRepository } from '../../../team/domain/team.port';
 import type { NotificationEntity } from '../../domain/notification.entity';
 import { authenticateSocketUser, type SocketUser } from '../../../../shared/lib/socket-auth';
+import { NotificationResourceService } from '../../application/services/notification-resource.service';
 
 @WebSocketGateway({ namespace: '/notification', cors: { origin: corsOrigin, credentials: true } })
 export class NotificationGateway implements OnGatewayConnection, OnGatewayDisconnect, NotificationPublisher {
@@ -26,6 +27,7 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
     constructor(
         private readonly jwtService: JwtService,
         @Inject(TEAM_REPOSITORY) private readonly teamRepo: ITeamRepository,
+        private readonly resources: NotificationResourceService,
     ) {}
 
     handleConnection(client: Socket) {
@@ -60,10 +62,16 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
         client.leave(this.getRoomKey(data.teamId, user.userId));
     }
 
-    emitNotification(notification: NotificationEntity) {
-        this.server
-            .to(this.getRoomKey(notification.teamId, notification.recipientId))
-            .emit('notification:new', notification.toPublic());
+    async emitNotification(notification: NotificationEntity) {
+        try {
+            const visible = await this.resources.filterVisible(notification.teamId, notification.recipientId, [notification]);
+            if (visible.length) this.server
+                .to(this.getRoomKey(notification.teamId, notification.recipientId))
+                .emit('notification:new', notification.toPublic());
+        } catch {
+            // Revoked workspace access and lookup failures must not publish private metadata.
+            this.logger.warn('알림 접근 권한을 확인하지 못해 실시간 전송을 생략했습니다.');
+        }
     }
 
     emitNotificationRead(teamId: string, userId: string, notificationId: string) {

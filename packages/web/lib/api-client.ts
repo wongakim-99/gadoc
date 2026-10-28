@@ -16,6 +16,7 @@ import type {
 } from '@/src/features/database/model/types';
 import type { ChannelType } from '@/src/entities/channel/types';
 import type { DocumentComment } from '@/src/entities/document/types';
+import type { NotificationPreference, UpdateNotificationPreference } from '@/src/entities/notification/types';
 import type { MessageSearchPayload } from '@/src/entities/message/search.types';
 import type {
     BridgeConfig,
@@ -640,6 +641,12 @@ export const presenceApi = {
 export const notificationApi = {
     async deleteNotification(teamId: string, id?: string) {
         return apiFetch(`/api/team/${teamId}/notification${id ? `/${id}` : ''}`, { method: 'DELETE' });
+    },
+    async getPreferences(teamId: string) {
+        return apiFetch<NotificationPreference>(`/api/team/${teamId}/notification/preferences`);
+    },
+    async updatePreferences(teamId: string, input: UpdateNotificationPreference) {
+        return apiFetch<NotificationPreference>(`/api/team/${teamId}/notification/preferences`, { method: 'PATCH', body: JSON.stringify(input) });
     },
     async getNotifications(teamId: string) {
         return apiFetch(`/api/team/${teamId}/notification`);

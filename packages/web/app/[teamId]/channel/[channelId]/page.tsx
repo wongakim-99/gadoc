@@ -171,6 +171,8 @@ function ChannelRoom({
     return (
         <div className="flex flex-col h-full">
             <ChannelHeader
+                teamId={teamId}
+                channelId={channelId}
                 canStartHuddle={room.canWrite}
                 isArchived={room.channel?.isArchived}
                 onManageChannel={room.canManageChannel ? () => setShowChannelManagement(true) : undefined}

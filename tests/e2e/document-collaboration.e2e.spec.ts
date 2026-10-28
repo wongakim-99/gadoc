@@ -4,6 +4,8 @@ import {
   createWorkspaceFixture,
   e2eApiUrl,
   jsonFetch,
+  createUserSession,
+  sendSocketMessage,
 } from "./support/slacord-api";
 import { loginWithSession } from "./support/slacord-session";
 
@@ -134,12 +136,23 @@ test("collaboration refuses cross-user private access and rechecks revocation on
 test("concurrent desktop/browser claims display once without changing unread notifications", async () => {
   const fixture = await createWorkspaceFixture();
   const path = `/team/${fixture.teamId}/notification/delivery-claim`;
+  const sender = await createUserSession("claim-sender");
+  await jsonFetch(`/team/${fixture.teamSlug}/join`, {
+    method: "POST",
+    token: sender.token,
+  });
+  const message = await sendSocketMessage({
+    session: sender,
+    teamId: fixture.teamId,
+    channelId: fixture.channelId,
+    content: "실제 메시지 전달 중복 검증",
+  });
   const claims = await Promise.all(
     Array.from({ length: 8 }, () =>
       jsonFetch<{ deliver: boolean }>(path, {
         method: "POST",
         token: fixture.owner.token,
-        body: { key: `message:${fixture.documentId}` },
+        body: { key: `message:${message.id}` },
       }),
     ),
   );
@@ -149,14 +162,14 @@ test("concurrent desktop/browser claims display once without changing unread not
       await jsonFetch<{ deliver: boolean }>(path, {
         method: "POST",
         token: fixture.actor.token,
-        body: { key: `message:${fixture.documentId}` },
+        body: { key: `message:${message.id}` },
       })
     )?.data?.deliver,
   ).toBe(true);
   const unauthenticated = await fetch(`${e2eApiUrl}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key: `message:${fixture.documentId}` }),
+    body: JSON.stringify({ key: `message:${message.id}` }),
   });
   expect(unauthenticated.status).toBe(401);
 });
