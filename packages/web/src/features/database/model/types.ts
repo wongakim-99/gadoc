@@ -40,6 +40,8 @@ export interface DatabaseProperty {
     reverseOf?: {databaseId:string;propertyId:string};
 }
 export interface KnowledgeDatabase {
+    sourceKind?: 'issues';
+    parentDocumentId?: string | null;
     locked?: boolean;
     id: string;
     name: string;
@@ -47,6 +49,7 @@ export interface KnowledgeDatabase {
     revision: number;
 }
 export interface DatabaseRow {
+    resourceKind?: 'issue';
     documentId: string;
     title: string;
     canEdit: boolean;

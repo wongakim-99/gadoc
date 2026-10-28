@@ -1,4 +1,5 @@
 'use client';
+import { databaseRowHref } from '../model/databaseRowHref';
 
 import { useMemo, useState } from 'react';
 import type { DatabaseDetail, DatabaseRow, DatabaseView, PropertyValue } from '../model/types';
@@ -55,7 +56,7 @@ export function DatabaseVisualViews({
     }, [rows, dateId]);
     const link = (row: DatabaseRow) => (
         <div className="flex min-w-0 items-center gap-1">
-            <ResourceNavigation href={`/${teamId}/docs/${row.documentId}`} title={row.title} />
+            <ResourceNavigation href={databaseRowHref(teamId, row)} title={row.title} />
         </div>
     );
     const cells = (row: DatabaseRow) =>

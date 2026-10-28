@@ -5,12 +5,14 @@ import { MentionSuggestions } from './MentionSuggestions';
 import { MessageComposerActions } from './MessageComposerActions';
 import { PendingAttachmentTray } from './PendingAttachmentTray';
 import { useMessageComposer } from '../model/useMessageComposer';
+import { messageDraftKey, type DraftScope } from '../model/messageDraft';
 import { InsertWorkspaceReference } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
 import { useWorkspaceLeaveGuard } from '@/src/features/workspace/model/useWorkspaceConnection';
 import { WorkspaceReferenceDropZone } from '@/src/features/workspace/ui/WorkspaceReferenceDropZone';
 import { insertReferenceAtSelection } from '@/src/features/workspace/model/workspaceDrag';
 
 interface Props {
+    draftScope: DraftScope;
     channelName: string;
     readOnly?: boolean;
     readOnlyMessage?: string;
@@ -21,7 +23,12 @@ interface Props {
     isUploading: boolean;
 }
 
-export function MessageInput({
+export function MessageInput(props: Props) {
+    return <ScopedMessageInput key={messageDraftKey(props.draftScope)} {...props} />;
+}
+
+function ScopedMessageInput({
+    draftScope,
     channelName,
     readOnly = false,
     readOnlyMessage,
@@ -31,11 +38,9 @@ export function MessageInput({
     onTyping,
     isUploading,
 }: Props) {
-    const composer = useMessageComposer({ members, onTyping, onUpload, onSend });
+    const composer = useMessageComposer({ draftScope, members, onTyping, onUpload, onSend });
     useWorkspaceLeaveGuard(
-        () =>
-            !(composer.content.trim() || composer.pendingFiles.length) ||
-            window.confirm('전송하지 않은 메시지가 있습니다. 이 화면을 닫을까요?'),
+        () => !composer.pendingFiles.length || window.confirm('전송하지 않은 첨부 파일이 있습니다. 이 화면을 닫을까요?'),
     );
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -69,7 +74,7 @@ export function MessageInput({
     };
 
     return (
-        <div className="shrink-0 px-5 pb-4 pt-1">
+        <div className="min-w-0 shrink-0 px-3 pb-3 pt-1">
             <InsertWorkspaceReference
                 disabled={readOnly}
                 onInsert={(_, markdown) => {
@@ -96,7 +101,7 @@ export function MessageInput({
                 }}
             >
                 <div
-                    className={`relative overflow-hidden rounded-2xl border bg-bg-secondary transition-colors ${
+                    className={`relative min-w-0 rounded-xl border bg-bg-secondary transition-colors ${
                         composer.isDraggingFiles
                             ? 'border-action-text bg-selection'
                             : 'border-border-primary focus-within:border-action-text/60'
@@ -124,7 +129,7 @@ export function MessageInput({
                         ) : null}
                         <MessageComposerActions
                             canSubmit={Boolean(composer.content.trim()) || composer.pendingFiles.length > 0}
-                            isUploading={isUploading}
+                            isUploading={isUploading || composer.isSending}
                             readOnly={readOnly}
                             onOpenFiles={() => composer.fileInputRef.current?.click()}
                             onSubmit={() => void composer.submit()}
@@ -145,19 +150,18 @@ export function MessageInput({
                                     : `#${channelName}에 메시지 보내기`
                             }
                             rows={1}
-                            className="flex-1 resize-none bg-transparent py-2.5 text-[14px] leading-[1.5] text-white outline-none placeholder:text-text-tertiary disabled:cursor-not-allowed"
+                            className="min-w-0 flex-1 resize-none bg-transparent py-2.5 text-[14px] leading-[1.5] text-white outline-none placeholder:text-text-tertiary disabled:cursor-not-allowed"
                             style={{ minHeight: '22px', maxHeight: '160px' }}
                         />
                     </div>
-                    <div className="flex items-center justify-between gap-3 border-t border-border-primary/70 px-3 py-2 text-[11px] text-text-tertiary">
-                        <span>
-                            {readOnly
-                                ? (readOnlyMessage ??
-                                  'guest는 메시지 작성, 파일 업로드, 스레드 답글을 보낼 수 없습니다.')
-                                : '이미지, 동영상, 문서를 드래그하거나 여러 파일을 한 번에 올릴 수 있습니다.'}
-                        </span>
-                        {composer.pendingFiles.length > 0 ? <span>{composer.pendingFiles.length}개 준비됨</span> : null}
-                    </div>
+                    {composer.sendError && (
+                        <p role="alert" className="px-3 pb-2 text-xs text-red-400">
+                            {composer.sendError}
+                        </p>
+                    )}
+                    {readOnly && (
+                        <p className="px-3 pb-2 text-xs text-text-tertiary">{readOnlyMessage ?? '읽기 전용 채널'}</p>
+                    )}
                 </div>
             </WorkspaceReferenceDropZone>
         </div>

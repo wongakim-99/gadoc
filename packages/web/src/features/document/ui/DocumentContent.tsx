@@ -42,8 +42,7 @@ export function DocumentContent({ doc, onQuoteSelection }: Props) {
         onQuoteSelection(normalizedQuote ? normalizedQuote.slice(0, 280) : null);
     };
 
-    if (!doc.content)
-        return <p className="text-sm text-text-tertiary">내용이 없습니다. 편집 버튼을 눌러 내용을 추가하세요.</p>;
+    if (!doc.content) return <p className="text-sm text-text-tertiary">내용이 없습니다.</p>;
 
     if (doc.contentFormat === 'json') {
         return (

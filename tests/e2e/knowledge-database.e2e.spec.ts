@@ -18,11 +18,19 @@ test("creates a database and page in UI; failed cell saves retain drafts and blo
 }, testInfo) => {
   const f = await createWorkspaceFixture();
   await loginWithSession(page, f.owner);
-  await page.goto(`/${f.teamId}/docs?databases=1`);
-  await page
-    .getByRole("textbox", { name: "데이터베이스 이름" })
-    .fill("운영 지식베이스");
-  await page.getByRole("button", { name: "데이터베이스 만들기" }).click();
+  await page.goto(`/${f.teamId}/docs/${f.documentId}`);
+  await page.locator('.bn-editor[contenteditable="true"]').click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("/database");
+  await page.getByRole("option", { name: "데이터베이스 빈 데이터베이스 추가", exact: true }).click();
+  const block = page.locator("[data-inline-database]");
+  await expect(block.getByRole("table")).toBeVisible();
+  await block.getByLabel("데이터베이스 제목", { exact: true }).fill("운영 지식베이스");
+  await block.getByLabel("데이터베이스 제목", { exact: true }).press("Enter");
+  await expect(block.getByLabel("데이터베이스 제목", { exact: true })).toBeEnabled();
+  await expect(block.getByRole("status")).toHaveText("이름을 변경했습니다.");
+  await block.getByRole("link", { name: "전체 페이지로 열기", exact: true }).click();
   await expect(page).toHaveURL(/database=/);
   const href = page.url();
   await page.getByRole("button", { name: "새 페이지", exact: true }).click();
@@ -34,7 +42,8 @@ test("creates a database and page in UI; failed cell saves retain drafts and blo
   await page.getByRole("button", { name: "속성 추가", exact: true }).click();
   const modal = page.getByRole("dialog", { name: "속성 추가" });
   await modal.getByLabel("속성 이름", { exact: true }).fill("요약");
-  await modal.getByRole("button", { name: "속성 만들기" }).click();
+  await modal.getByRole("button", { name: "텍스트", exact: true }).click();
+  await expect(modal).toHaveCount(0);
   const input = page.getByRole("textbox", {
     name: "배포 절차 · 요약",
     exact: true,
@@ -112,7 +121,7 @@ test("database UI persists owners, relations and rollups; dashboard shares works
   await page.getByRole("button", { name: "속성 추가", exact: true }).click();
   const modal = page.getByRole("dialog", { name: "속성 추가" });
   await modal.getByLabel("속성 이름", { exact: true }).fill("참고 문서");
-  await modal.getByLabel("유형", { exact: true }).selectOption("relation");
+  await modal.getByRole("button", { name: "관계형", exact: true }).click();
   await modal.getByLabel("연결할 데이터베이스").selectOption(target.id);
   await modal.getByRole("button", { name: "속성 만들기" }).click();
   await expect(modal).toHaveCount(0);
@@ -136,7 +145,7 @@ test("database UI persists owners, relations and rollups; dashboard shares works
   ).toBeVisible();
   await page.getByRole("button", { name: "속성 추가", exact: true }).click();
   await modal.getByLabel("속성 이름", { exact: true }).fill("총 시간");
-  await modal.getByLabel("유형", { exact: true }).selectOption("rollup");
+  await modal.getByRole("button", { name: "롤업", exact: true }).click();
   await modal
     .getByLabel("관계형 속성", { exact: true })
     .selectOption({ label: "참고 문서" });

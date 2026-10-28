@@ -63,18 +63,20 @@ export function DashboardSidebar({ currentUserName }: Props) {
                             <p className="mt-0.5 text-xs text-text-tertiary">전체 워크스페이스</p>
                         </div>
                     </Link>
-                    {currentUserName ? <p className="mt-3 text-sm text-text-secondary">{currentUserName}</p> : null}
+                    {currentUserName ? (
+                        <p className="mt-3 truncate text-sm text-text-secondary">{currentUserName}</p>
+                    ) : null}
                     <button
                         ref={searchButtonRef}
                         type="button"
                         onClick={() => setSearchOpen(true)}
-                        className="mt-4 flex w-full items-center justify-between rounded-control border border-border-primary bg-bg-primary px-4 py-3 text-left transition hover:border-border-glow hover:bg-bg-hover"
+                        className="mt-4 flex w-full min-w-0 items-center justify-between gap-2 rounded-control border border-border-primary bg-bg-primary px-4 py-3 text-left transition hover:border-border-glow hover:bg-bg-hover"
                     >
-                        <div>
-                            <p className="text-sm font-semibold text-white">빠른 검색</p>
-                            <p className="mt-1 text-xs text-text-secondary">문서, 대화, 작업 검색</p>
+                        <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-white">빠른 검색</p>
+                            <p className="mt-1 truncate text-xs text-text-secondary">문서, 대화, 작업 검색</p>
                         </div>
-                        <span className="rounded-full border border-border-primary px-2.5 py-1 text-[11px] text-text-tertiary">
+                        <span className="shrink-0 whitespace-nowrap rounded-control border border-border-primary px-2.5 py-1 text-[11px] text-text-tertiary">
                             {typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? '⌘K' : 'Ctrl+K'}
                         </span>
                     </button>
@@ -90,9 +92,9 @@ export function DashboardSidebar({ currentUserName }: Props) {
                                 key={item.href}
                                 href={item.href}
                                 aria-current={isActive ? 'page' : undefined}
-                                className={`flex min-h-9 items-center gap-3 whitespace-nowrap rounded-control px-3 py-2 transition-colors ${stateClass}`}
+                                className={`flex min-h-9 shrink-0 items-center gap-3 whitespace-nowrap rounded-control px-3 py-2 transition-colors ${stateClass}`}
                             >
-                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
                                 </svg>
                                 <span className="font-medium">{item.label}</span>

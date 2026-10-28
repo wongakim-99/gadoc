@@ -156,12 +156,12 @@ test.describe.serial("slacord web e2e", () => {
     await expect(page.getByText("문서 검증 본문")).toBeVisible();
 
     await page.goto(`/${fixture.teamId}/docs`);
-    await page.getByRole("button", { name: "문서 생성", exact: true }).click();
+    await page.getByRole("button", { name: "새 페이지", exact: true }).click();
     const title = `문서 생성 검증 ${Date.now().toString().slice(-4)}`;
-    await page.getByRole("textbox", { name: "문서 제목" }).fill(title);
-    await page.getByRole("button", { name: "생성", exact: true }).click();
+    await expect(page.getByRole("textbox", { name: "페이지 제목" })).toBeFocused();
+    await page.getByRole("textbox", { name: "페이지 제목" }).fill(title);
 
-    await page.waitForURL(new RegExp(`/${fixture.teamId}/docs/.+\\?edit=1`));
+    await page.waitForURL(new RegExp(`/${fixture.teamId}/docs/.+\\?new=1`));
     await expect(
       page.locator('.bn-editor[contenteditable="true"]'),
     ).toBeVisible();
@@ -584,21 +584,11 @@ test.describe.serial("slacord web e2e", () => {
       page.getByRole("button", { name: "파일 첨부" }),
     ).toBeDisabled();
     await expect(page.getByRole("button", { name: "허들" })).toBeDisabled();
-    await expect(
-      page.getByText(
-        "guest는 메시지 작성, 파일 업로드, 스레드 답글을 보낼 수 없습니다.",
-      ),
-    ).toBeVisible();
 
     await page.goto(`/${fixture.teamId}/docs`);
-    await expect(page.getByRole("button", { name: "문서 생성", exact: true })).toHaveCount(
+    await expect(page.getByRole("button", { name: "새 페이지", exact: true })).toHaveCount(
       0,
     );
-    await expect(
-      page.getByText(
-        "guest는 문서를 읽고 탐색할 수 있지만 새 문서를 만들 수는 없습니다.",
-      ),
-    ).toBeVisible();
 
     await page.goto(`/${fixture.teamId}/issues`);
     await expect(page.getByRole("button", { name: "이슈 생성", exact: true })).toHaveCount(
@@ -617,7 +607,7 @@ test.describe.serial("slacord web e2e", () => {
     ).toBeVisible();
 
     await expect(
-      page.getByRole("link", { name: "휴지통", exact: true }),
+      page.getByRole("link", { name: "문서 휴지통", exact: true }),
     ).toHaveCount(0);
     const runtimeErrors: string[] = [];
     page.on("pageerror", (error) => runtimeErrors.push(error.message));

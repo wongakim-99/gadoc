@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createDocumentSchema } from './documentBlockSchema';
 import { useDocumentCollaboration } from '../model/useDocumentCollaboration';
 import type { CollaborationState, DocumentCollaborationProvider } from '../model/DocumentCollaborationProvider';
@@ -10,7 +10,7 @@ import { Database, FilePlus2 } from 'lucide-react';
 import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
 import { ko } from '@blocknote/core/locales';
-import { documentApi, unwrapApiData } from '@/lib/api-client';
+import { databaseApi, documentApi, unwrapApiData } from '@/lib/api-client';
 import { DocumentAttachmentButton } from './DocumentAttachmentButton';
 import { InsertWorkspaceReference } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
 import { WorkspaceReferenceDropZone } from '@/src/features/workspace/ui/WorkspaceReferenceDropZone';
@@ -103,6 +103,8 @@ function LiveDocumentEditor({
     onReadyRef.current = onReady;
     onChangeRef.current = onChange;
     const dropTarget = useRef<HTMLElement | null>(null);
+    const [issueSourceError, setIssueSourceError] = useState('');
+    const issueSourcePending = useRef(false);
 
     const schema = useMemo(() => createDocumentSchema(teamId, documentId), [teamId, documentId]);
     const editor = useCreateBlockNote(
@@ -160,10 +162,10 @@ function LiveDocumentEditor({
 
     return (
         <div className="space-y-3">
+            {issueSourceError && <p role="alert" className="text-sm text-error">{issueSourceError}</p>}
             {canEdit && <InsertWorkspaceReference onInsert={(reference) => insertReference(reference)} />}
             {canEdit && (
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-xs text-text-tertiary">빈 줄에서 / 를 입력해 블록을 추가하세요.</p>
                     <DocumentAttachmentButton
                         documentId={documentId}
                         editor={editor}
@@ -198,8 +200,32 @@ function LiveDocumentEditor({
                                 filterSuggestionItems(
                                     [
                                         {
+                                            title: '이슈 데이터베이스',
+                                            subtext: '워크스페이스 이슈를 같은 원본으로 보기',
+                                            aliases: ['issue', 'issues', '이슈', '이슈 db'],
+                                            group: '데이터 관리',
+                                            icon: <Database size={18} />,
+                                            onItemClick: () => {
+                                                if (issueSourcePending.current) return;
+                                                const blockId = editor.getTextCursorPosition().block.id;
+                                                issueSourcePending.current = true;
+                                                setIssueSourceError('');
+                                                void databaseApi.issueSource(teamId).then((result) => {
+                                                    if (!result.data) throw new Error('이슈 데이터베이스를 연결하지 못했습니다.');
+                                                    const current = editor.getBlock(blockId);
+                                                    if (!current || !editor.isEditable) return;
+                                                    const next = { type: 'database' as const, props: { databaseId: result.data.id, linked: true } };
+                                                    if (current.type === 'paragraph' && current.content.length === 0)
+                                                        editor.updateBlock(current, next);
+                                                    else editor.insertBlocks([next], current, 'after');
+                                                    onChangeRef.current(JSON.stringify(editor.document));
+                                                }).catch((error) => setIssueSourceError(error instanceof Error ? error.message : '이슈 연결 실패'))
+                                                    .finally(() => { issueSourcePending.current = false; });
+                                            },
+                                        },
+                                        {
                                             title: '데이터베이스',
-                                            subtext: '페이지 안에 새 데이터베이스를 만들거나 기존 데이터베이스 연결',
+                                            subtext: '빈 데이터베이스 추가',
                                             aliases: [
                                                 'database',
                                                 'db',
@@ -223,6 +249,27 @@ function LiveDocumentEditor({
                                                 } else {
                                                     editor.insertBlocks([{ type: 'database' }], current, 'after');
                                                 }
+                                            },
+                                        },
+                                        {
+                                            title: '데이터베이스 연결',
+                                            subtext: '기존 데이터베이스의 보기 추가',
+                                            aliases: ['linked database', '연결된 데이터베이스'],
+                                            group: '데이터 관리',
+                                            icon: <Database size={18} />,
+                                            onItemClick: () => {
+                                                const current = editor.getTextCursorPosition().block;
+                                                if (current.type === 'paragraph' && current.content.length === 0)
+                                                    editor.updateBlock(current, {
+                                                        type: 'database',
+                                                        props: { linked: true },
+                                                    });
+                                                else
+                                                    editor.insertBlocks(
+                                                        [{ type: 'database', props: { linked: true } }],
+                                                        current,
+                                                        'after',
+                                                    );
                                             },
                                         },
                                         ...getDefaultReactSlashMenuItems(editor),

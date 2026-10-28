@@ -1,3 +1,5 @@
+import { Issue, IssueSchema } from '../issue/infrastructure/persistence/issue.schema';
+import { IssueSourceService } from './issue-source.service';
 import { DatabaseContainer, DatabaseContainerSchema } from './container.schema';
 import { DatabaseContainerService } from './container.service';
 import { DatabaseContainerController } from './container.controller';
@@ -17,13 +19,20 @@ import { DatabaseService } from './database.service';
         TeamModule,
         DocumentModule,
         MongooseModule.forFeature([
+            { name: Issue.name, schema: IssueSchema },
             { name: DatabaseContainer.name, schema: DatabaseContainerSchema },
             { name: KnowledgeDatabase.name, schema: KnowledgeDatabaseSchema },
             { name: DatabaseRow.name, schema: DatabaseRowSchema },
         ]),
     ],
     controllers: [DatabaseController, DatabaseContainerController],
-    providers: [DatabaseContainerService, DatabaseService, DatabaseGateway, ContentChangeInterceptor],
+    providers: [
+        IssueSourceService,
+        DatabaseContainerService,
+        DatabaseService,
+        DatabaseGateway,
+        ContentChangeInterceptor,
+    ],
     exports: [DatabaseService, DatabaseContainerService],
 })
 export class DatabaseModule {}

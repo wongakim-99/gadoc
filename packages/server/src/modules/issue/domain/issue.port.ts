@@ -26,6 +26,7 @@ export interface IIssueRepository {
     update(
         id: string,
         data: Partial<{
+            databaseUpdatedBy: string;
             title: string;
             description: string;
             status: IssueStatus;
@@ -33,6 +34,7 @@ export interface IIssueRepository {
             assigneeIds: string[];
             labels: string[];
         }>,
+        revision?: number,
     ): Promise<IssueEntity | null>;
     deleteById(id: string): Promise<boolean>;
 }

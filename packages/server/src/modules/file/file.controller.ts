@@ -1,3 +1,4 @@
+import { fileContentDisposition } from '../../shared/storage/infrastructure/filename';
 import { Controller, Get, Headers, Inject, Query, Res, UseGuards } from '@nestjs/common';
 import { pipeline } from 'node:stream/promises';
 import type { Response } from 'express';
@@ -32,7 +33,7 @@ export class FileController {
         res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
         res.setHeader(
             'Content-Disposition',
-            `${file.disposition}; filename*=UTF-8''${encodeURIComponent(authorizedKey.split('/').at(-1)!)}`,
+            fileContentDisposition(file.disposition, file.originalName ?? authorizedKey.split('/').at(-1)!),
         );
         if (file.partial) res.setHeader('Content-Range', `bytes ${file.start}-${file.end}/${file.size}`);
         try {

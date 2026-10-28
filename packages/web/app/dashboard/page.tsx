@@ -24,15 +24,12 @@ export default function DashboardPage() {
             ) : (
                 <div className="space-y-6">
                     <section className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)]">
-                        <div className="rounded-panel border border-border-primary bg-bg-secondary p-5">
+                        <div className="min-w-0 rounded-panel border border-border-primary bg-bg-secondary p-5">
                             <p className="text-xs uppercase tracking-[0.2em] text-action-text">이어서 작업</p>
-                            <h2 className="mt-4 text-xl font-semibold text-white">
+                            <h2 className="mt-4 break-words text-xl font-semibold text-white">
                                 {primaryTeam.name}에서 바로 이어서 작업
                             </h2>
-                            <p className="mt-4 max-w-2xl text-sm leading-7 text-text-secondary">
-                                최근 사용한 워크스페이스를 바로 열고, 대화와 문서, 이슈 흐름으로 곧바로 들어갈 수
-                                있습니다.
-                            </p>
+
                             <div className="mt-6 flex flex-wrap gap-3">
                                 <Link
                                     href={`/${primaryTeam.id}`}
@@ -54,7 +51,7 @@ export default function DashboardPage() {
                                 </Link>
                             </div>
                         </div>
-                        <div className="rounded-panel border border-border-primary bg-bg-secondary p-5">
+                        <div className="min-w-0 rounded-panel border border-border-primary bg-bg-secondary p-5">
                             <p className="text-xs uppercase tracking-[0.2em] text-action-text">빠른 이동</p>
                             <div className="mt-5 grid gap-3">
                                 <QuickLink

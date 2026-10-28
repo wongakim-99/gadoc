@@ -1,3 +1,4 @@
+import { storedFilename } from './filename';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -58,6 +59,7 @@ export class MinioFileStorageAdapter implements IFileStorage {
                 ContentLength: input.size,
                 ContentType: content.mimeType,
                 ContentDisposition: content.disposition,
+                Metadata: input.originalName ? { 'filename-utf8': encodeURIComponent(input.originalName) } : undefined,
             }),
         );
         return {
@@ -78,9 +80,10 @@ export class MinioFileStorageAdapter implements IFileStorage {
                 throw new NotFoundException('파일을 찾을 수 없습니다.');
             throw error;
         }
+        const originalName = storedFilename(stat.Metadata);
         const size = stat.ContentLength ?? 0;
         const range = byteRange(requestedRange, size);
-        if (!size) return { stream: Readable.from([]), size, ...range, ...safeUploadContent(Buffer.alloc(0), '') };
+        if (!size) return { originalName, stream: Readable.from([]), size, ...range, ...safeUploadContent(Buffer.alloc(0), '') };
         const probe = await this.client.send(
             new GetObjectCommand({
                 Bucket: bucket,
@@ -98,7 +101,7 @@ export class MinioFileStorageAdapter implements IFileStorage {
             }),
         );
         if (!(file.Body instanceof Readable)) throw new Error('Storage did not return a file stream.');
-        return { stream: file.Body, size, ...range, ...content };
+        return { originalName, stream: file.Body, size, ...range, ...content };
     }
 
     private ensureBucket() {

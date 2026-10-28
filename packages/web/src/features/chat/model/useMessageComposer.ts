@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
+import { clearSentMessageDraft, useMessageDraft, type DraftScope } from './messageDraft';
 
 interface Props {
+    draftScope: DraftScope;
     members: TeamMemberSummary[];
     onTyping: () => void;
     onUpload: (files: File[], content: string) => Promise<void>;
@@ -15,8 +17,8 @@ function hasFilesTransfer(dataTransfer: DataTransfer | null) {
     return Array.from(dataTransfer.types ?? []).includes('Files');
 }
 
-export function useMessageComposer({ members, onTyping, onUpload, onSend }: Props) {
-    const [content, setContent] = useState('');
+export function useMessageComposer({ draftScope, members, onTyping, onUpload, onSend }: Props) {
+    const { content, setContent, key: draftKey, snapshot } = useMessageDraft(draftScope);
     const [pendingFiles, setPendingFiles] = useState<File[]>([]);
     const [isDraggingFiles, setIsDraggingFiles] = useState(false);
     const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -25,6 +27,9 @@ export function useMessageComposer({ members, onTyping, onUpload, onSend }: Prop
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const dragDepthRef = useRef(0);
+    const sendingRef = useRef(false);
+    const [isSending, setIsSending] = useState(false);
+    const [sendError, setSendError] = useState<string | null>(null);
 
     const autoResize = useCallback(() => {
         const element = textareaRef.current;
@@ -33,7 +38,9 @@ export function useMessageComposer({ members, onTyping, onUpload, onSend }: Prop
         element.style.height = `${Math.min(element.scrollHeight, 160)}px`;
     }, []);
 
-    useEffect(() => { autoResize(); }, [autoResize, content]);
+    useEffect(() => {
+        autoResize();
+    }, [autoResize, content]);
 
     const mentionCandidates = useMemo(() => {
         if (mentionQuery === null || members.length === 0) return [];
@@ -66,25 +73,38 @@ export function useMessageComposer({ members, onTyping, onUpload, onSend }: Prop
         }, 0);
     };
 
-    const handleChange = useCallback((value: string, cursorPosition: number) => {
-        setContent(value);
-        detectMention(value, cursorPosition);
-        onTyping();
-        if (typingTimer.current) clearTimeout(typingTimer.current);
-        typingTimer.current = setTimeout(() => {}, 2000);
-    }, [onTyping]);
+    const handleChange = useCallback(
+        (value: string, cursorPosition: number) => {
+            setContent(value);
+            detectMention(value, cursorPosition);
+            onTyping();
+            if (typingTimer.current) clearTimeout(typingTimer.current);
+            typingTimer.current = setTimeout(() => {}, 2000);
+        },
+        [onTyping, setContent],
+    );
 
     const submit = async () => {
         const trimmed = content.trim();
-        if (!trimmed && pendingFiles.length === 0) return;
-        if (pendingFiles.length > 0) {
-            await onUpload(pendingFiles, trimmed);
-            setPendingFiles([]);
-        } else {
-            await onSend(trimmed);
+        if (sendingRef.current || (!trimmed && pendingFiles.length === 0)) return;
+        sendingRef.current = true;
+        setIsSending(true);
+        setSendError(null);
+        try {
+            if (pendingFiles.length > 0) {
+                await onUpload(pendingFiles, trimmed);
+                setPendingFiles((current) => current.filter((file) => !pendingFiles.includes(file)));
+            } else {
+                await onSend(trimmed);
+            }
+            clearSentMessageDraft(draftKey, snapshot);
+            setMentionQuery(null);
+        } catch {
+            setSendError('메시지를 전송하지 못했습니다. 작성 내용은 유지됩니다. 다시 시도해 주세요.');
+        } finally {
+            sendingRef.current = false;
+            setIsSending(false);
         }
-        setContent('');
-        setMentionQuery(null);
     };
 
     const appendFiles = useCallback((nextFiles: File[]) => {
@@ -125,13 +145,16 @@ export function useMessageComposer({ members, onTyping, onUpload, onSend }: Prop
         }
     }, []);
 
-    const handleDrop = useCallback((event: React.DragEvent<HTMLElement>) => {
-        if (!hasFilesTransfer(event.dataTransfer)) return;
-        event.preventDefault();
-        dragDepthRef.current = 0;
-        setIsDraggingFiles(false);
-        appendFiles(Array.from(event.dataTransfer.files ?? []));
-    }, [appendFiles]);
+    const handleDrop = useCallback(
+        (event: React.DragEvent<HTMLElement>) => {
+            if (!hasFilesTransfer(event.dataTransfer)) return;
+            event.preventDefault();
+            dragDepthRef.current = 0;
+            setIsDraggingFiles(false);
+            appendFiles(Array.from(event.dataTransfer.files ?? []));
+        },
+        [appendFiles],
+    );
 
     return {
         content,
@@ -143,6 +166,8 @@ export function useMessageComposer({ members, onTyping, onUpload, onSend }: Prop
         handleDrop,
         handleFileChange,
         isDraggingFiles,
+        isSending,
+        sendError,
         insertMention,
         mentionCandidates,
         mentionIndex,

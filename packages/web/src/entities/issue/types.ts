@@ -2,6 +2,7 @@ export type IssueStatus = 'todo' | 'in_progress' | 'in_review' | 'done';
 export type IssuePriority = 'low' | 'medium' | 'high' | 'urgent';
 
 export interface Issue {
+    revision?: number;
     id: string;
     teamId: string;
     title: string;

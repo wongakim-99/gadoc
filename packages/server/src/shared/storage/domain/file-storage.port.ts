@@ -3,6 +3,7 @@ import type { Readable } from 'node:stream';
 export interface UploadBinaryInput {
     buffer: Buffer;
     objectName: string;
+    originalName?: string;
     mimeType: string;
     size: number;
 }
@@ -15,6 +16,7 @@ export interface StoredFile {
 }
 
 export interface PrivateFile {
+    originalName?: string;
     stream: Readable;
     mimeType: string;
     disposition: string;

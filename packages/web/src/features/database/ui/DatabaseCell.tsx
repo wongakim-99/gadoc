@@ -16,6 +16,8 @@ export function DatabaseCell({
     disabled,
     readOnly,
     onSave,
+    canEditOptions = false,
+    onOptionsChanged,
 }: {
     teamId: string;
     databaseId: string;
@@ -25,6 +27,8 @@ export function DatabaseCell({
     disabled: boolean;
     readOnly: boolean;
     onSave: (value: PropertyValue, revision?: number) => Promise<boolean>;
+    canEditOptions?: boolean;
+    onOptionsChanged?: () => void | Promise<void>;
 }) {
     const savedValue = row.values[property.id] ?? null;
     const [optimistic, setOptimistic] = useState<{ value: PropertyValue } | null>(null);
@@ -39,6 +43,16 @@ export function DatabaseCell({
     const [loading, setLoading] = useState(false);
     const [mentioning, setMentioning] = useState(false);
     const [notice, setNotice] = useState('');
+    const [optionBusy, setOptionBusy] = useState(false);
+    const [addedOptions, setAddedOptions] = useState<string[]>([]);
+    const [failedOption, setFailedOption] = useState<string | null>(null);
+    const optionTask = useRef<Promise<boolean> | null>(null);
+    const propertyOptions = [...new Set([...(property.options ?? []), ...addedOptions])];
+    const canCreateOption = canEditOptions && !readOnly &&
+        !(row.resourceKind === 'issue' && ['status', 'priority', 'labels'].includes(property.id));
+    useEffect(() => {
+        setAddedOptions((items) => items.filter((option) => !property.options?.includes(option)));
+    }, [property.options]);
     useEffect(() => {
         if (!editing.current) setDraft(String(savedValue ?? ''));
     }, [savedValue]);
@@ -61,8 +75,10 @@ export function DatabaseCell({
         return promise;
     };
     useDatabaseDraftGuard(
-        () => !!savePromise.current || (editing.current && draft !== String(savedValue ?? '')),
+        () => !!optionTask.current || !!failedOption || !!savePromise.current || (editing.current && draft !== String(savedValue ?? '')),
         () => {
+            if (optionTask.current) return optionTask.current;
+            if (failedOption) return false;
             if (savePromise.current) return savePromise.current;
             if (
                 readOnly ||
@@ -73,6 +89,56 @@ export function DatabaseCell({
             return commit(draft === '' ? null : property.type === 'number' ? Number(draft) : draft);
         },
     );
+    const createOption = (raw: string): Promise<boolean> => {
+        if (optionTask.current) return optionTask.current;
+        const option = raw.trim();
+        if (!option || option.length > 80 || disabled || !canCreateOption) return Promise.resolve(false);
+        setOptionBusy(true);
+        setError('');
+        const task = (async () => {
+            let schemaChanged = false;
+            try {
+                const response = await databaseApi.read(teamId, databaseId);
+                const latest = response.data;
+                const current = latest?.properties.find((item) => item.id === property.id);
+                if (!latest || !current || current.archived) throw new Error('속성을 찾을 수 없습니다.');
+                if (latest.locked || latest.canEditSchema === false ||
+                    (latest.sourceKind === 'issues' && ['status', 'priority', 'labels'].includes(current.id))) {
+                    throw new Error('이 속성의 선택 항목을 변경할 수 없습니다.');
+                }
+                if (!['select', 'multi_select', 'status'].includes(current.type)) throw new Error('속성 유형이 변경되었습니다.');
+                if (!current.options?.includes(option)) {
+                    await databaseApi.configureProperty(teamId, databaseId, current.id, {
+                        name: current.name,
+                        type: current.type,
+                        options: [...(current.options ?? []), option],
+                        revision: latest.revision,
+                    });
+                    schemaChanged = true;
+                }
+                setAddedOptions((items) => items.includes(option) ? items : [...items, option]);
+                const next = current.type === 'multi_select'
+                    ? [...new Set([...(Array.isArray(value) ? value : []), option])]
+                    : option;
+                if (!await commit(next)) throw new Error('옵션은 추가되었지만 값이 저장되지 않았습니다. 다시 시도해 주세요.');
+                setFailedOption(null);
+                setQuery('');
+                return true;
+            } catch (caught) {
+                setFailedOption(option);
+                setError(caught instanceof Error ? caught.message : '옵션을 추가하지 못했습니다.');
+                return false;
+            } finally {
+                if (schemaChanged) {
+                    try { await onOptionsChanged?.(); } catch { /* The saved option remains available locally. */ }
+                }
+                setOptionBusy(false);
+                optionTask.current = null;
+            }
+        })();
+        optionTask.current = task;
+        return task;
+    };
     const label = `${row.title} · ${property.name}`;
     const cellClass =
         'w-full min-w-32 rounded-control bg-transparent p-2 text-sm outline-none focus:bg-bg-secondary focus:ring-1 focus:ring-action disabled:opacity-70';
@@ -126,18 +192,38 @@ export function DatabaseCell({
         );
     if (['status', 'select'].includes(property.type))
         return (
+            <div className="flex min-w-0 items-center gap-1">
             <select
                 aria-label={label}
-                disabled={disabled}
+                disabled={disabled || optionBusy}
                 value={String(value ?? '')}
                 className={`max-w-full cursor-pointer appearance-none rounded px-1.5 py-0.5 text-xs outline-none focus:ring-1 focus:ring-action ${value ? "bg-bg-hover text-text-primary" : "w-full bg-transparent"}`}
                 onChange={(e) => void commit(e.target.value || null)}
             >
-                <option value="">{value ? '비우기' : ' '}</option>
-                {property.options?.map((option) => (
+                <option value="" disabled={row.resourceKind === 'issue' && ['status', 'priority'].includes(property.id)}>{value ? '비우기' : ' '}</option>
+                {propertyOptions.map((option) => (
                     <option key={option}>{option}</option>
                 ))}
             </select>
+            {canCreateOption && <DatabaseMenu label={`${property.name} 옵션 추가`} icon="+"
+                triggerClassName="shrink-0 rounded-control px-1.5 py-0.5 text-xs text-text-secondary hover:bg-bg-hover focus-visible:ring-1 focus-visible:ring-action">
+                <div className="w-56 space-y-2 p-2">
+                    <input aria-label={`${property.name} 새 옵션`} placeholder="새 옵션" maxLength={80}
+                        disabled={disabled || optionBusy} value={query} onChange={(event) => setQuery(event.target.value)}
+                        onKeyDown={(event) => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); void createOption(query); } }}
+                        className={cellClass} />
+                    <button type="button" disabled={disabled || optionBusy || !query.trim()} onClick={() => void createOption(query)}
+                        className="w-full rounded-control px-2 py-1.5 text-left text-sm hover:bg-bg-hover disabled:opacity-50">
+                        {optionBusy ? '저장 중…' : `“${query.trim()}” 만들기`}
+                    </button>
+                    {error && <p role="alert" className="text-xs text-error">{error}</p>}
+                    {failedOption && <div className="flex gap-2 text-xs">
+                        <button type="button" disabled={disabled || optionBusy} onClick={() => void createOption(failedOption)}>다시 시도</button>
+                        <button type="button" disabled={optionBusy} onClick={() => { setFailedOption(null); setError(''); setQuery(''); }}>취소</button>
+                    </div>}
+                </div>
+            </DatabaseMenu>}
+            </div>
         );
     if (['person', 'relation', 'multi_select'].includes(property.type)) {
         const selected = Array.isArray(value) ? value : [];
@@ -150,7 +236,7 @@ export function DatabaseCell({
                       )
                       .map((member) => ({ id: member.userId, title: member.user?.username ?? '팀 멤버' }))
                 : property.type === 'multi_select'
-                  ? (property.options?.map((option) => ({ id: option, title: option })) ?? [])
+                  ? propertyOptions.map((option) => ({ id: option, title: option }))
                   : choices;
         const labels =
             property.type === 'relation'
@@ -198,9 +284,11 @@ export function DatabaseCell({
                             )}
                             <input
                                 aria-label={`${property.name} 검색`}
+                                maxLength={property.type === 'multi_select' ? 80 : undefined}
                                 placeholder="검색"
                                 className={cellClass}
                                 value={query}
+                                disabled={optionBusy}
                                 onChange={(e) => setQuery(e.target.value)}
                             />
                             {loading ? (
@@ -218,6 +306,7 @@ export function DatabaseCell({
                                                     checked={selected.includes(option.id)}
                                                     disabled={
                                                         disabled ||
+                                                        optionBusy ||
                                                         mentioning ||
                                                         (property.type === 'person' &&
                                                             !row.availablePersonIds.includes(option.id) &&
@@ -236,7 +325,7 @@ export function DatabaseCell({
                                                 />
                                                 {option.title}
                                             </label>
-                                            {property.type === 'person' &&
+                                            {property.type === 'person' && row.resourceKind !== 'issue' &&
                                                 row.availablePersonIds.includes(option.id) && (
                                                     <button
                                                         type="button"
@@ -272,6 +361,17 @@ export function DatabaseCell({
                                         </div>
                                     ))
                             )}
+                            {property.type === 'multi_select' && canCreateOption && query.trim() &&
+                                !options.some((item) => item.title.toLowerCase() === query.trim().toLowerCase()) && (
+                                    <button type="button" disabled={disabled || optionBusy} onClick={() => void createOption(query)}
+                                        className="w-full rounded-control px-2 py-1.5 text-left text-xs hover:bg-bg-hover disabled:opacity-50">
+                                        {optionBusy ? '저장 중…' : `“${query.trim()}” 만들기`}
+                                    </button>
+                                )}
+                            {failedOption && <div className="flex gap-2 p-2 text-xs">
+                                <button type="button" disabled={disabled || optionBusy} onClick={() => void createOption(failedOption)}>다시 시도</button>
+                                <button type="button" disabled={optionBusy} onClick={() => { setFailedOption(null); setError(''); setQuery(''); }}>취소</button>
+                            </div>}
                             {!loading && !options.length && (
                                 <p className="text-xs text-text-tertiary">선택할 항목이 없습니다.</p>
                             )}

@@ -1,3 +1,4 @@
+import { IssueSourceService, ISSUE_PROPERTIES } from './issue-source.service';
 import { createHash } from 'node:crypto';
 import { CreateDocumentUseCase } from '../document/application/use-cases/create-document.use-case';
 import {
@@ -38,9 +39,26 @@ export class DatabaseService {
         private readonly access: TeamAccessService,
         private readonly events: EventEmitter2,
         private readonly createDocument: CreateDocumentUseCase,
+        private readonly issueSource: IssueSourceService,
     ) {}
 
+    provisionIssueSource(teamId: string, userId: string) {
+        return this.issueSource.provision(teamId, userId);
+    }
+    private assertDocumentSource(db: KnowledgeDatabase) {
+        if (db.sourceKind === 'issues')
+            throw new ForbiddenException('이슈 소스에서는 문서 전용 작업을 사용할 수 없습니다.');
+    }
+    private assertEditableProperty(db: KnowledgeDatabase, propertyId?: string, type?: string) {
+        if (db.sourceKind !== 'issues') return;
+        if (propertyId && ISSUE_PROPERTIES.some((property) => property.id === propertyId))
+            throw new ForbiddenException('이슈 기본 속성은 유지해야 합니다. 보기에서 숨길 수 있습니다.');
+        if (type && ['relation', 'rollup', 'unique_id'].includes(type))
+            throw new BadRequestException('이슈 소스에서 아직 지원하지 않는 속성 유형입니다.');
+    }
     async database(teamId: string, id: string, userId: string, write = false) {
+        if (write) await this.access.requireWritableMember(teamId, userId);
+        else await this.access.requireMember(teamId, userId);
         if (!isMongoId(id)) throw new NotFoundException('데이터베이스를 찾을 수 없습니다.');
         const db = await this.databases.findOne({ _id: id, teamId }).lean();
         if (!db) throw new NotFoundException('데이터베이스를 찾을 수 없습니다.');
@@ -101,6 +119,8 @@ export class DatabaseService {
         return sources.map((db) => ({
             id: String(db._id),
             name: db.name,
+            sourceKind: db.sourceKind,
+            parentDocumentId: db.parentDocumentId ?? null,
             locked: db.locked ?? false,
             properties: [
                 ...db.properties.filter((prop) => !prop.archived),
@@ -170,6 +190,7 @@ export class DatabaseService {
         return {
             id: String(db._id),
             name: db.name,
+            sourceKind: db.sourceKind,
             locked: db.locked ?? false,
             properties: db.properties.filter((prop) => !prop.archived),
             revision: db.revision,
@@ -178,6 +199,7 @@ export class DatabaseService {
     async addProperty(teamId: string, userId: string, id: string, dto: AddPropertyDto) {
         await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
+        this.assertEditableProperty(db, undefined, dto.type);
         if (db.locked) throw new ForbiddenException('데이터베이스 잠금을 해제한 후 구조를 변경하세요.');
         if (!dto.name.trim() || db.properties.length >= 500)
             throw new BadRequestException('속성 이름과 개수(최대 500개)를 확인하세요.');
@@ -208,9 +230,10 @@ export class DatabaseService {
             type: dto.type,
         };
         if (['select', 'multi_select', 'status'].includes(dto.type)) {
-            if (!dto.options?.length || dto.options.some((item) => !item.trim()))
+            const options = dto.options ?? (dto.type === 'status' ? ['할 일', '진행 중', '완료'] : []);
+            if (options.some((item) => !item.trim()) || (dto.type === 'status' && !options.length))
                 throw new BadRequestException('선택 항목을 입력하세요.');
-            property.options = [...new Set(dto.options.map((option) => option.trim()))];
+            property.options = [...new Set(options.map((option) => option.trim()))];
         }
         if (dto.type === 'unique_id') property.prefix = dto.prefix?.trim() ?? 'ID';
         if (dto.type === 'formula') {
@@ -231,7 +254,7 @@ export class DatabaseService {
             }
         }
         if (dto.type === 'relation') {
-            await this.database(teamId, dto.targetDatabaseId ?? '', userId);
+            this.assertDocumentSource(await this.database(teamId, dto.targetDatabaseId ?? '', userId));
             property.targetDatabaseId = dto.targetDatabaseId;
             property.cardinality = dto.cardinality ?? 'many';
             if (dto.bidirectional) {
@@ -269,6 +292,7 @@ export class DatabaseService {
     async configureProperty(teamId: string, userId: string, id: string, propertyId: string, dto: AddPropertyDto) {
         await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
+        this.assertEditableProperty(db, propertyId, dto.type);
         if (db.locked) throw new ForbiddenException('데이터베이스 잠금을 해제한 후 구조를 변경하세요.');
         const current = db.properties.find((prop) => prop.id === propertyId && !prop.archived);
         if (!current) throw new NotFoundException('속성을 찾을 수 없습니다.');
@@ -287,7 +311,9 @@ export class DatabaseService {
         if (current.type === 'relation' && current.targetDatabaseId !== updated.targetDatabaseId)
             throw new BadRequestException('기존 관계의 데이터 소스는 변경할 수 없습니다. 새 관계 속성을 추가하세요.');
         if (current.inverse && updated.inverse) updated.inverse.id = current.inverse.id;
-        const rows = await this.rows.find({ teamId, databaseId: id }).select('values').lean();
+        const rows = db.sourceKind === 'issues'
+            ? (await this.issueSource.read(teamId, userId, db)).rows
+            : await this.rows.find({ teamId, databaseId: id }).select('values').lean();
         if (updated.options) {
             const allowed = new Set(updated.options);
             if (
@@ -323,7 +349,8 @@ export class DatabaseService {
         defaults: Record<string, PropertyValue> = {},
     ) {
         const { role } = await this.access.requireWritableMember(teamId, userId);
-        await this.database(teamId, id, userId, true);
+        const db = await this.database(teamId, id, userId, true);
+        this.assertDocumentSource(db);
         const doc = await this.documents.findById(documentId);
         if (!doc || doc.teamId !== teamId || doc.isArchived || !doc.canView(userId, role))
             throw new NotFoundException('문서를 찾을 수 없습니다.');
@@ -361,8 +388,9 @@ export class DatabaseService {
     }
     async read(teamId: string, userId: string, id: string, onlyDocumentId?: string) {
         const { role } = await this.access.requireMember(teamId, userId);
-        const [db, visible, team] = await Promise.all([
-            this.database(teamId, id, userId),
+        const db = await this.database(teamId, id, userId);
+        if (db.sourceKind === 'issues') return this.issueSource.read(teamId, userId, db, onlyDocumentId);
+        const [visible, team] = await Promise.all([
             this.visibleDocuments(teamId, userId, role),
             this.teams.findById(teamId),
         ]);
@@ -441,6 +469,7 @@ export class DatabaseService {
         return {
             id,
             name: db.name,
+            sourceKind: db.sourceKind,
             locked: db.locked ?? false,
             properties: db.properties.filter((prop) => !prop.archived),
             canEditSchema:
@@ -814,6 +843,8 @@ export class DatabaseService {
         values: Record<string, PropertyValue>,
         revision: number,
     ) {
+        const db = await this.database(teamId, id, userId, true);
+        if (db.sourceKind === 'issues') return this.issueSource.update(teamId, userId, documentId, values, revision);
         if (
             !values ||
             typeof values !== 'object' ||
@@ -852,6 +883,7 @@ export class DatabaseService {
     async mention(teamId: string, userId: string, id: string, documentId: string, recipientIds: string[]) {
         const { role } = await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
+        this.assertDocumentSource(db);
         const parent = db.parentDocumentId ? await this.documents.findById(db.parentDocumentId) : null;
         const [doc, row, team] = await Promise.all([
             this.documents.findById(documentId),
@@ -1009,6 +1041,7 @@ export class DatabaseService {
     async renameProperty(teamId: string, userId: string, id: string, propertyId: string, dto: RenamePropertyDto) {
         await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
+        this.assertEditableProperty(db, propertyId);
         if (db.locked) throw new ForbiddenException('데이터베이스 잠금을 해제한 후 구조를 변경하세요.');
         if (!dto.name.trim() || !db.properties.some((prop) => prop.id === propertyId))
             throw new BadRequestException('속성을 확인하세요.');
@@ -1028,6 +1061,7 @@ export class DatabaseService {
     ) {
         await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
+        this.assertEditableProperty(db, propertyId);
         if (db.locked) throw new ForbiddenException('데이터베이스 잠금을 해제한 후 구조를 변경하세요.');
         if (!db.properties.some((prop) => prop.id === propertyId))
             throw new NotFoundException('속성을 찾을 수 없습니다.');
@@ -1120,6 +1154,7 @@ export class DatabaseService {
     ) {
         await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
+        if (db.sourceKind === 'issues') return this.issueSource.create(teamId, userId, title, creationId, values);
         if (!title.trim()) throw new BadRequestException('페이지 이름을 입력하세요.');
         if (db.defaultTemplateId) {
             return this.applyTemplate(teamId, userId, id, db.defaultTemplateId, creationId, values, title.trim());
@@ -1145,6 +1180,7 @@ export class DatabaseService {
     ) {
         await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
+        this.assertDocumentSource(db);
         const existing = (db.templates ?? []).find((template) => template.id === creationId);
         if (existing) return existing;
         if (db.locked) throw new ForbiddenException('데이터베이스 잠금을 해제하세요.');
@@ -1185,6 +1221,7 @@ export class DatabaseService {
     ) {
         const { role } = await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
+        this.assertDocumentSource(db);
         const template = db.templates?.find((item) => item.id === templateId);
         const source = template ? await this.documents.findById(template.documentId) : null;
         if (!source || source.teamId !== teamId || source.isArchived || !source.canView(userId, role))
@@ -1224,6 +1261,7 @@ export class DatabaseService {
     async renameDatabase(teamId: string, userId: string, id: string, name: string, revision: number) {
         await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
+        this.assertDocumentSource(db);
         if (db.locked) throw new ForbiddenException('데이터베이스 잠금을 해제하세요.');
         if (!name.trim()) throw new BadRequestException('이름을 입력하세요.');
         const result = await this.databases.updateOne(
@@ -1236,6 +1274,7 @@ export class DatabaseService {
     async duplicateRow(teamId: string, userId: string, id: string, documentId: string, creationId: string) {
         const { role } = await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
+        this.assertDocumentSource(db);
         if (!isMongoId(documentId)) throw new NotFoundException('페이지를 찾을 수 없습니다.');
         const source = await this.documents.findById(documentId);
         const row = await this.rows.findOne({ teamId, databaseId: id, documentId, isTemplate: { $ne: true } }).lean();
@@ -1276,6 +1315,7 @@ export class DatabaseService {
     async setDefaultTemplate(teamId: string, userId: string, id: string, templateId: string | null, revision: number) {
         const { role } = await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
+        this.assertDocumentSource(db);
         if (db.locked) throw new ForbiddenException('데이터베이스 잠금을 해제하세요.');
         if (templateId) {
             const template = db.templates?.find((item) => item.id === templateId);
@@ -1294,6 +1334,7 @@ export class DatabaseService {
     async removeTemplate(teamId: string, userId: string, id: string, templateId: string, revision: number) {
         await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
+        this.assertDocumentSource(db);
         if (db.locked) throw new ForbiddenException('데이터베이스 잠금을 해제하세요.');
         const result = await this.databases.updateOne(
             { _id: id, teamId, revision },

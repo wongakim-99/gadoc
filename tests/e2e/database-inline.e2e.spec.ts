@@ -101,15 +101,12 @@ test("slash database stays in the document and survives reload with editable row
   await page.keyboard.press("Control+End");
   await page.keyboard.press("Enter");
   await page.keyboard.type("/database");
-  await page.getByRole("option", { name: /데이터베이스/ }).click();
-  await page.getByLabel("본문 데이터베이스 이름").fill("문서 안 프로젝트");
-  await page
-    .getByRole("button", { name: "새 데이터베이스", exact: true })
-    .click();
+  await page.getByRole("option", { name: "데이터베이스 빈 데이터베이스 추가", exact: true }).click();
   const block = page.locator("[data-inline-database]").first();
-  await expect(
-    block.getByRole("heading", { name: "문서 안 프로젝트" }),
-  ).toBeVisible();
+  await expect(block.getByRole("table")).toBeVisible();
+  await expect(page.getByLabel("본문 데이터베이스 이름")).toHaveCount(0);
+  await block.getByLabel("데이터베이스 제목", { exact: true }).fill("문서 안 프로젝트");
+  await block.getByLabel("데이터베이스 제목", { exact: true }).press("Enter");
   await expect(block.getByRole('columnheader')).toHaveCount(2);
   await expect(block.getByRole('button',{name:'담당자 속성 편집',exact:true})).toHaveCount(0);
   await block.getByRole("button", { name: "새 페이지", exact: true }).click();

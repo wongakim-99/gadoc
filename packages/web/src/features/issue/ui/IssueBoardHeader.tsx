@@ -1,9 +1,29 @@
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { databaseApi } from '@/lib/api-client';
+
 interface Props {
+    teamId: string;
     canWrite: boolean;
     onCreate: () => void;
 }
 
-export function IssueBoardHeader({ canWrite, onCreate }: Props) {
+export function IssueBoardHeader({ teamId, canWrite, onCreate }: Props) {
+    const router = useRouter();
+    const [opening, setOpening] = useState(false);
+    const [error, setError] = useState('');
+    const openDatabase = async () => {
+        if (opening) return;
+        setOpening(true);
+        setError('');
+        try {
+            const result = await databaseApi.issueSource(teamId);
+            if (!result.data) throw new Error('이슈 데이터베이스를 열지 못했습니다.');
+            router.push(`/${teamId}/docs?database=${result.data.id}`);
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '이슈 데이터베이스를 열지 못했습니다.');
+        } finally { setOpening(false); }
+    };
     return (
         <div className="workspace-topbar">
             <div>
@@ -13,6 +33,11 @@ export function IssueBoardHeader({ canWrite, onCreate }: Props) {
                 ) : null}
             </div>
             {canWrite ? (
+                <div className="flex flex-wrap items-center gap-2">
+                <button type="button" disabled={opening} onClick={() => void openDatabase()}
+                    className="rounded-control border border-border-primary px-3 py-2 text-sm text-text-secondary hover:bg-bg-hover disabled:opacity-50">
+                    {opening ? '여는 중…' : 'DB로 보기'}
+                </button>
                 <button
                     onClick={onCreate}
                     className="flex items-center gap-2 rounded-control bg-action px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-action-hover"
@@ -22,7 +47,9 @@ export function IssueBoardHeader({ canWrite, onCreate }: Props) {
                     </svg>
                     이슈 생성
                 </button>
+                </div>
             ) : null}
+            {error && <p role="alert" className="w-full text-sm text-error">{error}</p>}
         </div>
     );
 }

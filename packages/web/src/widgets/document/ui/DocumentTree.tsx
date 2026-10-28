@@ -1,28 +1,53 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useWorkspaceConnection } from '@/src/features/workspace/model/useWorkspaceConnection';
 import { getDocumentAncestors } from '@/src/entities/document/lib/getDocumentAncestors';
 import { buildDocumentTree, type DocumentTreeNode } from '@/src/entities/document/lib/buildDocumentTree';
 import { collectExpandedIds, filterDocumentTree } from '@/src/entities/document/lib/filterDocumentTree';
 import type { DocumentNode } from '@/src/entities/document/types';
+import type { KnowledgeDatabase } from '@/src/features/database/model/types';
 import { DocumentTreeBranch } from './DocumentTreeBranch';
 import { DocumentTreeSearch } from './DocumentTreeSearch';
 
 interface Props {
     documents: DocumentNode[];
+    databases?: KnowledgeDatabase[];
     teamId: string;
     canCreate?: boolean;
 }
 
-export function DocumentTree({ documents, teamId, canCreate = false }: Props) {
-    const roots = useMemo(() => buildDocumentTree(documents), [documents]);
+export function DocumentTree({ documents, databases, teamId, canCreate = false }: Props) {
+    const roots = useMemo(() => {
+        const entries: DocumentTreeNode[] = documents.map((doc) => ({ ...doc, children: [] }));
+        for (const db of databases ?? [])
+            entries.push({
+                id: 'database:' + db.id,
+                databaseId: db.id,
+                title: db.name,
+                teamId,
+                parentId: db.parentDocumentId ?? null,
+                children: [],
+                createdBy: '',
+                updatedBy: '',
+                createdAt: '',
+                updatedAt: '',
+            });
+        return buildDocumentTree(entries);
+    }, [documents, databases, teamId]);
     const pathname = usePathname();
     const [query, setQuery] = useState('');
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-    const ancestorKey = getDocumentAncestors(documents, pathname.split('/').at(-1) ?? '')
-        .map((doc) => doc.id)
-        .join(',');
+    const search = useSearchParams();
+    const activeHref = useWorkspaceConnection()?.activeHref ?? pathname + '?' + search.toString();
+    const [activePath, activeQuery] = activeHref.split('?');
+    const source = databases?.find((db) => db.id === new URLSearchParams(activeQuery).get('database'));
+    const activeId = source?.parentDocumentId ?? activePath.split('/').at(-1) ?? '';
+    const ancestorKey = [
+        ...getDocumentAncestors(documents, activeId).map((doc) => doc.id),
+        ...(source?.parentDocumentId ? [source.parentDocumentId] : []),
+    ].join(',');
     useEffect(() => {
         setExpandedIds((current) => new Set([...current, ...ancestorKey.split(',').filter(Boolean)]));
     }, [ancestorKey]);
@@ -33,9 +58,7 @@ export function DocumentTree({ documents, teamId, canCreate = false }: Props) {
     );
 
     if (roots.length === 0) {
-        return (
-            <p className="py-12 text-center text-sm text-text-tertiary">문서가 없습니다. 첫 문서를 만들어 보세요.</p>
-        );
+        return <p className="py-12 text-center text-sm text-text-tertiary">페이지가 없습니다.</p>;
     }
 
     return (

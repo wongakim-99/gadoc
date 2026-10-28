@@ -1,4 +1,5 @@
 'use client';
+import { databaseRowHref } from '../model/databaseRowHref';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { SlidersHorizontal, Filter, ArrowDownUp, Search, Table2, Plus, Maximize2 } from 'lucide-react';
@@ -61,7 +62,6 @@ export function DatabaseWorkspace({
     onInlineStateChange?: (state: string) => void;
 }) {
     const instanceId = useId();
-    const newDatabaseRequest = useRef<{ key: string; id: string } | null>(null);
     const router = useRouter();
     const searchParams = useSearchParams();
     const [localViews, setLocalViews] = useState(() => readInlineDatabaseViews(inlineState));
@@ -83,18 +83,21 @@ export function DatabaseWorkspace({
     latestScope.current = loadScope;
     const [database, setDatabase] = useState<DatabaseDetail | null>(null);
     const requestedView = inline ? inlineView : (searchParams.get('view') ?? database?.views[0]?.id ?? null);
+    const isIssueSource = database?.sourceKind === 'issues';
     const canManageDatabase = workspace.canWrite && database?.canEditSchema !== false;
+    const canManageViews = workspace.canWrite && (isIssueSource || canManageDatabase);
+    const canCreateRows = canManageViews;
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const pending = useRef(false);
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
-    const [name, setName] = useState('');
     const [contextRow, setContextRow] = useState<string | null>(null);
     const duplicateCreation = useRef<{ key: string; id: string } | null>(null);
     const pageCreation = useRef<{ key: string; id: string } | null>(null);
     const [editingProperty, setEditingProperty] = useState<DatabaseProperty | undefined>();
     const [propertyOpen, setPropertyOpen] = useState(false);
+    const [propertyAnchor, setPropertyAnchor] = useState<DOMRect>();
     const [documents, setDocuments] = useState<Array<{ id: string; title: string }> | null>(null);
     const [query, setQuery] = useState(inline ? initialView.current.query : '');
     const [status, setStatus] = useState(inline ? initialView.current.status : '');
@@ -261,7 +264,11 @@ export function DatabaseWorkspace({
             active = false;
         };
     }, [load]);
-    const notifyDatabaseUpdated = useDatabaseUpdates(teamId, databaseId, load);
+    const notifyDatabaseUpdated = useDatabaseUpdates(teamId, databaseId, async () => {
+        // The mutation refresh must finish before enabling edits with its new revision.
+        // A socket echo must not supersede that awaited request and leave stale rows enabled.
+        if (!pending.current) await load();
+    });
     const mutate = async (action: () => Promise<unknown>, message: string) => {
         if (pending.current) return false;
         pending.current = true;
@@ -313,7 +320,7 @@ export function DatabaseWorkspace({
             !inline &&
             readyView === requestedView &&
             !!selectedSavedView &&
-            canManageDatabase &&
+            canManageViews &&
             !database?.locked &&
             !busy,
         onSaved: async () => {
@@ -401,7 +408,7 @@ export function DatabaseWorkspace({
 
             setRevealedRow(documentId);
             setFocusRow(documentId);
-        }, '페이지를 추가했습니다.');
+        }, isIssueSource ? '이슈를 추가했습니다.' : '페이지를 추가했습니다.');
     const orderedProperties = [...(database?.properties ?? [])].sort((a, b) => {
         const rank = (id: string) => (propertyOrder.includes(id) ? propertyOrder.indexOf(id) : propertyOrder.length);
         return rank(a.id) - rank(b.id);
@@ -476,8 +483,8 @@ export function DatabaseWorkspace({
             <header className={inline ? 'flex items-center justify-between gap-3 px-1 pb-2' : 'workspace-topbar'}>
                 <div>
                     {!inline && (
-                        <Link href={`/${teamId}/docs?databases=1`} className="text-xs text-text-secondary">
-                            문서 · 지식베이스
+                        <Link href={`/${teamId}/docs`} className="text-xs text-text-secondary">
+                            문서
                         </Link>
                     )}
                     <h2 aria-label={database?.name ?? '데이터베이스'}>
@@ -504,6 +511,7 @@ export function DatabaseWorkspace({
                 </div>
                 <Link
                     href={inline ? `/${teamId}/docs?database=${databaseId}` : `/${teamId}/docs`}
+                    data-open-in-current-pane
                     className={buttonClass}
                 >
                     {inline ? (
@@ -572,64 +580,6 @@ export function DatabaseWorkspace({
                 <p role="status" className="sr-only">
                     {busy ? '저장 중…' : loading ? '불러오는 중…' : notice}
                 </p>
-                {!databaseId && (
-                    <>
-                        {canManageDatabase && (
-                            <form
-                                className="flex flex-wrap gap-2"
-                                onSubmit={(event) => {
-                                    event.preventDefault();
-                                    void mutate(async () => {
-                                        const result = await databaseContainerApi.create(
-                                            teamId,
-                                            name,
-                                            creationRequestId(newDatabaseRequest, name.trim()),
-                                        );
-                                        if (!result.data) throw new Error('생성하지 못했습니다.');
-                                        setName('');
-                                        newDatabaseRequest.current = null;
-                                        router.push(`/${teamId}/docs?database=${result.data.id}`);
-                                    }, '데이터베이스를 만들었습니다.');
-                                }}
-                            >
-                                <input
-                                    aria-label="데이터베이스 이름"
-                                    placeholder="예: 제품 지식베이스"
-                                    className={inputClass}
-                                    value={name}
-                                    required
-                                    maxLength={100}
-                                    onChange={(e) => setName(e.target.value)}
-                                />
-                                <button
-                                    disabled={busy || !name.trim()}
-                                    className="rounded-control bg-action px-3 py-2 text-sm text-white"
-                                >
-                                    데이터베이스 만들기
-                                </button>
-                            </form>
-                        )}
-                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                            {databases.map((db) => (
-                                <Link
-                                    key={db.id}
-                                    href={`/${teamId}/docs?database=${db.id}`}
-                                    className="rounded-panel border border-border-primary bg-bg-secondary p-4 hover:bg-bg-hover"
-                                >
-                                    <h3 className="font-medium">{db.name}</h3>
-                                    <p className="mt-2 text-xs text-text-secondary">
-                                        속성 {db.properties.length}개 · 문서 기반
-                                    </p>
-                                </Link>
-                            ))}
-                        </div>
-                        {!loading && !databases.length && !error && (
-                            <p className="rounded-panel border border-dashed border-border-primary p-8 text-sm text-text-secondary">
-                                프로젝트, 제품 문서, 회의록 등을 데이터베이스로 묶어 관리하세요.
-                            </p>
-                        )}
-                    </>
-                )}
                 {database && !loading && (
                     <>
                         <div className="flex flex-wrap items-center gap-1 pb-2" aria-label="저장된 보기">
@@ -705,7 +655,7 @@ export function DatabaseWorkspace({
                                     {item.name}
                                 </button>
                             ))}
-                            {canManageDatabase && (
+                            {canManageViews && (
                                 <>
                                     <DatabaseMenu
                                         label="+ 보기 추가"
@@ -1146,7 +1096,7 @@ export function DatabaseWorkspace({
                                             </div>
                                         </details>
                                     )}
-                                    {!inline && selectedSavedView && canManageDatabase && (
+                                    {!inline && selectedSavedView && canManageViews && (
                                         <details className="text-xs" data-manages-draft-navigation="true">
                                             <summary className="cursor-pointer rounded-control border border-border-primary px-3 py-2">
                                                 보기 설정
@@ -1251,7 +1201,7 @@ export function DatabaseWorkspace({
                                             sources={databases}
                                             activeId={database.id}
                                             busy={busy}
-                                            canWrite={canManageDatabase}
+                                            canWrite={canManageViews}
                                             mutate={mutate}
                                             onSelect={(sourceId) => {
                                                 setDataSourceId(sourceId);
@@ -1281,7 +1231,7 @@ export function DatabaseWorkspace({
                                         />
                                     )}
 
-                                    {canManageDatabase && (
+                                    {canManageDatabase && !isIssueSource && (
                                         <DatabaseCsvImport
                                             key={database.id}
                                             teamId={teamId}
@@ -1352,7 +1302,7 @@ export function DatabaseWorkspace({
                                             현재 보기 CSV 내보내기
                                         </button>
                                     </details>
-                                    {canManageDatabase && (
+                                    {canManageDatabase && !isIssueSource && (
                                         <button
                                             type="button"
                                             className={buttonClass}
@@ -1370,7 +1320,7 @@ export function DatabaseWorkspace({
                                         </button>
                                     )}
                                 </DatabaseMenu>
-                                {canManageDatabase && (
+                                {canCreateRows && (
                                     <div className="ml-2 flex items-center rounded-control bg-action text-white">
                                         <button
                                             type="button"
@@ -1378,9 +1328,9 @@ export function DatabaseWorkspace({
                                             className="rounded-l-control px-3 py-1.5 text-sm font-medium disabled:opacity-50"
                                             onClick={() => void createPage('제목 없음')}
                                         >
-                                            새 페이지
+                                            {isIssueSource ? '새 이슈' : '새 페이지'}
                                         </button>
-                                        <DatabaseTemplates
+                                        {!isIssueSource && <DatabaseTemplates
                                             teamId={teamId}
                                             database={database}
                                             busy={busy}
@@ -1389,7 +1339,7 @@ export function DatabaseWorkspace({
                                                 setRevealedRow(id);
                                                 window.dispatchEvent(new CustomEvent('slacord:documents-refresh'));
                                             }}
-                                        />{' '}
+                                        />}
                                     </div>
                                 )}
                             </div>
@@ -1435,9 +1385,11 @@ export function DatabaseWorkspace({
                                                         className="flex w-full items-center gap-1.5 text-left hover:text-text-primary"
                                                         aria-label={`${prop.name} 속성 편집`}
                                                         disabled={
-                                                            !canManageDatabase || database.locked || !!prop.reverseOf
+                                                            !canManageDatabase || database.locked || !!prop.reverseOf ||
+                                                            (isIssueSource && ['status', 'owner', 'priority', 'labels', 'description', 'created_time', 'last_edited_time'].includes(prop.id))
                                                         }
-                                                        onClick={() => {
+                                                        onClick={(event) => {
+                                                            setPropertyAnchor(event.currentTarget.getBoundingClientRect());
                                                             setEditingProperty(prop);
                                                             setError('');
                                                             setPropertyOpen(true);
@@ -1454,7 +1406,8 @@ export function DatabaseWorkspace({
                                                         type="button"
                                                         className="inline-flex items-center gap-1 whitespace-nowrap text-xs hover:text-text-primary"
                                                         disabled={busy || database.locked}
-                                                        onClick={() => {
+                                                        onClick={(event) => {
+                                                            setPropertyAnchor(event.currentTarget.getBoundingClientRect());
                                                             setError('');
                                                             setEditingProperty(undefined);
                                                             setPropertyOpen(true);
@@ -1474,12 +1427,12 @@ export function DatabaseWorkspace({
                                                 className="group/row border-b border-border-primary last:border-0 hover:bg-bg-hover/30"
                                                 onContextMenu={(event) => {
                                                     event.preventDefault();
-                                                    setContextRow(row.documentId);
+                                                    if (!isIssueSource) setContextRow(row.documentId);
                                                 }}
                                             >
                                                 <td className="sticky left-0 z-10 bg-bg-primary px-3 py-1">
                                                     <div className="flex items-center gap-2">
-                                                        <DatabaseRowActions
+                                                        {!isIssueSource && <DatabaseRowActions
                                                             teamId={teamId}
                                                             row={row}
                                                             busy={busy}
@@ -1523,13 +1476,21 @@ export function DatabaseWorkspace({
                                                                     );
                                                                 }, '휴지통으로 이동했습니다. 사이드바 휴지통에서 복원할 수 있습니다.');
                                                             }}
-                                                        />
+                                                        />}
                                                         <DatabasePageTitle
-                                                            href={`/${teamId}/docs/${row.documentId}`}
+                                                            href={databaseRowHref(teamId, row)}
+                                                            rowId={row.documentId}
+                                                            revision={row.revision}
+                                                            disabled={busy}
                                                             title={row.title}
                                                             canEdit={row.canEdit}
-                                                            onSave={(title) =>
+                                                            onSave={(title, revision) =>
                                                                 mutate(async () => {
+                                                                    if (isIssueSource) {
+                                                                        await databaseApi.updateRow(teamId, database.id, row.documentId, { title }, revision ?? row.revision);
+                                                                        window.dispatchEvent(new CustomEvent('slacord:issues-refresh'));
+                                                                        return;
+                                                                    }
                                                                     await documentApi.updateDocument(
                                                                         teamId,
                                                                         row.documentId,
@@ -1557,6 +1518,8 @@ export function DatabaseWorkspace({
                                                             members={workspace.members}
                                                             disabled={busy || !row.canEdit}
                                                             readOnly={!row.canEdit}
+                                                            canEditOptions={canManageDatabase && !database.locked}
+                                                            onOptionsChanged={async () => { notifyDatabaseUpdated(); await load(); }}
                                                             onSave={(value, revision) =>
                                                                 saveCell(
                                                                     { ...row, revision: revision ?? row.revision },
@@ -1570,7 +1533,7 @@ export function DatabaseWorkspace({
                                                 {canManageDatabase && <td className="border-l border-border-primary" />}
                                             </tr>
                                         ))}
-                                        {canManageDatabase && (
+                                        {canCreateRows && (
                                             <tr>
                                                 <td
                                                     colSpan={tableProperties.length + 2}
@@ -1582,13 +1545,14 @@ export function DatabaseWorkspace({
                                                         className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-text-tertiary hover:bg-bg-hover"
                                                         onClick={() => void createPage('제목 없음')}
                                                     >
-                                                        <Plus size={14} />새 페이지 추가
+                                                        <Plus size={14} />{isIssueSource ? '새 이슈 추가' : '새 페이지 추가'}
                                                     </button>
                                                 </td>
                                             </tr>
                                         )}
                                     </tbody>
                                     <DatabaseTableFooter
+                                        rowLabel={isIssueSource ? '이슈' : '페이지'}
                                         rows={filtered}
                                         properties={tableProperties}
                                         calculations={calculations}
@@ -1626,12 +1590,12 @@ export function DatabaseWorkspace({
                         )}
                         {!filtered.length && (
                             <p className="py-6 text-center text-sm text-text-secondary">
-                                표시할 문서가 없습니다. 문서를 추가하거나 필터를 변경하세요.
+                                {isIssueSource ? '표시할 이슈가 없습니다.' : '표시할 문서가 없습니다. 문서를 추가하거나 필터를 변경하세요.'}
                             </p>
                         )}
                         <p className="sr-only">
                             {filtered.length}개 표시
-                            {!inline &&
+                            {!inline && !isIssueSource &&
                                 ' · 입력 후 다른 셀로 이동하면 저장됩니다. 관계와 롤업은 열람 가능한 문서만 표시합니다.'}
                         </p>
                         {canManageDatabase && !!database.archivedProperties?.length && (
@@ -1670,6 +1634,8 @@ export function DatabaseWorkspace({
                         )}
                         {propertyOpen && (
                             <PropertyEditor
+                                anchorRect={propertyAnchor}
+                                allowedTypes={isIssueSource ? (Object.keys(PROPERTY_LABELS) as DatabaseProperty['type'][]).filter(type => !['relation', 'rollup', 'unique_id'].includes(type)) : undefined}
                                 database={database}
                                 editing={editingProperty}
                                 onArchive={

@@ -1,12 +1,12 @@
 import { test, type Page } from 'playwright/test';
-import { authRequest } from './auth-request';
+import { pacedAuthRequest } from './auth-request';
 import type { AuthSession } from './slacord-api';
 
 export async function loginWithSession(page: Page, session: AuthSession) {
     await page.goto('/auth/login');
     await page.getByPlaceholder('team@company.com').fill(session.email);
     await page.getByPlaceholder('비밀번호 입력').fill(session.password);
-    const response = await authRequest(async () => {
+    const response = await pacedAuthRequest(async () => {
         const [result] = await Promise.all([
             page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/auth/login') && response.request().method() === 'POST'),
             page.getByRole('button', { name: '로그인', exact: true }).click(),

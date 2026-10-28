@@ -89,9 +89,7 @@ export function RelatedIssues({
                 {state.loading ? (
                     <p role="status">불러오는 중…</p>
                 ) : state.items.length === 0 && !state.error ? (
-                    <p className="text-xs text-text-tertiary">
-                        연결된 이슈가 없습니다.{canWrite ? ' 기존 이슈를 선택하거나 연결 아이콘을 끌어오세요.' : ''}
-                    </p>
+                    <p className="text-xs text-text-tertiary">연결된 이슈가 없습니다.</p>
                 ) : null}
                 <ul className="space-y-2">
                     {state.items.map((issue) => (

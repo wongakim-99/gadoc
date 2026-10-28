@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useWorkspaceConnection } from '../model/useWorkspaceConnection';
 import { usePathname, useRouter } from 'next/navigation';
 import { hasTeamAdminAccess } from '@/src/entities/team/lib/access';
 import { resolveChannelLabel } from '@/src/entities/channel/lib/resolveChannelLabel';
@@ -26,7 +27,8 @@ interface Props {
 }
 
 export function TeamSidebar({ teamId, teamName, channels }: Props) {
-    const pathname = usePathname();
+    const routePathname = usePathname();
+    const pathname = useWorkspaceConnection()?.activePath ?? routePathname;
     const router = useRouter();
     const isDesktopMac = useDesktopMac();
     const [searchOpen, setSearchOpen] = useState(false);
