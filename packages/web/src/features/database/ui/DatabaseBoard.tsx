@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { DatabaseDetail, DatabaseRow, PropertyValue } from '../model/types';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
 import { ResourceNavigation } from '@/src/features/workspace/ui/ResourceNavigation';
+import { DatabaseOptionTag } from './DatabaseOptionTag';
 import { DatabaseCell } from './DatabaseCell';
 
 const dragType = 'application/x-slacord-board-row';
@@ -118,7 +119,7 @@ export function DatabaseBoard({
                             }}
                         >
                             <h3 className="mb-3 text-sm font-medium">
-                                {label} <span className="text-text-tertiary">{grouped.length}</span>
+                                {prop && ['select', 'multi_select', 'status'].includes(prop.type) && key ? <DatabaseOptionTag property={prop} name={key}>{label}</DatabaseOptionTag> : label} <span className="text-text-tertiary">{grouped.length}</span>
                             </h3>
                             <div className="min-h-16 space-y-3">
                                 {grouped.map((row) => (

@@ -1,3 +1,4 @@
+import type { OptionColorSetting } from '@slacord/document-core';
 import type { NumberFormat } from '@slacord/document-core';
 import type { FilterGroup, SortRule, Aggregation } from '@slacord/document-core';
 export type PropertyType =
@@ -29,6 +30,7 @@ export interface DatabaseProperty {
     numberFormat?: NumberFormat;
     type: PropertyType;
     options?: string[];
+    optionColors?: OptionColorSetting[];
     formula?: string;
     formulaReferences?: Array<{ name: string; id: string }>;
     targetDatabaseId?: string;

@@ -1,9 +1,10 @@
 'use client';
-import { NUMBER_FORMATS, type NumberFormat } from '@slacord/document-core';
+import { OPTION_COLORS, type OptionColor, NUMBER_FORMATS, type NumberFormat } from '@slacord/document-core';
 import { AGGREGATION_LABELS, NUMERIC_AGGREGATIONS, DATE_AGGREGATIONS } from '@slacord/document-core';
 import { useLayoutEffect, useRef, useState } from 'react';
-import { AlignLeft, Hash, Users, CircleDot, CalendarDays, SquareCheck, Link, ListFilter, ListChecks, ArrowUpRight, Sigma, Mail, Phone, Clock, User, FunctionSquare, Fingerprint, Search, Plus, X, type LucideIcon } from 'lucide-react';
+import { AlignLeft, Hash, Users, CircleDot, CalendarDays, SquareCheck, Link, ListFilter, ListChecks, ArrowUpRight, Sigma, Mail, Phone, Clock, User, FunctionSquare, Fingerprint, Search, Plus, X, GripVertical, type LucideIcon } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { DatabaseOptionTag, OPTION_COLOR_LABELS } from './DatabaseOptionTag';
 import { useDialogFocusTrap } from '@/src/shared/ui/useDialogFocusTrap';
 import { PROPERTY_LABELS, type DatabaseProperty, type KnowledgeDatabase, type PropertyType } from '../model/types';
 
@@ -55,6 +56,7 @@ export function PropertyEditor({
     const [choosingType, setChoosingType] = useState(!editing);
     const [type, setType] = useState<PropertyType>(editing?.type ?? 'text');
     const [options, setOptions] = useState<string[]>(editing?.options ?? []);
+    const [optionColors, setOptionColors] = useState(editing?.optionColors ?? []);
     const [newOption, setNewOption] = useState('');
     const [formula, setFormula] = useState(editing?.formula ?? '');
     const [cardinality, setCardinality] = useState<'one' | 'many'>(editing?.cardinality ?? 'many');
@@ -104,6 +106,11 @@ export function PropertyEditor({
         if (value) setOptions((current) => current.includes(value) ? current : [...current, value]);
         setNewOption('');
     };
+    const moveOption = (name: string, target: number) => setOptions((current) => {
+        const from = current.indexOf(name);
+        if (from < 0 || target < 0 || target >= current.length || from === target) return current;
+        const next = [...current]; next.splice(from, 1); next.splice(target, 0, name); return next;
+    });
     const saveType = (nextType: PropertyType) => {
         setType(nextType);
         setChoosingType(false);
@@ -140,6 +147,7 @@ export function PropertyEditor({
                         ...(['select', 'multi_select', 'status'].includes(type)
                             ? {
                                   options: [...new Set([...options, newOption.trim()].filter(Boolean))],
+                                  optionColors: optionColors.filter((item) => [...options, newOption.trim()].includes(item.name)),
                               }
                             : {}),
                         ...(type === 'formula' ? { formula } : {}),
@@ -242,8 +250,19 @@ export function PropertyEditor({
                     <div className="space-y-2 text-xs">
                         <span className="text-text-secondary">선택 항목</span>
                         <ul className="space-y-1">
-                            {options.map((option) => <li key={option} className="flex items-center gap-2 rounded-control bg-bg-primary px-2 py-1">
-                                <span className="min-w-0 flex-1 break-words">{option}</span>
+                            {options.map((option, index) => <li key={option} className="flex items-center gap-1 rounded-control bg-bg-primary px-1 py-1"
+                                onDragOver={(event) => { if (!busy && event.dataTransfer.types.includes('application/x-gadoc-option')) event.preventDefault(); }}
+                                onDrop={(event) => { const name = event.dataTransfer.getData('application/x-gadoc-option'); if (!name || busy) return; event.preventDefault(); event.stopPropagation(); moveOption(name, index); }}>
+                                <button type="button" disabled={busy} draggable={!busy} aria-label={`${option} 순서 이동`} title="끌어서 이동 · 위/아래 방향키"
+                                    className="shrink-0 cursor-grab rounded p-1 text-text-tertiary hover:bg-bg-hover"
+                                    onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('application/x-gadoc-option', option); }}
+                                    onKeyDown={(event) => { if (event.key === 'ArrowUp' || event.key === 'ArrowDown') { event.preventDefault(); moveOption(option, index + (event.key === 'ArrowUp' ? -1 : 1)); } }}><GripVertical size={14} aria-hidden="true" /></button>
+                                <span className="min-w-0 flex-1"><DatabaseOptionTag property={{ optionColors }} name={option} /></span>
+                                <select aria-label={`${option} 색상`} disabled={busy} value={optionColors.find((item) => item.name === option)?.color ?? 'default'}
+                                    className="max-w-16 rounded bg-bg-primary py-1 text-xs text-text-secondary"
+                                    onChange={(event) => setOptionColors((current) => [...current.filter((item) => item.name !== option), { name: option, color: event.target.value as OptionColor }])}>
+                                    {OPTION_COLORS.map((color) => <option key={color} value={color}>{OPTION_COLOR_LABELS[color]}</option>)}
+                                </select>
                                 <button type="button" disabled={busy} aria-label={`${option} 삭제`}
                                     onClick={() => setOptions((current) => current.filter((value) => value !== option))}
                                     className="rounded-control p-1 text-text-secondary hover:bg-bg-hover"><X size={14} aria-hidden="true" /></button>

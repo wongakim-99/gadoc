@@ -1,3 +1,6 @@
+import { OPTION_COLORS, type OptionColor } from '@slacord/document-core';
+import { Type } from 'class-transformer';
+import { ValidateNested } from 'class-validator';
 import { NUMBER_FORMATS, type NumberFormat } from '@slacord/document-core';
 import { AGGREGATION_LABELS, type Aggregation } from '@slacord/document-core';
 import type { FilterGroup, SortRule } from '@slacord/document-core';
@@ -25,7 +28,13 @@ export class CreateDatabaseDto {
 export class RenameDatabaseDto extends CreateDatabaseDto {
     @IsInt() @Min(0) revision!: number;
 }
+export class OptionColorDto {
+    @IsString() @MinLength(1) @MaxLength(80) name!: string;
+    @IsIn(OPTION_COLORS) color!: OptionColor;
+}
 export class AddPropertyDto {
+    @IsOptional() @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => OptionColorDto)
+    optionColors?: OptionColorDto[];
     @IsOptional() @IsIn(NUMBER_FORMATS) numberFormat?: NumberFormat;
     @IsOptional() @IsBoolean() bidirectional?: boolean;
     @IsOptional() @IsString() @MaxLength(80) inverseName?: string;
