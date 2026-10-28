@@ -4,6 +4,7 @@ import { CreateDocumentUseCase } from '../document/application/use-cases/create-
 import { UpdateDocumentUseCase } from '../document/application/use-cases/update-document.use-case';
 import { UploadDocumentFileUseCase } from '../document/application/use-cases/upload-document-file.use-case';
 import type { McpIdentity } from './integration-token.service';
+import { publicAppOrigin } from '../../shared/lib/public-app-origin';
 
 @Injectable()
 export class McpDocumentService {
@@ -43,7 +44,7 @@ export class McpDocumentService {
 
     async get(identity: McpIdentity, documentId: string) {
         const doc = await this.requireDocument(identity, documentId);
-        return { ...doc.toPublic(), url: `https://slacord.cloud/${identity.teamId}/docs/${doc.id}` };
+        return { ...doc.toPublic(), url: `${publicAppOrigin()}/${identity.teamId}/docs/${doc.id}` };
     }
 
     async create(
@@ -68,7 +69,7 @@ export class McpDocumentService {
                   }
                 : {}),
         });
-        return { ...doc.toPublic(), url: `https://slacord.cloud/${identity.teamId}/docs/${doc.id}` };
+        return { ...doc.toPublic(), url: `${publicAppOrigin()}/${identity.teamId}/docs/${doc.id}` };
     }
 
     async update(

@@ -195,6 +195,23 @@ export function readServerOverrides(state) {
   return values;
 }
 
+export function readPublicOrigin(state) {
+  const file = path.join(state, "private", "public.env");
+  let origin = "https://gadoc.kr";
+  if (fs.existsSync(file)) {
+    if ((fs.statSync(file).mode & 0o077) !== 0)
+      throw new Error("Public origin override must be private (0600).");
+    const values = parseEnv(fs.readFileSync(file, "utf8"));
+    if (Object.keys(values).some((key) => key !== "GADOC_PUBLIC_ORIGIN"))
+      throw new Error("Unsupported public origin override.");
+    origin = values.GADOC_PUBLIC_ORIGIN ?? origin;
+  }
+  const url = new URL(origin);
+  if (url.protocol !== "https:" || url.origin !== origin || url.username || url.password)
+    throw new Error("Public origin must be an exact HTTPS origin.");
+  return origin;
+}
+
 export function releaseApps(release, apps, origin, serverOverrides = {}) {
   const server = { ...runtimeEnvironment(apps[0]), ...serverOverrides };
   const web = webEnvironment(runtimeEnvironment(apps[1]));
@@ -366,7 +383,7 @@ async function main() {
   if (!["check", "prepare", "deploy"].includes(mode))
     throw new Error("Expected check, prepare, or deploy.");
   const state = DEFAULT_STATE;
-  const origin = "https://slacord.cloud";
+  const origin = readPublicOrigin(state);
   const apps = readApps();
   const server = runtimeEnvironment(apps[0]);
   if (!server.MONGODB_URI || !server.JWT_SECRET)

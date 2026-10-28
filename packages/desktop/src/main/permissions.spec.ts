@@ -32,6 +32,24 @@ function harness() {
 }
 
 describe('desktop permissions', () => {
+    it('allows sanitized clipboard writes for trusted domains, never clipboard reads or untrusted writes', () => {
+        const h = harness();
+        const check = h.session.setPermissionCheckHandler.mock.calls[0][0] as (...args: any[]) => boolean;
+        const callback = vi.fn();
+        for (const origin of ['https://gadoc.kr', 'https://slacord.cloud']) {
+            expect(check({}, 'clipboard-sanitized-write', origin)).toBe(true);
+            h.permission({}, 'clipboard-sanitized-write', callback, { requestingUrl: origin + '/team' });
+            expect(callback).toHaveBeenLastCalledWith(true);
+            for (const permission of ['clipboard-read', 'deprecated-sync-clipboard-read']) {
+                expect(check({}, permission, origin)).toBe(false);
+                h.permission({}, permission, callback, { requestingUrl: origin + '/team' });
+                expect(callback).toHaveBeenLastCalledWith(false);
+            }
+        }
+        expect(check({}, 'clipboard-sanitized-write', 'https://gadoc.kr.evil.example')).toBe(false);
+        h.permission({}, 'clipboard-sanitized-write', callback, { requestingUrl: 'https://evil.example' });
+        expect(callback).toHaveBeenLastCalledWith(false);
+    });
     it('returns only the source explicitly selected by the user', async () => {
         const h = harness();
         const callback = vi.fn();

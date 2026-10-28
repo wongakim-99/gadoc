@@ -14,7 +14,7 @@ describe('published desktop installers', () => {
     it('uses the published version and only existing platform assets', () => {
         expect(parseDesktopRelease(release)).toEqual({
             version: '1.0.9',
-            assets: [{ name, href: asset.browser_download_url }],
+            assets: [{ name, href: asset.browser_download_url, bytes: 100 }],
         });
     });
     it('accepts GaDoc installers while keeping legacy published assets', () => {

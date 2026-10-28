@@ -47,7 +47,7 @@ export function useTeamInviteSettings(teamId: string) {
     );
     const canManageInvites = !!me && (me.role === 'owner' || me.role === 'admin' || me.canManageInvites);
     const canManageMembers = me?.role === 'owner';
-    const activeInvite = invites.find((invite) => invite.active) ?? invites[0] ?? null;
+    const activeInvite = invites.find((invite) => invite.active) ?? null;
     const inviteUrl = activeInvite ? `${publicAppUrl()}/invite/${activeInvite.code}` : '';
 
     const updateField = (key: keyof typeof EMPTY_FORM, value: string) =>

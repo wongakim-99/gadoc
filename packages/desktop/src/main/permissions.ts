@@ -52,11 +52,11 @@ export function configurePermissions(
 ) {
     targetSession.setPermissionCheckHandler(
         (_wc, permission, origin) =>
-            isAllowedUrl(origin) && ['notifications', 'media', 'display-capture'].includes(permission),
+            isAllowedUrl(origin) && ['notifications', 'media', 'display-capture', 'clipboard-sanitized-write'].includes(permission),
     );
     targetSession.setPermissionRequestHandler((_wc, permission, callback, details) => {
         callback(
-            isAllowedUrl(details.requestingUrl) && ['notifications', 'media', 'display-capture'].includes(permission),
+            isAllowedUrl(details.requestingUrl) && ['notifications', 'media', 'display-capture', 'clipboard-sanitized-write'].includes(permission),
         );
     });
     targetSession.setDisplayMediaRequestHandler(
