@@ -7,10 +7,12 @@ const escape = (value: unknown) => {
     return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 };
 export function databaseCsv(rows: DatabaseRow[], properties: DatabaseProperty[], members: TeamMemberSummary[]): string {
-    const header = ['이름', ...properties.map((property) => property.name)];
+    const columns: DatabaseProperty[] = properties.some((property) => property.id === 'title')
+        ? properties : [{ id: 'title', name: '이름', type: 'text' }, ...properties];
+    const header = columns.map((property) => property.name);
     const body = rows.map((row) => [
-        row.title,
-        ...properties.map((property) => {
+        ...columns.map((property) => {
+            if (property.id === 'title') return row.title;
             const value = row.values[property.id];
             if (property.type === 'relation')
                 return (row.relations[property.id] ?? []).map((item) => item.title).join(', ');

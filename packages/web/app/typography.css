@@ -1,0 +1,39 @@
+/* GaDoc Sans v0.1: actual 400/700 faces, bundled with original OFL notices. */
+@font-face {
+    font-family: 'GaDoc Sans';
+    src: url('/fonts/gadoc-sans/GaDocSans-Regular.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'GaDoc Sans';
+    src: url('/fonts/gadoc-sans/GaDocSans-Bold.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+}
+:root {
+    --font-gadoc: 'GaDoc Sans', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+}
+@theme inline {
+    --font-sans: var(--font-gadoc);
+    --font-weight-medium: 400;
+    --font-weight-semibold: 700;
+    --font-weight-extrabold: 700;
+    --font-weight-black: 700;
+}
+body, button, input, textarea, select {
+    font-family: var(--font-gadoc);
+    font-synthesis: none;
+}
+body { font-weight: 400; }
+/* Editor content and menus render in separate roots/portals. */
+body .bn-container, body .bn-editor, body .bn-default-styles, body .bn-default-styles p,
+body .bn-root, body [data-mantine-color-scheme] {
+    --bn-font-family: var(--font-gadoc);
+    --mantine-font-family: var(--font-gadoc);
+    --mantine-font-family-headings: var(--font-gadoc);
+    font-family: var(--font-gadoc);
+}
+h1, h2, h3, h4, h5, h6, strong, b { font-weight: 700; }

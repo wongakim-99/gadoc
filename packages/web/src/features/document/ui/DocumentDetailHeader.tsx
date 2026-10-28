@@ -33,7 +33,7 @@ export function DocumentDetailHeader({
             {doc.visibility === 'restricted' && <span className="text-xs text-warning">제한된 페이지</span>}
             {doc.canDelete !== false && (
                 <button onClick={onArchive} className="rounded px-2 py-1 text-xs text-text-secondary hover:bg-bg-hover">
-                    아카이브
+                    삭제
                 </button>
             )}
         </div>

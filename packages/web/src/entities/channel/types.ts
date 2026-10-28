@@ -13,4 +13,6 @@ export interface Channel {
     lastReadAt?: string | null;
     lastMessageAt?: string | null;
     createdAt: string;
+    createdBy?: string;
+    isArchived?: boolean;
 }

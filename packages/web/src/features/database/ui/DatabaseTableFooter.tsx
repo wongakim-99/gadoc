@@ -23,8 +23,8 @@ export function DatabaseTableFooter({
     return (
         <tfoot className="border-t border-border-primary text-xs text-text-secondary">
             <tr>
-                <td className="sticky left-0 bg-bg-primary px-3 py-2">{rows.length}개 {rowLabel}</td>
                 {properties.map((property) => {
+                    if (property.id === 'title') return <td key="title" className="bg-bg-primary px-3 py-2">{rows.length} {rowLabel}</td>;
                     const selected = calculations[property.id];
                     const valid = selected && Object.hasOwn(AGGREGATION_LABELS, selected);
                     const value = valid

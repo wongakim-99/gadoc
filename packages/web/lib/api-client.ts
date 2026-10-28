@@ -374,6 +374,9 @@ export const teamApi = {
  * 채널 API
  */
 export const channelApi = {
+    async archiveChannel(teamId: string, channelId: string, isArchived: boolean) {
+        return apiFetch(`/api/team/${teamId}/channel/${channelId}/archive`, { method: 'PATCH', body: JSON.stringify({ isArchived }) });
+    },
     async getChannels(teamId: string) {
         return apiFetch(`/api/team/${teamId}/channel`);
     },
@@ -392,6 +395,9 @@ export const channelApi = {
  * 메시지 API
  */
 export const messageApi = {
+    async getMessage(channelId: string, messageId: string) {
+        return apiFetch(`/api/channel/${channelId}/message/${messageId}`);
+    },
     async getMessages(channelId: string, before?: string, limit = 50) {
         const params = new URLSearchParams({ limit: String(limit) });
         if (before) params.set('before', before);

@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../../shared/decorators/current-user.decorator';
 import { CreateChannelUseCase } from '../../application/use-cases/create-channel.use-case';
 import { GetChannelsUseCase } from '../../application/use-cases/get-channels.use-case';
 import { CreateChannelDto } from './dto/create-channel.dto';
+import { ArchiveChannelDto } from './dto/archive-channel.dto';
+import { ArchiveChannelUseCase } from '../../application/use-cases/archive-channel.use-case';
 
 /** 채널 API */
 @ApiTags('channel')
@@ -15,6 +17,7 @@ export class ChannelController {
     constructor(
         private readonly createChannelUseCase: CreateChannelUseCase,
         private readonly getChannelsUseCase: GetChannelsUseCase,
+        private readonly archiveChannelUseCase: ArchiveChannelUseCase,
     ) {}
 
     @Get()
@@ -42,5 +45,15 @@ export class ChannelController {
             createdBy: user.userId,
             ...dto,
         });
+    }
+
+    @Patch(':channelId/archive')
+    async archiveChannel(
+        @Param('teamId') teamId: string,
+        @Param('channelId') channelId: string,
+        @CurrentUser() user: { userId: string },
+        @Body() dto: ArchiveChannelDto,
+    ) {
+        return this.archiveChannelUseCase.execute(teamId, channelId, user.userId, dto.isArchived);
     }
 }

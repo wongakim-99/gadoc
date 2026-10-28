@@ -10,13 +10,13 @@
 }
 .gadoc-wordmark {
     font-size: 25px;
-    font-weight: 750;
+    font-weight: 700;
     letter-spacing: -0.055em;
     line-height: 1;
 }
 .gadoc-wordmark > span {
     color: #a8bdff;
-    font-weight: 450;
+    font-weight: 400;
 }
 .gadoc-marketing {
     background: radial-gradient(ellipse at 78% 6%, rgb(70 104 217 / 9%), transparent 32%), #181b20;
@@ -61,7 +61,7 @@
     border-radius: 6px;
     padding: 12px 20px;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
     line-height: 1.5;
     transition: background 0.18s;
 }
@@ -111,7 +111,7 @@
     align-items: center;
     gap: 9px;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 400;
     letter-spacing: 0.04em;
     color: #a8bdff;
 }
@@ -124,7 +124,7 @@
 .gadoc-hero h1 {
     margin-top: 25px;
     font-size: clamp(48px, 5.6vw, 78px);
-    font-weight: 650;
+    font-weight: 700;
     line-height: 1.2;
     letter-spacing: -0.065em;
     text-wrap: balance;
@@ -146,7 +146,7 @@
     letter-spacing: -0.015em;
 }
 .gadoc-hero-description strong {
-    font-weight: 500;
+    font-weight: 400;
     color: #edf0f5;
 }
 .gadoc-hero-actions {
@@ -348,7 +348,7 @@
 }
 .gadoc-sample-message strong {
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
 }
 .gadoc-sample-message time {
     margin-left: 8px;
@@ -393,7 +393,7 @@
     margin-top: 8px;
     font-size: 21px;
     letter-spacing: -0.04em;
-    font-weight: 650;
+    font-weight: 700;
 }
 .gadoc-sample-doc > p {
     margin-top: 10px;
@@ -403,7 +403,7 @@
 }
 .gadoc-sample-doc h4 {
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     margin-top: 24px;
 }
 .gadoc-sample-doc .gadoc-doc-callout {
@@ -439,7 +439,7 @@
 .gadoc-sample-task strong {
     display: block;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 400;
     margin: 9px 0;
 }
 .gadoc-sample-task > span:last-child {
@@ -477,7 +477,7 @@
     font-size: 12px;
 }
 .gadoc-preview-caption strong {
-    font-weight: 500;
+    font-weight: 400;
     color: #c1d1ff;
 }
 .gadoc-preview-caption p {
@@ -498,7 +498,7 @@
 .gadoc-closing h2 {
     font-size: clamp(28px, 3.2vw, 42px);
     line-height: 1.4;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: -0.05em;
     margin-top: 20px;
     text-wrap: balance;
@@ -534,7 +534,7 @@
 }
 .gadoc-flow-item h3 {
     font-size: 22px;
-    font-weight: 550;
+    font-weight: 700;
     letter-spacing: -0.04em;
     margin-top: 32px;
 }
@@ -666,7 +666,7 @@
     font-size: clamp(36px, 4.8vw, 60px);
     line-height: 1.3;
     letter-spacing: -0.06em;
-    font-weight: 600;
+    font-weight: 700;
     margin-top: 24px;
 }
 .gadoc-auth-description {
@@ -691,7 +691,7 @@
 }
 .gadoc-auth-form > h2 {
     font-size: 23px;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: -0.04em;
     margin-top: 10px;
 }

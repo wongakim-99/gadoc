@@ -91,7 +91,7 @@ export function DocumentWorkspace({
             if (ready && doc.canEdit !== false && !(await flush())) return;
             if (pending.kind === 'archive') {
                 const response = await documentApi.archiveDocument(doc.teamId, doc.id);
-                if (!response.success) throw new Error('페이지를 아카이브하지 못했습니다.');
+                if (!response.success) throw new Error('페이지를 휴지통으로 이동하지 못했습니다.');
                 window.dispatchEvent(new CustomEvent('slacord:documents-refresh'));
                 router.push(`/${doc.teamId}/docs`);
             } else {
@@ -335,13 +335,13 @@ export function DocumentWorkspace({
                 open={!!pending}
                 onClose={() => !confirming && setPending(null)}
                 onConfirm={confirm}
-                title={pending?.kind === 'restore' ? '이전 버전으로 복원할까요?' : '문서를 아카이브할까요?'}
+                title={pending?.kind === 'restore' ? '이전 버전으로 복원할까요?' : '문서를 휴지통으로 이동할까요?'}
                 description={
                     pending?.kind === 'restore'
                         ? '현재 변경을 저장한 뒤 선택한 버전을 복원합니다.'
-                        : '현재 변경을 저장한 뒤 휴지통으로 이동합니다.'
+                        : '현재 변경을 저장한 뒤 문서와 하위 페이지를 휴지통으로 이동합니다.'
                 }
-                confirmLabel={pending?.kind === 'restore' ? '복원' : '아카이브'}
+                confirmLabel={pending?.kind === 'restore' ? '복원' : '휴지통으로 이동'}
                 tone={pending?.kind === 'restore' ? 'primary' : 'danger'}
             />
         </div>

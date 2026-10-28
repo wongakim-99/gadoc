@@ -15,6 +15,11 @@ export class ChannelRepository implements IChannelRepository {
         return doc ? this.toEntity(doc) : null;
     }
 
+    async setArchived(channelId: string, isArchived: boolean): Promise<ChannelEntity | null> {
+        const doc = await this.channelModel.findByIdAndUpdate(channelId, { $set: { isArchived } }, { new: true }).lean();
+        return doc ? this.toEntity(doc) : null;
+    }
+
     async findByTeam(teamId: string): Promise<ChannelEntity[]> {
         const docs = await this.channelModel.find({ teamId }).lean();
         return docs.map((doc) => this.toEntity(doc));
@@ -77,6 +82,7 @@ export class ChannelRepository implements IChannelRepository {
             doc.externalSource ?? null,
             doc.externalId ?? null,
             doc.createdAt,
+            doc.isArchived ?? false,
         );
     }
 }

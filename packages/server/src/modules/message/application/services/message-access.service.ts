@@ -35,6 +35,7 @@ export class MessageAccessService {
 
     async ensureChannelWriter(channelId: string, userId: string) {
         const access = await this.ensureChannelMember(channelId, userId);
+        if (access.channel.isArchived) throw new ForbiddenException('보관된 채널은 읽기 전용입니다.');
         if (!access.team.hasWriteAccess(userId)) {
             throw new ForbiddenException('게스트는 읽기 전용입니다.');
         }
@@ -52,6 +53,7 @@ export class MessageAccessService {
 
     async ensureMessageWriter(channelId: string, messageId: string, userId: string) {
         const access = await this.ensureMessageInChannel(channelId, messageId, userId);
+        if (access.channel.isArchived) throw new ForbiddenException('보관된 채널은 읽기 전용입니다.');
         if (!access.team.hasWriteAccess(userId)) {
             throw new ForbiddenException('게스트는 읽기 전용입니다.');
         }

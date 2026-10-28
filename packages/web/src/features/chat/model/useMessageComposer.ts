@@ -128,7 +128,8 @@ export function useMessageComposer({ draftScope, members, onTyping, onUpload, on
         (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
             const files = clipboardFiles(event.clipboardData);
             if (!files.length) return;
-            event.preventDefault();
+            // Preserve native text insertion when the clipboard contains both text and files.
+            if (!event.clipboardData.getData('text/plain')) event.preventDefault();
             appendFiles(files);
         },
         [appendFiles],

@@ -23,10 +23,27 @@ test('inline column resizing and ordering persist independently across reload',a
     const doc=await call<{content:string}>(`/document/${f.documentId}`);
     const block=JSON.parse(doc.content).find((b:{type:string})=>b.type==='database');
     const view=JSON.parse(block.props.viewState||'{}').views?.[0];
-    return view?.columnWidths?.status===160 && view?.propertyOrder?.[0]==='status';
+    return view?.columnWidths?.status===160 && view?.propertyOrder?.[1]==='status';
   }).toBe(true);
   await page.reload();
   await expect(first.getByRole('columnheader').nth(1)).toContainText('상태');
   await expect(resize).toHaveAttribute('aria-valuenow','160');
   await expect(second.getByRole('columnheader').nth(1)).toContainText('담당자');
+  await first.getByRole('button',{name:'이름 속성 이름 변경',exact:true}).click();
+  await first.getByRole('textbox',{name:'제목 속성 이름'}).fill('작업명');
+  await first.getByRole('textbox',{name:'제목 속성 이름'}).press('Enter');
+  await expect(first.getByRole('button',{name:'작업명 속성 이름 변경',exact:true})).toBeVisible();
+  await first.getByRole('columnheader').nth(0).dragTo(first.getByRole('columnheader').nth(2));
+  await expect(first.getByRole('columnheader').nth(2)).toContainText('작업명');
+  await expect.poll(async()=>{
+    const doc=await call<{content:string}>(`/document/${f.documentId}`);
+    const block=JSON.parse(doc.content).find((b:{type:string})=>b.type==='database');
+    return JSON.parse(block.props.viewState||'{}').views?.[0]?.propertyOrder?.[2];
+  }).toBe('title');
+  await page.reload();
+  await expect(first.getByRole('columnheader').nth(2)).toContainText('작업명');
+  await expect(second.getByRole('columnheader').nth(0)).toContainText('작업명');
+  await first.getByRole('columnheader').nth(2).focus();
+  await page.keyboard.press('Alt+Shift+ArrowLeft');
+  await expect(first.getByRole('columnheader').nth(1)).toContainText('작업명');
 });

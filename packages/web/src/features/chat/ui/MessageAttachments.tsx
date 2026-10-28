@@ -7,6 +7,7 @@ import { privateFileUrl } from '@/src/shared/lib/private-files';
 import type { Attachment } from '@/src/entities/message/types';
 import { formatAttachmentSize, getAttachmentKind } from '@/src/entities/message/lib/attachmentPresentation';
 import { AttachmentImageViewer } from './AttachmentImageViewer';
+import { AttachmentFilePreview } from './AttachmentFilePreview';
 
 interface Props {
     attachments: Attachment[];
@@ -23,6 +24,7 @@ export function MessageAttachments({ attachments }: Props) {
     const otherAttachments = attachments.filter((attachment) => getAttachmentKind(attachment) === 'other');
     const images = mediaAttachments.filter((attachment) => getAttachmentKind(attachment) === 'image');
     const selectedIndex = images.findIndex((attachment) => attachment.url === selectedUrl);
+    const selectedFile = attachments.find((attachment) => attachment.url === selectedUrl);
 
     return (
         <div className="mt-2 space-y-3">
@@ -39,20 +41,32 @@ export function MessageAttachments({ attachments }: Props) {
             ) : null}
             <div className="flex flex-col gap-2">
                 {otherAttachments.map((attachment) => (
-                    <a
+                    <div
                         key={attachment.url}
-                        href={privateFileUrl(attachment.url)}
-                        download={attachment.name}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={`${attachment.name} 다운로드`}
                         className="flex items-center justify-between gap-3 rounded-xl border border-border-primary bg-black/20 px-3 py-2 text-sm text-text-secondary transition-colors hover:border-slack-green/40 hover:text-white"
                     >
-                        <span className="truncate">{attachment.name}</span>
+                        <button
+                            type="button"
+                            onClick={() => setSelectedUrl(attachment.url)}
+                            aria-label={`${attachment.name} 미리보기`}
+                            className="min-w-0 flex-1 truncate py-1 text-left hover:underline"
+                        >
+                            {attachment.name}
+                        </button>
                         <span className="shrink-0 text-xs text-text-tertiary">
                             {formatAttachmentSize(attachment.size)}
                         </span>
-                    </a>
+                        <a
+                            href={privateFileUrl(attachment.url)}
+                            download={attachment.name}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`${attachment.name} 다운로드`}
+                            className="shrink-0 rounded p-1 hover:bg-bg-hover"
+                        >
+                            <Download size={16} aria-hidden="true" />
+                        </a>
+                    </div>
                 ))}
             </div>
             {selectedIndex >= 0 && (
@@ -60,6 +74,13 @@ export function MessageAttachments({ attachments }: Props) {
                     images={images}
                     index={selectedIndex}
                     onChange={(index) => setSelectedUrl(images[index].url)}
+                    onClose={() => setSelectedUrl(null)}
+                />
+            )}
+            {selectedIndex < 0 && selectedFile && (
+                <AttachmentFilePreview
+                    key={selectedFile.url}
+                    attachment={selectedFile}
                     onClose={() => setSelectedUrl(null)}
                 />
             )}
@@ -103,7 +124,7 @@ function MediaAttachmentCard({ attachment, onOpen }: { attachment: Attachment; o
                 </div>
             ) : null}
             <div className="flex items-center justify-between gap-3 px-3 py-2.5">
-                {kind === 'image' ? (
+                {
                     <button
                         type="button"
                         onClick={onOpen}
@@ -111,9 +132,7 @@ function MediaAttachmentCard({ attachment, onOpen }: { attachment: Attachment; o
                     >
                         {attachment.name}
                     </button>
-                ) : (
-                    <span className="truncate text-sm text-white">{attachment.name}</span>
-                )}
+                }
                 <span className="ml-auto shrink-0 text-xs text-text-tertiary">
                     {formatAttachmentSize(attachment.size)}
                 </span>

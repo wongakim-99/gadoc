@@ -21,6 +21,8 @@ export function createMainWindow() {
         title: 'GaDoc',
         // Native chrome reserves space for the window controls on every route.
         titleBarStyle: 'default',
+        // Keep native Snap/window controls; reveal the classic menu with Alt when needed.
+        autoHideMenuBar: true,
         show: false,
         webPreferences: {
             preload: getPreloadPath(),
