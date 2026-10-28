@@ -25,6 +25,7 @@ export function Avatar({
         <span
             role={label ? 'img' : undefined}
             aria-label={label}
+            title={label}
             aria-hidden={label ? undefined : true}
             data-avatar-user={userId}
             className={`inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full text-xs font-semibold text-white ${className}`}
