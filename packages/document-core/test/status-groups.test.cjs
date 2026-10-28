@@ -24,3 +24,16 @@ test('rejects duplicate, foreign and invalid status assignments', () => {
         [{ name: '검토', group: 'unknown' }],
     ]) assert.throws(() => resolveStatusGroups(options, [], assignments));
 });
+
+
+test('status checkbox preserves canonical options and represents in-progress as mixed', () => {
+    const { statusCheckboxState } = require('../dist');
+    const options = [{ id:'a', name:'초안' }, { id:'b', name:'검토 중' }, { id:'c', name:'게시됨' }];
+    assert.deepEqual(statusCheckboxState(options, undefined, '초안'), { checked:false, indeterminate:false, nextValue:'게시됨' });
+    assert.deepEqual(statusCheckboxState(options, undefined, '검토 중'), { checked:false, indeterminate:true, nextValue:'게시됨' });
+    assert.deepEqual(statusCheckboxState(options, undefined, '게시됨'), { checked:true, indeterminate:false, nextValue:'초안' });
+    assert.equal(statusCheckboxState([{ id:'only', name:'초안' }], undefined, '초안').nextValue, undefined);
+    const groups = resolveStatusGroups(options);
+    const renamed = options.map(option => option.id === 'c' ? { ...option, name:'승인됨' } : option);
+    assert.equal(statusCheckboxState(renamed, groups, '승인됨').checked, true);
+});

@@ -1,5 +1,5 @@
 'use client';
-import { resolveStatusGroups, STATUS_GROUP_KEYS, STATUS_GROUP_LABELS, formatDatabaseNumber } from '@slacord/document-core';
+import { statusCheckboxState, resolveStatusGroups, STATUS_GROUP_KEYS, STATUS_GROUP_LABELS, formatDatabaseNumber } from '@slacord/document-core';
 import { DatabaseNumberPresentation } from './DatabaseNumberPresentation';
 import { useEffect, useRef, useState } from 'react';
 import { DatabaseOptionTag, optionColorStyle } from './DatabaseOptionTag';
@@ -194,6 +194,16 @@ export function DatabaseCell({
                 onChange={(e) => void commit(e.target.checked)}
             />
         );
+    if (property.type === 'status' && property.statusDisplay === 'checkbox') {
+        const identities = property.optionIdentities ?? propertyOptions.map(name => ({ id: name, name }));
+        const state = statusCheckboxState(identities, property.statusOptionGroups, value);
+        return <input type="checkbox" aria-label={label} checked={state.checked}
+            aria-checked={state.indeterminate ? 'mixed' : state.checked}
+            ref={element => { if (element) element.indeterminate = state.indeterminate; }}
+            disabled={disabled || readOnly || state.nextValue === undefined}
+            title={state.nextValue === undefined ? '전환할 상태 옵션이 없습니다.' : String(value ?? '')}
+            onChange={() => { if (state.nextValue !== undefined) void commit(state.nextValue); }} />;
+    }
     if (['status', 'select'].includes(property.type))
         return (
             <div className="flex min-w-0 items-center gap-1">

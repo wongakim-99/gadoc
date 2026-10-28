@@ -34,6 +34,7 @@ export interface DatabaseProperty {
     optionColors?: OptionColorSetting[];
     optionIdentities?: OptionIdentity[];
     statusOptionGroups?: StatusOptionGroup[];
+    statusDisplay?: 'select' | 'checkbox';
     formula?: string;
     formulaReferences?: Array<{ name: string; id: string }>;
     targetDatabaseId?: string;

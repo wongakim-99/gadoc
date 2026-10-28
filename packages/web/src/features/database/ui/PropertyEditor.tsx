@@ -50,6 +50,7 @@ export function PropertyEditor({
 }) {
     const [bidirectional, setBidirectional] = useState(!!editing?.inverse);
     const [inverseName, setInverseName] = useState(editing?.inverse?.name ?? '연결된 항목');
+    const [statusDisplay, setStatusDisplay] = useState<'select' | 'checkbox'>(editing?.statusDisplay ?? 'select');
     const [numberFormat, setNumberFormat] = useState<NumberFormat>(editing?.numberFormat ?? 'number');
     const [numberPresentation, setNumberPresentation] = useState<NumberPresentation>(editing?.numberPresentation ?? { display: 'number', divideBy: editing?.numberFormat === 'percent' ? 1 : 100, color: 'blue', showNumber: true });
     const [prefix, setPrefix] = useState(editing?.prefix ?? 'ID');
@@ -178,7 +179,7 @@ export function PropertyEditor({
                             ? {
                                   options: [...new Set([...options, newOption.trim()].filter(Boolean))],
                                   optionRenames,
-                                  ...(type === 'status' ? { statusGroups: [...new Set([...options, newOption.trim()].filter(Boolean))].map(name => ({ name, group: statusAssignments.find(item => item.name === name)?.group ?? (name === newOption.trim() ? newOptionGroup : 'todo') as StatusGroupKey })) } : {}),
+                                  ...(type === 'status' ? { statusDisplay, statusGroups: [...new Set([...options, newOption.trim()].filter(Boolean))].map(name => ({ name, group: statusAssignments.find(item => item.name === name)?.group ?? (name === newOption.trim() ? newOptionGroup : 'todo') as StatusGroupKey })) } : {}),
                                   optionColors: optionColors.filter((item) => [...options, newOption.trim()].includes(item.name)),
                               }
                             : {}),
@@ -300,6 +301,12 @@ export function PropertyEditor({
                         </span>
                     </label>
                 )}
+                {type === 'status' && !choosingType && <label className="block text-xs">상태 표시 방식
+                    <select aria-label="상태 표시 방식" className={inputClass} disabled={busy} value={statusDisplay}
+                        onChange={event => setStatusDisplay(event.target.value as 'select' | 'checkbox')}>
+                        <option value="select">선택 목록</option><option value="checkbox">체크박스</option>
+                    </select>
+                </label>}
                 {['select', 'multi_select', 'status'].includes(type) && (
                     <div className="space-y-2 text-xs">
                         <span className="text-text-secondary">선택 항목</span>

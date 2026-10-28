@@ -11,8 +11,8 @@ export const STATUS_GROUP_LABELS: Record<StatusGroupKey, string> = {
 /** Legacy values without a known meaning remain in To-do, never silently completed. */
 function initialGroup(name: string): StatusGroupKey {
     const normalized = name.trim().toLowerCase();
-    if (['완료', 'done', 'complete', 'completed'].includes(normalized)) return 'complete';
-    if (['진행 중', '진행중', 'in progress', 'in_progress', 'in_review'].includes(normalized)) return 'in_progress';
+    if (['완료', '게시됨', '보관', 'done', 'complete', 'completed'].includes(normalized)) return 'complete';
+    if (['진행 중', '진행중', '검토 중', 'in progress', 'in_progress', 'in_review'].includes(normalized)) return 'in_progress';
     return 'todo';
 }
 
@@ -32,4 +32,15 @@ export function resolveStatusGroups(
         group: assignments.find(item => item.name === option.name)?.group ??
             previous.find(item => item.optionId === option.id)?.group ?? initialGroup(option.legacyName ?? option.name),
     }));
+}
+
+
+export function statusCheckboxState(options: readonly OptionIdentity[], groups: readonly StatusOptionGroup[] | undefined, value: unknown) {
+    const memberships = resolveStatusGroups(options, groups);
+    const option = options.find(item => item.name === value) ?? options.find(item => item.id === value);
+    const group = memberships.find(item => item.optionId === option?.id)?.group;
+    const checked = group === 'complete';
+    const targetGroup = checked ? 'todo' : 'complete';
+    const nextValue = options.find(item => memberships.some(membership => membership.optionId === item.id && membership.group === targetGroup))?.name;
+    return { checked, indeterminate: group === 'in_progress', nextValue };
 }
