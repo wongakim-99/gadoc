@@ -49,6 +49,7 @@ export interface KnowledgeDatabase {
     revision: number;
 }
 export interface DatabaseRow {
+    projectId?: string | null;
     resourceKind?: 'issue';
     documentId: string;
     title: string;

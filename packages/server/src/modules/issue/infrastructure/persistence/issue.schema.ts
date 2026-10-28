@@ -8,6 +8,7 @@ export type IssueDocument = Issue & Document;
 /** 이슈 트래커 MongoDB 스키마 */
 @Schema({ timestamps: true, collection: 'issues' })
 export class Issue {
+    @Prop({ type: String, default: null }) projectId: string | null;
     @Prop({ type: MongoSchema.Types.Mixed, default: {} }) databaseValues: Record<string, PropertyValue>;
     @Prop() databaseUpdatedBy?: string;
     @Prop({ default: 0 }) revision: number;
@@ -55,4 +56,5 @@ export class Issue {
 
 export const IssueSchema = SchemaFactory.createForClass(Issue);
 IssueSchema.index({ teamId: 1, status: 1 });
+IssueSchema.index({ teamId: 1, projectId: 1, status: 1 });
 IssueSchema.index({ teamId: 1, 'links.kind': 1, 'links.resourceId': 1 });

@@ -21,6 +21,7 @@ export function useIssueBoard(teamId: string) {
 
     return {
         canWrite: board.canWrite,
+        projectId: board.projectId,
         createStatus,
         ...actions,
         issuesByStatus: board.issuesByStatus,

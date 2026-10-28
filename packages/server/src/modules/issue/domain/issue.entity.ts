@@ -18,12 +18,14 @@ export class IssueEntity {
         public readonly updatedAt: Date,
         public readonly links: IssueLink[] = [],
         public readonly revision: number = 0,
+        public readonly projectId: string | null = null,
     ) {}
 
     toPublic() {
         return {
             id: this.id,
             revision: this.revision,
+            projectId: this.projectId,
             teamId: this.teamId,
             title: this.title,
             description: this.description,

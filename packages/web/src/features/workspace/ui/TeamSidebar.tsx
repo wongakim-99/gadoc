@@ -19,6 +19,7 @@ import { DocumentNavigation } from './DocumentNavigation';
 import { WorkspaceAreaNavigation } from './WorkspaceAreaNavigation';
 import { getWorkspaceArea } from '../model/workspaceNavigation';
 import { channelApi, unwrapApiData } from '@/lib/api-client';
+import { ProjectSidebar } from '@/src/features/project/ui/ProjectSidebar';
 
 interface Props {
     teamId: string;
@@ -175,16 +176,7 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
                         <p className="px-3 py-2 text-xs text-text-tertiary">아직 채널이 없습니다.</p>
                     )}
                     <div className="space-y-0.5">
-                        {workspaceChannels.map((channel) => (
-                            <SidebarNavLink
-                                key={channel.id}
-                                href={`/${teamId}/channel/${channel.id}`}
-                                label={`# ${channel.name}`}
-                                active={isActive(`/${teamId}/channel/${channel.id}`)}
-                                unreadCount={channel.unreadCount}
-                                mentionCount={channel.mentionCount}
-                            />
-                        ))}
+                        <ProjectSidebar teamId={teamId} channels={workspaceChannels} pathname={pathname} />
                     </div>
                 </SidebarSection>
 
@@ -228,7 +220,7 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
                 teamId={teamId}
                 teamName={loadedTeamName || teamName}
                 area={area}
-                context={context}
+                context={<>{area !== 'channel' && <div className="mb-4"><ProjectSidebar teamId={teamId} pathname={pathname} /></div>}{context}</>}
                 channelId={activeChannelId ?? workspaceChannels[0]?.id}
                 canAdmin={hasTeamAdminAccess(currentMember?.role)}
                 username={currentUsername}

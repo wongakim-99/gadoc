@@ -146,6 +146,7 @@ export class DefaultTemplateDto {
 }
 
 export class CreateRowPageDto {
+    @IsOptional() @IsMongoId() projectId?: string | null;
     @IsMongoId() creationId!: string;
     @IsString() @MinLength(1) @MaxLength(200) title!: string;
     @IsOptional() @Allow() values?: Record<string, PropertyValue>;
