@@ -40,7 +40,8 @@ function ScopedMessageInput({
 }: Props) {
     const composer = useMessageComposer({ draftScope, members, onTyping, onUpload, onSend });
     useWorkspaceLeaveGuard(
-        () => !composer.pendingFiles.length || window.confirm('전송하지 않은 첨부 파일이 있습니다. 이 화면을 닫을까요?'),
+        () =>
+            !composer.pendingFiles.length || window.confirm('전송하지 않은 첨부 파일이 있습니다. 이 화면을 닫을까요?'),
     );
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -151,7 +152,7 @@ function ScopedMessageInput({
                                     : `#${channelName}에 메시지 보내기`
                             }
                             rows={1}
-                            className="min-w-0 flex-1 resize-none bg-transparent py-2.5 text-[14px] leading-[1.5] text-white outline-none placeholder:text-text-tertiary disabled:cursor-not-allowed"
+                            className="chat-composer-input min-w-0 flex-1 resize-none bg-transparent py-2.5 text-[14px] leading-[1.5] text-white outline-none placeholder:text-text-tertiary disabled:cursor-not-allowed"
                             style={{ minHeight: '22px', maxHeight: '160px' }}
                         />
                     </div>

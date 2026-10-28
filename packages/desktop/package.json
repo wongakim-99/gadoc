@@ -4,6 +4,7 @@
   "description": "GaDoc 데스크톱 앱 (Electron + DMG)",
   "author": "kscold",
   "private": true,
+  "license": "UNLICENSED",
   "main": "dist/main.js",
   "scripts": {
     "dev": "pnpm shell",
@@ -37,6 +38,7 @@
   "build": {
     "appId": "com.kscold.slacord",
     "productName": "GaDoc",
+    "copyright": "Copyright (c) 2026 kscold / Colding. All rights reserved.",
     "asar": true,
     "files": [
       "dist/**/*",

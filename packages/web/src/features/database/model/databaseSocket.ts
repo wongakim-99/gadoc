@@ -2,8 +2,9 @@
 import { io, type Socket } from 'socket.io-client';
 import { socketUrl } from '@/lib/runtime-config';
 let socket: Socket | null = null;
-const subscriptions = new Map<string, Set<() => void>>();
-export function subscribeDatabaseChanges(teamId: string, notify: () => void) {
+interface DatabaseChange { teamId?: string; sourceId?: string; resourceKind?: string }
+const subscriptions = new Map<string, Set<(data: DatabaseChange) => void>>();
+export function subscribeDatabaseChanges(teamId: string, notify: (data: DatabaseChange) => void) {
     let callbacks = subscriptions.get(teamId);
     if (!callbacks) {
         callbacks = new Set();
@@ -20,9 +21,9 @@ export function subscribeDatabaseChanges(teamId: string, notify: () => void) {
         socket.on('connect', () => {
             for (const id of subscriptions.keys()) socket?.emit('database:subscribe', { teamId: id });
         });
-        socket.on('database:changed', (data: { teamId?: string }) => {
+        socket.on('database:changed', (data: DatabaseChange) => {
             if (typeof data?.teamId === 'string')
-                for (const callback of subscriptions.get(data.teamId) ?? []) callback();
+                for (const callback of subscriptions.get(data.teamId) ?? []) callback(data);
         });
     }
     if (socket.connected) socket.emit('database:subscribe', { teamId });

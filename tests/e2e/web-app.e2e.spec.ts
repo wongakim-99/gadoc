@@ -158,7 +158,9 @@ test.describe.serial("slacord web e2e", () => {
     await page.goto(`/${fixture.teamId}/docs`);
     await page.getByRole("button", { name: "새 페이지", exact: true }).click();
     const title = `문서 생성 검증 ${Date.now().toString().slice(-4)}`;
-    await expect(page.getByRole("textbox", { name: "페이지 제목" })).toBeFocused();
+    await expect(
+      page.getByRole("textbox", { name: "페이지 제목" }),
+    ).toBeFocused();
     await page.getByRole("textbox", { name: "페이지 제목" }).fill(title);
 
     await page.waitForURL(new RegExp(`/${fixture.teamId}/docs/.+\\?new=1`));
@@ -391,12 +393,34 @@ test.describe.serial("slacord web e2e", () => {
 
     await page.getByRole("button", { name: "메시지 보내기" }).click();
 
-    await expect(page.getByText("preview.png")).toBeVisible();
-    await expect(page.locator('img[alt="preview.png"]').first()).toBeVisible();
+    await expect(page.getByText("업로드 준비")).toHaveCount(0);
+    const sentMessage = page.locator("[data-message-id]").filter({
+      has: page.getByRole("img", { name: "preview.png", exact: true }),
+    });
+    await expect(sentMessage).toHaveCount(1);
     await expect(
-      page.locator('video[src*="teaser.mp4"]').first(),
+      sentMessage.getByRole("button", { name: "preview.png", exact: true }),
     ).toBeVisible();
-    await expect(page.locator('video[src*="teaser.mp4"]').locator('xpath=ancestor::a')).toHaveCount(0);
+    const photo = sentMessage.getByRole("img", {
+      name: "preview.png",
+      exact: true,
+    });
+    await expect(photo).toBeVisible();
+    await expect
+      .poll(() =>
+        photo.evaluate(
+          (image) =>
+            (image as HTMLImageElement).complete &&
+            (image as HTMLImageElement).naturalWidth > 0,
+        ),
+      )
+      .toBe(true);
+    await expect(sentMessage.locator('video[src*="teaser.mp4"]')).toBeVisible();
+    await expect(
+      sentMessage
+        .locator('video[src*="teaser.mp4"]')
+        .locator("xpath=ancestor::a"),
+    ).toHaveCount(0);
   });
 
   test("메시지 검색 결과에서 오래된 대화까지 자동으로 불러와 이동한다", async ({
@@ -458,8 +482,9 @@ test.describe.serial("slacord web e2e", () => {
     await page
       .getByPlaceholder("채널, 메시지, 문서, 이슈 검색")
       .fill(targetContent);
-    const messageResult = page
-      .getByRole("option", { name: new RegExp(`^${targetContent}.*#${fixture.channelName}$`) });
+    const messageResult = page.getByRole("option", {
+      name: new RegExp(`^${targetContent}.*#${fixture.channelName}$`),
+    });
     await expect(messageResult).toBeVisible();
 
     await messageResult.click();
@@ -586,22 +611,22 @@ test.describe.serial("slacord web e2e", () => {
     await expect(page.getByRole("button", { name: "허들" })).toBeDisabled();
 
     await page.goto(`/${fixture.teamId}/docs`);
-    await expect(page.getByRole("button", { name: "새 페이지", exact: true })).toHaveCount(
-      0,
-    );
+    await expect(
+      page.getByRole("button", { name: "새 페이지", exact: true }),
+    ).toHaveCount(0);
 
     await page.goto(`/${fixture.teamId}/issues`);
-    await expect(page.getByRole("button", { name: "이슈 생성", exact: true })).toHaveCount(
-      0,
-    );
+    await expect(
+      page.getByRole("button", { name: "이슈 생성", exact: true }),
+    ).toHaveCount(0);
     await expect(
       page.getByText("guest는 이슈를 조회만 할 수 있습니다."),
     ).toBeVisible();
 
     await page.goto(`/${fixture.teamId}/announcements`);
-    await expect(page.getByRole("button", { name: "공지 작성", exact: true })).toHaveCount(
-      0,
-    );
+    await expect(
+      page.getByRole("button", { name: "공지 작성", exact: true }),
+    ).toHaveCount(0);
     await expect(
       page.getByText("guest는 공지를 읽기만 할 수 있습니다."),
     ).toBeVisible();

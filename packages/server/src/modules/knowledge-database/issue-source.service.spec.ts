@@ -89,7 +89,7 @@ describe('canonical issue database source', () => {
         };
         events = { emit: jest.fn() };
         documents = { findMetadataByTeam: jest.fn(async () => []), findById: jest.fn() };
-        service = new IssueSourceService(issues, sources, access, teams as never, events);
+        service = new IssueSourceService(issues, sources, access, teams as never, events, {} as never);
         database = new DatabaseService(
             sources,
             {} as never,

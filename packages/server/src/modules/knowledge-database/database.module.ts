@@ -1,5 +1,6 @@
 import { Issue, IssueSchema } from '../issue/infrastructure/persistence/issue.schema';
 import { IssueSourceService } from './issue-source.service';
+import { ProjectModule } from '../project/project.module';
 import { DatabaseContainer, DatabaseContainerSchema } from './container.schema';
 import { DatabaseContainerService } from './container.service';
 import { DatabaseContainerController } from './container.controller';
@@ -15,6 +16,7 @@ import { DatabaseController } from './database.controller';
 import { DatabaseService } from './database.service';
 @Module({
     imports: [
+        ProjectModule,
         AuthModule,
         TeamModule,
         DocumentModule,

@@ -37,6 +37,7 @@ import { DatabasePageTitle } from './DatabasePageTitle';
 import { PropertyEditor } from './PropertyEditor';
 import { readInlineDatabaseViews } from '../model/inlineDatabaseViews';
 import { useDatabaseUpdates } from '../model/useDatabaseUpdates';
+import { ProjectScopeBar } from '@/src/features/project/ui/ProjectScopeBar';
 import {
     PROPERTY_LABELS,
     type DatabaseDetail,
@@ -64,6 +65,8 @@ export function DatabaseWorkspace({
     const instanceId = useId();
     const router = useRouter();
     const searchParams = useSearchParams();
+    const projectId = inline ? '' : searchParams.get('project') ?? '';
+    const projectSuffix = projectId ? `&project=${encodeURIComponent(projectId)}` : '';
     const [localViews, setLocalViews] = useState(() => readInlineDatabaseViews(inlineState));
     const [inlineView, setInlineView] = useState<string | null>(localViews.activeId);
     const initialView = useRef(localViews.views.find((item) => item.id === localViews.activeId)!);
@@ -78,7 +81,7 @@ export function DatabaseWorkspace({
     const [dataSourceId, setDataSourceId] = useState(
         initialView.current.dataSourceId ?? searchParams.get('source') ?? '',
     );
-    const loadScope = `${teamId}:${databaseId}:${dataSourceId}`;
+    const loadScope = `${teamId}:${databaseId}:${dataSourceId}:${projectId}`;
     const latestScope = useRef(loadScope);
     latestScope.current = loadScope;
     const [database, setDatabase] = useState<DatabaseDetail | null>(null);
@@ -223,10 +226,10 @@ export function DatabaseWorkspace({
             const sourceId =
                 nextContainer?.sources.find((source) => source.id === dataSourceId)?.id ??
                 nextContainer?.sources[0]?.id;
-            const detail = sourceId ? await databaseApi.read(teamId, sourceId) : null;
+            const detail = sourceId ? await databaseApi.read(teamId, sourceId, projectId || undefined) : null;
             if (
                 requestVersion !== loadVersion.current ||
-                latestScope.current !== `${teamId}:${databaseId}:${dataSourceId}`
+                latestScope.current !== `${teamId}:${databaseId}:${dataSourceId}:${projectId}`
             )
                 return;
             if (databaseId && nextContainer && !sourceId)
@@ -239,7 +242,7 @@ export function DatabaseWorkspace({
         } catch (error) {
             if (
                 requestVersion === loadVersion.current &&
-                latestScope.current === `${teamId}:${databaseId}:${dataSourceId}` &&
+                latestScope.current === `${teamId}:${databaseId}:${dataSourceId}:${projectId}` &&
                 error instanceof ApiError &&
                 [401, 403, 404].includes(error.status)
             ) {
@@ -249,7 +252,7 @@ export function DatabaseWorkspace({
             }
             throw error;
         }
-    }, [teamId, databaseId, dataSourceId]);
+    }, [teamId, databaseId, dataSourceId, projectId]);
     useEffect(() => {
         let active = true;
         setLoading(true);
@@ -401,8 +404,9 @@ export function DatabaseWorkspace({
                 teamId,
                 database!.id,
                 title,
-                creationRequestId(pageCreation, `${database!.id}:${title}`),
+                creationRequestId(pageCreation, `${database!.id}:${projectId}:${title}`),
                 defaults,
+                isIssueSource && projectId ? (projectId === 'unassigned' ? null : projectId) : undefined,
             );
             if (!result.data) throw new Error('페이지를 만들지 못했습니다.');
             const documentId = result.data.documentId;
@@ -578,6 +582,7 @@ export function DatabaseWorkspace({
                     )}
                 </Link>
             </header>
+            {isIssueSource && !inline && <ProjectScopeBar teamId={teamId} />}
             <div className={inline ? 'space-y-1' : 'flex-1 space-y-2 overflow-auto p-4 sm:p-6'}>
                 {queryResult.error && (
                     <p role="alert" className="text-sm text-error">
@@ -699,7 +704,7 @@ export function DatabaseWorkspace({
                                             return;
                                         }
                                         router.replace(
-                                            `/${teamId}/docs?database=${databaseId ?? database.id}&source=${database.id}&view=${item.id}`,
+                                            `/${teamId}/docs?database=${databaseId ?? database.id}&source=${database.id}&view=${item.id}${projectSuffix}`,
                                             {
                                                 scroll: false,
                                             },
@@ -821,7 +826,7 @@ export function DatabaseWorkspace({
                                                     setViewName('');
                                                     if (createdView.data)
                                                         router.replace(
-                                                            `/${teamId}/docs?database=${databaseId ?? database.id}&source=${database.id}&view=${createdView.data.id}`,
+                                                            `/${teamId}/docs?database=${databaseId ?? database.id}&source=${database.id}&view=${createdView.data.id}${projectSuffix}`,
                                                             { scroll: false },
                                                         );
                                                 }, '보기와 필터를 저장했습니다.');
@@ -1192,7 +1197,7 @@ export function DatabaseWorkspace({
                                                         );
                                                         if (ok)
                                                             router.replace(
-                                                                `/${teamId}/docs?database=${databaseId ?? database.id}&source=${database.id}`,
+                                                                `/${teamId}/docs?database=${databaseId ?? database.id}&source=${database.id}${projectSuffix}`,
                                                                 { scroll: false },
                                                             );
                                                     }}
@@ -1277,7 +1282,7 @@ export function DatabaseWorkspace({
                                                 appliedView.current = null;
                                                 if (!inline)
                                                     router.replace(
-                                                        `/${teamId}/docs?database=${container.id}&source=${sourceId}`,
+                                                        `/${teamId}/docs?database=${container.id}&source=${sourceId}${projectSuffix}`,
                                                         {
                                                             scroll: false,
                                                         },

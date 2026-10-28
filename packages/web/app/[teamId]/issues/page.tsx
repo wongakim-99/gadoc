@@ -11,6 +11,7 @@ import { IssueMobileSection } from '@/src/features/issue/ui/IssueMobileSection';
 import type { IssueStatus } from '@/src/entities/issue/types';
 import { useWorkspaceConnection } from '@/src/features/workspace/model/useWorkspaceConnection';
 import { useIssueBoard } from '@/src/features/issue/model/useIssueBoard';
+import { ProjectScopeBar } from '@/src/features/project/ui/ProjectScopeBar';
 
 const COLUMNS: IssueStatus[] = ['todo', 'in_progress', 'in_review', 'done'];
 
@@ -69,13 +70,17 @@ export default function IssuesPage({ params }: Props) {
                     mode="create"
                     readOnly={!board.canWrite}
                     teamId={teamId}
+                    initialProjectId={board.projectId && board.projectId !== 'unassigned' ? board.projectId : undefined}
                     members={board.members}
                     onSubmit={async (data) => {
                         const created = await board.handleCreate({ ...data, sourceMessageId });
                         if (pane) {
                             board.setShowCreate(false);
                             board.setSelectedIssue(created);
-                            router.replace(`${pathname}?issue=${created.id}`, { scroll: false });
+                            const next = new URLSearchParams();
+                            next.set('issue', created.id);
+                            if (created.projectId) next.set('project', created.projectId);
+                            router.replace(`${pathname}?${next}`, { scroll: false });
                         }
                     }}
                     onClose={() => {
@@ -95,7 +100,9 @@ export default function IssuesPage({ params }: Props) {
                     onSubmit={board.handleUpdate}
                     onClose={() => {
                         board.setSelectedIssue(null);
-                        router.replace(pathname, { scroll: false });
+                        const next = new URLSearchParams(searchParams.toString());
+                        next.delete('issue');
+                        router.replace(`${pathname}?${next}`, { scroll: false });
                     }}
                 />
             )}
@@ -107,12 +114,14 @@ export default function IssuesPage({ params }: Props) {
         <div className="issue-workspace h-full min-h-0 min-w-0 flex flex-col">
             <IssueBoardHeader
                 teamId={teamId}
+                projectId={board.projectId}
                 canWrite={board.canWrite}
                 onCreate={() => {
                     board.setCreateStatus('todo');
                     board.setShowCreate(true);
                 }}
             />
+            <ProjectScopeBar teamId={teamId} />
             <IssueBoardFilters
                 query={board.query}
                 assigneeId={board.assigneeId}

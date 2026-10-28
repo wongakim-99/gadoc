@@ -164,10 +164,11 @@ export const databaseApi = {
         title: string,
         creationId: string,
         values: Record<string, PropertyValue>,
+        projectId?: string | null,
     ) =>
         apiFetch<{ documentId: string }>(`/api/team/${teamId}/database/${id}/row/page`, {
             method: 'POST',
-            body: JSON.stringify({ title, creationId, values }),
+            body: JSON.stringify({ title, creationId, values, projectId }),
         }),
     duplicateRow: (teamId:string,id:string,documentId:string,creationId:string)=>
         apiFetch<{documentId:string}>(`/api/team/${teamId}/database/${id}/row/${documentId}/duplicate`,{method:'POST',body:JSON.stringify({creationId})}),
@@ -205,7 +206,8 @@ export const databaseApi = {
             body: JSON.stringify({ recipientIds }),
         }),
     list: (teamId: string) => apiFetch<KnowledgeDatabase[]>(`/api/team/${teamId}/database`),
-    read: (teamId: string, id: string) => apiFetch<DatabaseDetail>(`/api/team/${teamId}/database/${id}`),
+    read: (teamId: string, id: string, projectId?: string) => apiFetch<DatabaseDetail>(
+        `/api/team/${teamId}/database/${id}${projectId ? `?projectId=${encodeURIComponent(projectId)}` : ''}`),
     create: (teamId: string, name: string) =>
         apiFetch<KnowledgeDatabase>(`/api/team/${teamId}/database`, { method: 'POST', body: JSON.stringify({ name }) }),
     addProperty: (teamId: string, id: string, property: Omit<DatabaseProperty, 'id'> & { revision: number }) =>
@@ -460,11 +462,12 @@ export const issueApi = {
             method: 'DELETE',
         });
     },
-    async getIssues(teamId: string, filters?: { status?: string; query?: string; assigneeId?: string }) {
+    async getIssues(teamId: string, filters?: { status?: string; query?: string; assigneeId?: string; projectId?: string }) {
         const params = new URLSearchParams();
         if (filters?.status) params.set('status', filters.status);
         if (filters?.query?.trim()) params.set('q', filters.query.trim());
         if (filters?.assigneeId) params.set('assigneeId', filters.assigneeId);
+        if (filters?.projectId) params.set('projectId', filters.projectId);
         const query = params.toString();
         return apiFetch(`/api/team/${teamId}/issue${query ? `?${query}` : ''}`);
     },
@@ -478,6 +481,7 @@ export const issueApi = {
             assigneeIds?: string[];
             labels?: string[];
             sourceMessageId?: string;
+            projectId?: string | null;
         },
     ) {
         return apiFetch(`/api/team/${teamId}/issue`, { method: 'POST', body: JSON.stringify(data) });

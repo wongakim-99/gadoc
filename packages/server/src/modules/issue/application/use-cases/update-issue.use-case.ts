@@ -3,8 +3,10 @@ import { TEAM_REPOSITORY, type ITeamRepository } from '../../../team/domain/team
 import type { IIssueRepository } from '../../domain/issue.port';
 import { ISSUE_REPOSITORY } from '../../domain/issue.port';
 import { IssueEntity, IssueStatus, IssuePriority } from '../../domain/issue.entity';
+import { ProjectService } from '../../../project/project.service';
 
 export interface UpdateIssueInput {
+    projectId?: string | null;
     actorId?: string;
     revision?: number;
     id: string;
@@ -27,12 +29,14 @@ export class UpdateIssueUseCase {
     constructor(
         @Inject(ISSUE_REPOSITORY) private readonly issueRepo: IIssueRepository,
         @Inject(TEAM_REPOSITORY) private readonly teams: ITeamRepository,
+        private readonly projects: ProjectService,
     ) {}
 
     async execute(input: UpdateIssueInput): Promise<UpdateIssueResult> {
         const { id, revision, actorId, ...data } = input;
         const before = await this.issueRepo.findById(id);
         if (!before) throw new BadRequestException('존재하지 않는 이슈입니다.');
+        if (data.projectId !== undefined && data.projectId !== null) await this.projects.requireProject(before.teamId, data.projectId);
         if (data.assigneeIds?.length) {
             const team = await this.teams.findById(before.teamId);
             if (data.assigneeIds.some((id) => !team?.getMember(id)))
