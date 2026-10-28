@@ -216,12 +216,16 @@ test.describe.serial("slacord web e2e", () => {
     await page.getByRole("button", { name: "해결됨" }).click();
     await expect(page.getByText(editedCommentContent)).toBeVisible();
 
-    await page.getByRole("region", { name: "문서 토론" }).getByRole("button", { name: "삭제", exact: true }).first().click();
-    await page.getByRole("button", { name: "삭제하기" }).click();
+    const discussion = page.getByRole("region", { name: "문서 토론", exact: true });
+    await discussion.getByRole("article").filter({ hasText: editedCommentContent })
+      .getByRole("button", { name: "삭제", exact: true }).first().click();
+    await page.getByRole("dialog", { name: "이 코멘트를 삭제할까요?", exact: true })
+      .getByRole("button", { name: "삭제하기", exact: true }).click();
     await expect(page.getByText("삭제된 코멘트입니다.")).toBeVisible();
+    await expect(page.getByText("문서 검증 본문", { exact: true })).toBeVisible();
   });
 
-  test("이슈를 만들고 서버 검색 필터로 찾은 뒤 수정 모달을 연다", async ({
+  test("이슈를 만들고 서버 검색 필터로 찾은 뒤 상세에서 편집한다", async ({
     page,
   }) => {
     await loginWithSession(page, fixture.owner);
@@ -251,9 +255,9 @@ test.describe.serial("slacord web e2e", () => {
       .getByRole("button", { name: new RegExp(title) })
       .first()
       .click();
-    await expect(
-      page.getByRole("heading", { name: "이슈 수정" }),
-    ).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "이슈 상세" })).toBeVisible();
+    await page.getByRole("button", { name: "편집", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "이슈 수정" })).toBeVisible();
   });
 
   test("알림 센터에서 새 할당 알림을 읽고 이슈 화면으로 이동함", async ({
@@ -276,7 +280,7 @@ test.describe.serial("slacord web e2e", () => {
     await page.getByRole("button", { name: new RegExp(issueTitle) }).click();
     await page.waitForURL(`**/${fixture.teamId}/issues?issue=${issueId}`);
     await expect(
-      page.getByRole("heading", { name: "이슈 수정" }),
+      page.getByRole("dialog", { name: "이슈 상세" }),
     ).toBeVisible();
   });
 

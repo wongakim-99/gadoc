@@ -29,6 +29,7 @@ test("issue references survive a failed save and persist after retry", async ({
     page.getByRole("textbox", { name: "페이지 제목" }),
   ).toBeEnabled();
   const side = await choose(page, "이슈", "연결 저장 재시도");
+  await side.getByRole("region", { name: "이슈 상세" }).getByRole("button", { name: "편집", exact: true }).click();
   await expect(side.getByPlaceholder("이슈 제목", { exact: true })).toHaveValue(
     "연결 저장 재시도",
   );
@@ -241,16 +242,14 @@ test("issues and announcements connect through a published reference with mobile
   });
   await loginWithSession(page, fixture.owner);
   await page.goto(`/${fixture.teamId}/issues?issue=${issueId}`);
-  await expect(page.getByPlaceholder("이슈 제목", { exact: true })).toHaveValue(
-    "서비스 배포 확인",
-  );
+  await expect(page.getByRole("heading", { name: "서비스 배포 확인", exact: true })).toBeVisible();
   await page
-    .getByRole("dialog", { name: "이슈 수정" })
+    .getByRole("dialog", { name: "이슈 상세" })
     .getByLabel("서비스 배포 확인 연결 메뉴", { exact: true })
     .click();
   await page.getByRole("button", { name: "다른 본문에 링크 넣기" }).click();
   // The pane picker can be opened after closing the existing issue dialog.
-  await page.getByRole("button", { name: "취소", exact: true }).click();
+  await page.getByRole("button", { name: "이슈 상세 닫기", exact: true }).click();
   const notice = await jsonFetch<{ id: string }>(
     `/team/${fixture.teamId}/announcement`,
     {

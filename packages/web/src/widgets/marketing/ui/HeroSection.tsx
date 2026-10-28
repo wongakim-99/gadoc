@@ -4,6 +4,7 @@ import { siteConfig } from '@/src/shared/config/site';
 import { WorkspacePreview } from './WorkspacePreview';
 
 export function HeroSection() {
+    const [headline, ending] = siteConfig.headline.split('\n');
     return (
         <section className="gadoc-hero gadoc-container" aria-labelledby="hero-heading">
             <div className="gadoc-hero-copy">
@@ -12,9 +13,9 @@ export function HeroSection() {
                     가독 GaDoc
                 </p>
                 <h1 id="hero-heading">
-                    일의 가닥이
+                    {headline}
                     <br />
-                    <span>잡히는 곳.</span>
+                    <span>{ending}</span>
                 </h1>
                 <p className="gadoc-english" lang="en">
                     {siteConfig.englishTagline}

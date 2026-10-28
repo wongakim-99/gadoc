@@ -63,7 +63,7 @@ export function FeatureGrid() {
                     <p className="gadoc-eyebrow">가독이라는 이름</p>
                     <h2 id="story-heading">“이제 가닥이 잡히네요.”</h2>
                     <p>
-                        GaDoc은 ‘일의 가닥을 잡다’에서 출발한 이름입니다.
+                        GaDoc은 문서의 가닥을 잡아 대화와 실행을 연결합니다.
                         <br />
                         문서를 뜻하는 Doc을 더해, 팀의 대화가 정리되고
                         <br className="gadoc-desktop-break" /> 실행으로 이어지는 공간을 표현했습니다.

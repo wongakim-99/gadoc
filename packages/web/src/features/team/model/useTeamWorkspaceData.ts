@@ -55,6 +55,8 @@ function createEmptyEntry(): TeamWorkspaceEntry {
     };
 }
 
+const EMPTY_MEMBERS: TeamMemberSummary[] = [];
+
 const useTeamWorkspaceStore = create<TeamWorkspaceStore>((set, get) => ({
     entries: {},
     patchEntry: (teamId, patch) => {
@@ -159,6 +161,11 @@ const useTeamWorkspaceStore = create<TeamWorkspaceStore>((set, get) => ({
         await request;
     },
 }));
+
+/** Subscribe to already authorized workspace data without fetching once per message. */
+export function useTeamMemberSnapshot(teamId: string) {
+    return useTeamWorkspaceStore((state) => state.entries[teamId]?.members ?? EMPTY_MEMBERS);
+}
 
 function isApiSuccess<T>(value: T | Error): value is T & { success: true; data?: unknown } {
     return (

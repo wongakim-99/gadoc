@@ -3,6 +3,11 @@
 import { useState } from 'react';
 import type { Reaction } from '@/src/entities/message/types';
 import { EmojiPickerPopover } from './EmojiPickerPopover';
+import { UsersRound } from 'lucide-react';
+import { useWorkspaceConnection } from '@/src/features/workspace/model/useWorkspaceConnection';
+import { useTeamMemberSnapshot } from '@/src/features/team/model/useTeamWorkspaceData';
+import { ReactionPeopleDialog } from './ReactionPeopleDialog';
+import { normalizeReactions, reactionPeopleLabel } from '../model/reactionPeople';
 
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '🎉', '🚀', '👀'];
 
@@ -14,30 +19,40 @@ interface Props {
 
 export function ReactionBar({ reactions, currentUserId, onToggle }: Props) {
     const [showPicker, setShowPicker] = useState(false);
+    const [showPeople, setShowPeople] = useState(false);
+    const connection = useWorkspaceConnection();
+    const teamId = connection?.teamId ?? '';
+    const members = useTeamMemberSnapshot(teamId);
+    const visibleReactions = normalizeReactions(reactions);
 
     return (
         <div className="flex flex-wrap gap-1 mt-1">
-            {reactions.map((r) => {
+            {visibleReactions.map((r) => {
                 const reacted = r.userIds.includes(currentUserId);
                 return (
                     <button
                         key={r.emoji}
+                        type="button"
+                        aria-pressed={reacted}
+                        title={reactionPeopleLabel(r, members)}
                         onClick={() => onToggle(r.emoji)}
-                        className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-colors ${
+                        className={`flex min-h-7 items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-colors ${
                             reacted
                                 ? 'bg-slack-green/20 border-slack-green/40 text-slack-green'
                                 : 'bg-bg-tertiary border-border-primary text-text-secondary hover:border-slack-green/40'
                         }`}
                     >
                         <span>{r.emoji}</span>
-                        <span>{r.userIds.length}</span>
+                        <span>{new Set(r.userIds).size}</span>
                     </button>
                 );
             })}
             <div className="relative">
                 <button
+                    type="button"
+                    aria-label="리액션 추가"
                     onClick={() => setShowPicker((prev) => !prev)}
-                    className="flex items-center gap-1 rounded-full border border-transparent px-2 py-0.5 text-xs text-text-tertiary transition-colors hover:border-border-primary hover:text-text-secondary"
+                    className="flex min-h-7 items-center gap-1 rounded-full border border-transparent px-2 py-0.5 text-xs text-text-tertiary transition-colors hover:border-border-primary hover:text-text-secondary"
                 >
                     +
                 </button>
@@ -49,6 +64,25 @@ export function ReactionBar({ reactions, currentUserId, onToggle }: Props) {
                     open={showPicker}
                 />
             </div>
+            {teamId && (
+                <button
+                    type="button"
+                    aria-label="리액션 참여자 보기"
+                    title="누가 반응했는지 보기"
+                    onClick={() => setShowPeople(true)}
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-bg-hover hover:text-text-primary"
+                >
+                    <UsersRound size={13} />
+                </button>
+            )}
+            {showPeople && teamId && (
+                <ReactionPeopleDialog
+                    reactions={visibleReactions}
+                    currentUserId={currentUserId}
+                    teamId={teamId}
+                    onClose={() => setShowPeople(false)}
+                />
+            )}
         </div>
     );
 }

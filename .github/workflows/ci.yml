@@ -221,6 +221,9 @@ jobs:
       - name: Test user activity persistence and access control
         run: node --test scripts/test/user-activity.integration.mjs
 
+      - name: Test atomic reactions and legacy participant preservation
+        run: node --test scripts/test/reaction-toggle.integration.mjs
+
       - name: Start backend
         run: |
           pnpm start:server > /tmp/slacord-server.log 2>&1 &

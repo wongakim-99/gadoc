@@ -12,6 +12,7 @@ test('account menu stays above its trigger and settings work across theme and vi
     await page.getByRole('button', { name: '사용자 메뉴', exact: true }).click();
     const menu = page.getByRole('dialog', { name: '사용자 메뉴', exact: true });
     await expect(menu.getByRole('link', { name: '내 계정', exact: true })).toBeVisible();
+    await expect(menu.getByLabel('내 계정 이메일', { exact: true })).toHaveText(f.owner.email);
     const box = await menu.boundingBox(), trigger = await page.getByRole('button', { name: '사용자 메뉴', exact: true }).boundingBox();
     expect(box!.y).toBeGreaterThanOrEqual(0);
     expect(box!.y + box!.height).toBeLessThanOrEqual(trigger!.y);
@@ -25,6 +26,7 @@ test('account menu stays above its trigger and settings work across theme and vi
     await page.screenshot({ path: join(tmpdir(), 'gadoc-settings-light.png') });
     await page.getByRole('button', { name: '내 계정', exact: true }).click();
     await expect(page.getByRole('heading', { name: f.owner.username, exact: true })).toBeVisible();
+    await expect(page.getByLabel('로그인 이메일', { exact: true })).toHaveText(f.owner.email);
     await page.getByRole('button', { name: '초대와 권한', exact: true }).click();
     await expect(page.getByRole('button', { name: '초대 링크 만들기' })).toBeVisible();
     await page.getByRole('button', { name: '화면과 테마', exact: true }).click();
@@ -33,4 +35,33 @@ test('account menu stays above its trigger and settings work across theme and vi
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: join(tmpdir(), 'gadoc-settings-mobile.png') });
     await page.getByRole('button', { name: '다크 테마', exact: true }).click();
+    await loginWithSession(page, f.actor);
+    await page.goto(`/${f.teamId}/settings?section=account`);
+    await expect(page.getByLabel('로그인 이메일', { exact: true })).toHaveText(f.actor.email);
+    await expect(page.getByText(f.owner.email, { exact: true })).toHaveCount(0);
+});
+
+test('duplicate channel errors clear on edit, cancellation and reopening', async ({ page }) => {
+    const f = await createWorkspaceFixture();
+    await loginWithSession(page, f.owner);
+    await page.goto(`/${f.teamId}/channel/${f.channelId}`);
+    const toggle = page.getByRole('button', { name: '채널 만들기', exact: true });
+    const input = page.getByPlaceholder('채널 이름', { exact: true });
+    const create = page.getByRole('button', { name: '만들기', exact: true });
+    await toggle.click();
+    await input.fill(f.channelName);
+    await create.click();
+    await expect(page.getByRole('alert').filter({ hasText: '같은 이름의 채널' })).toBeVisible();
+    await input.fill('new-channel');
+    await expect(page.getByRole('alert').filter({ hasText: '같은 이름의 채널' })).toHaveCount(0);
+    await input.fill(f.channelName);
+    await create.click();
+    await expect(page.getByRole('alert').filter({ hasText: '같은 이름의 채널' })).toBeVisible();
+    await page.getByRole('button', { name: '취소', exact: true }).click();
+    await expect(page.getByRole('alert').filter({ hasText: '같은 이름의 채널' })).toHaveCount(0);
+    await toggle.click();
+    await expect(input).toHaveValue('');
+    await expect(page.getByRole('alert').filter({ hasText: '같은 이름의 채널' })).toHaveCount(0);
+    await input.press('Escape');
+    await expect(input).toHaveCount(0);
 });
