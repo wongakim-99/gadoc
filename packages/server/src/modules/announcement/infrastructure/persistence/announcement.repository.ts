@@ -48,4 +48,9 @@ export class AnnouncementRepository implements IAnnouncementRepository {
         const result = await this.model.findByIdAndDelete(id);
         return result !== null;
     }
+
+    async updateContent(id: string, teamId: string, title: string, content: string): Promise<AnnouncementEntity | null> {
+        const doc = await this.model.findOneAndUpdate({ _id: id, teamId }, { $set: { title, content } }, { new: true }).lean();
+        return doc ? this.toEntity(doc as AnnouncementDocument) : null;
+    }
 }

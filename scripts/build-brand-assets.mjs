@@ -7,6 +7,10 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const at = (file) => path.join(root, file);
 const source = at("packages/web/public/brand/gadoc-mark.svg");
 const mark = await readFile(source);
+const symbol = mark.toString().replace(/<svg[^>]*>/, '').replace('</svg>', '');
+const whiteSymbol = symbol.replace(/fill="url\(#[^)]+\)"/g, 'fill="#FFFFFF"');
+const appMark = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" rx="15" fill="#4263EB"/><g transform="translate(8 8) scale(.75)">${whiteSymbol}</g></svg>`);
+await writeFile(at('packages/web/public/brand/gadoc-app.svg'), appMark);
 
 // Generate every app icon from the same vector, including legacy asset URLs.
 for (const file of [
@@ -23,7 +27,7 @@ for (const [file, size] of [
   ["packages/web/public/assets/slacord-bot-icon.png", 512],
   ["packages/desktop/build/icon.png", 1024],
 ]) {
-  await sharp(mark, { density: 1200 })
+  await sharp(appMark, { density: 1200 })
     .resize(size, size)
     .png()
     .toFile(at(file));
@@ -40,7 +44,7 @@ for (const [type, size] of [
   ["ic09", 512],
   ["ic10", 1024],
 ]) {
-  const png = await sharp(mark, { density: 1200 })
+  const png = await sharp(appMark, { density: 1200 })
     .resize(size, size)
     .png()
     .toBuffer();
@@ -57,7 +61,7 @@ await writeFile(
   Buffer.concat([icns, ...chunks]),
 );
 
-const png = await sharp(mark, { density: 1200 })
+const png = await sharp(appMark, { density: 1200 })
   .resize(256, 256)
   .png()
   .toBuffer();
@@ -73,12 +77,17 @@ await writeFile(
   Buffer.concat([ico, png]),
 );
 
+const brandComponent = await readFile(at('packages/web/src/shared/ui/Brand.tsx'), 'utf8');
+const wordmark = brandComponent.match(/<g stroke="currentColor"[\s\S]*?<\/g>/)?.[0]
+  .replace('currentColor', '#EDF0F5').replaceAll('strokeWidth=', 'stroke-width=').replaceAll('strokeLinecap=', 'stroke-linecap=').replaceAll('strokeLinejoin=', 'stroke-linejoin=');
+if (!wordmark) throw new Error('Missing brand wordmark');
 const social =
   Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
 <rect width="1200" height="630" fill="#181b20"/>
 <path d="M750 100H820C970 100 870 315 1050 315H1200M750 530H820C970 530 870 315 1050 315H1200" stroke="#657DA8" stroke-width="3" fill="none"/>
 <path d="M750 315H1200" stroke="#A8BDFF" stroke-width="3"/>
-<text x="88" y="290" font-family="sans-serif" font-size="112" font-weight="700" fill="#EDF0F5">Ga<tspan fill="#A8BDFF" font-weight="400">Doc</tspan></text>
+<g transform="translate(88 162) scale(2)">${symbol}</g>
+<g transform="translate(240 166) scale(1.15)">${wordmark}</g>
 <text x="94" y="365" font-family="sans-serif" font-size="28" fill="#BDC5D2">Where work comes together.</text>
 <path d="M94 470H642" stroke="#343C49"/>
 <text x="94" y="510" font-family="sans-serif" font-size="17" fill="#9AA6B8">Conversations. Documents. Work, connected.</text>

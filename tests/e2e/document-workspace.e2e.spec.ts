@@ -244,6 +244,12 @@ test("workspace shell stays mounted and aligned across every area", async ({
   await page.getByRole("dialog", { name: "사용자 메뉴", exact: true }).getByRole("link", { name: "워크스페이스 설정", exact: true }).click();
   await expect(page).toHaveURL(/\/settings$/);
   await page.keyboard.press("Escape");
+  await expect(sidebar).toHaveAttribute("data-shell-probe", "retained");
+  await expect(sidebar.getByRole("navigation", { name: "설정 섹션", exact: true })).toBeVisible();
+  await expect(modules.getByRole("link", { name: "이슈", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("complementary")).toHaveCount(1);
+  await modules.getByRole("link", { name: "워크스페이스로 돌아가기", exact: true }).click();
+  await expect(page).toHaveURL(/\/review-team$/);
   expect(await modules.boundingBox()).toEqual(initial);
   await sidebar
     .getByRole("button", { name: "사이드바 접기", exact: true })

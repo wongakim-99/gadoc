@@ -60,7 +60,7 @@ export function DashboardSidebar({ currentUserName }: Props) {
                             className="rounded-control"
                         />
                         <div>
-                            <h1 className="text-base font-semibold text-white">GaDoc</h1>
+                            <h1 className="text-base font-semibold text-text-primary">gadoc</h1>
                             <p className="mt-0.5 text-xs text-text-tertiary">전체 워크스페이스</p>
                         </div>
                     </Link>

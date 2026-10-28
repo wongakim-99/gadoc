@@ -1,7 +1,7 @@
 'use client';
 
 import { NotificationPermissionButton } from './NotificationPermissionButton';
-import { forwardRef, useId, useRef, type RefObject } from 'react';
+import { forwardRef, useId, useRef, useState, type RefObject } from 'react';
 import { getAvatarColor } from '@/src/shared/lib/avatar';
 import { formatShortDateTime } from '@/src/shared/lib/datetime';
 import type { AppNotification } from '@/src/entities/notification/types';
@@ -9,6 +9,7 @@ import { buildNotificationCopy } from '@/src/entities/notification/lib/buildNoti
 import { useDialogFocusTrap } from '@/src/shared/ui/useDialogFocusTrap';
 
 interface Props {
+    onDelete: (id?: string) => Promise<void>;
     id?: string;
     error?: string | null;
     notifications: AppNotification[];
@@ -21,13 +22,19 @@ interface Props {
 }
 
 export const NotificationPanel = forwardRef<HTMLElement, Props>(function NotificationPanel(
-    { id, error, notifications, onClose, onMarkAsRead, onMarkAllAsRead, onOpen, open, restoreFocusRef },
+    { id, error, notifications, onClose, onMarkAsRead, onMarkAllAsRead, onDelete, onOpen, open, restoreFocusRef },
     ref,
 ) {
     const surfaceRef = useRef<HTMLElement>(null);
     const titleId = useId();
     const closeButtonRef = useRef<HTMLButtonElement>(null);
     const markAllButtonRef = useRef<HTMLButtonElement>(null);
+    const [deleting, setDeleting] = useState(false);
+    const remove = async (id?: string) => {
+        if (deleting || (!id && !window.confirm('이 워크스페이스의 내 알림을 모두 삭제할까요?'))) return;
+        setDeleting(true);
+        try { await onDelete(id); } finally { setDeleting(false); }
+    };
 
     useDialogFocusTrap({
         initialFocusRef: notifications.length > 0 ? markAllButtonRef : closeButtonRef,
@@ -61,6 +68,8 @@ export const NotificationPanel = forwardRef<HTMLElement, Props>(function Notific
                     알림
                 </h3>
                 <div className="flex items-center gap-2">
+                    <button type="button" disabled={deleting || !notifications.length} onClick={() => void remove()}
+                        className="text-xs text-text-tertiary hover:text-text-primary disabled:opacity-40">전체 삭제</button>
                     <button
                         ref={markAllButtonRef}
                         onClick={onMarkAllAsRead}
@@ -99,8 +108,8 @@ export const NotificationPanel = forwardRef<HTMLElement, Props>(function Notific
                     const copy = buildNotificationCopy(n);
                     const time = formatShortDateTime(n.createdAt);
                     return (
+                        <div key={n.id} className="flex items-center border-b border-border-primary">
                         <button
-                            key={n.id}
                             onClick={async () => {
                                 try {
                                     if (!n.isRead) await onMarkAsRead(n.id);
@@ -109,7 +118,7 @@ export const NotificationPanel = forwardRef<HTMLElement, Props>(function Notific
                                 }
                                 onOpen(n);
                             }}
-                            className={`w-full flex gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.03] border-b border-border-primary ${n.isRead ? 'opacity-60' : ''}`}
+                            className={`min-w-0 flex-1 flex gap-3 px-4 py-3 text-left hover:bg-bg-hover ${n.isRead ? 'opacity-60' : ''}`}
                         >
                             {!n.isRead && <div className="w-2 h-2 rounded-full bg-blue-400 shrink-0 mt-2" />}
                             <div
@@ -127,6 +136,9 @@ export const NotificationPanel = forwardRef<HTMLElement, Props>(function Notific
                                 <p className="mt-1 text-[11px] text-text-tertiary">{time}</p>
                             </div>
                         </button>
+                        <button type="button" disabled={deleting} onClick={() => void remove(n.id)} aria-label={`${copy.body} 알림 삭제`}
+                            className="mr-2 shrink-0 rounded px-2 py-2 text-xs text-text-tertiary hover:bg-bg-hover hover:text-error disabled:opacity-40">삭제</button>
+                        </div>
                     );
                 })}
             </div>

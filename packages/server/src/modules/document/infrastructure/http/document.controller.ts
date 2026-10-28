@@ -1,4 +1,7 @@
 import { ContentChangeInterceptor } from '../../../../shared/interceptors/content-change.interceptor';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { DatabaseRow } from '../../../knowledge-database/database.schema';
 import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Query, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../../shared/guards/jwt-auth.guard';
@@ -50,6 +53,7 @@ export class DocumentController {
         private readonly importConfluenceUseCase: ImportConfluenceSpaceUseCase,
         private readonly getVersionsUseCase: GetDocumentVersionsUseCase,
         private readonly restoreVersionUseCase: RestoreDocumentVersionUseCase,
+        @InjectModel(DatabaseRow.name) private readonly databaseRows: Model<DatabaseRow>,
     ) {}
 
     /** 문서 조회 후 teamId/view 권한 검증 — 공통 헬퍼 */
@@ -81,7 +85,11 @@ export class DocumentController {
     ) {
         const docs = await this.getUseCase.executeList(teamId);
         const visible = docs.filter((d) => d.canView(user.userId, access.role));
-        return visible.map((d) => d.toTreeNode());
+        const rowIds = new Set(await this.databaseRows.distinct('documentId', {
+            teamId,
+            documentId: { $in: visible.map((doc) => doc.id) },
+        }));
+        return visible.map((d) => ({ ...d.toTreeNode(), isDatabasePage: rowIds.has(d.id) }));
     }
 
     @Get('archived/list')

@@ -12,6 +12,7 @@ export interface IAnnouncementRepository {
     }): Promise<AnnouncementEntity>;
     updatePin(id: string, isPinned: boolean): Promise<AnnouncementEntity | null>;
     deleteById(id: string): Promise<boolean>;
+    updateContent(id: string, teamId: string, title: string, content: string): Promise<AnnouncementEntity | null>;
 }
 
 export const ANNOUNCEMENT_REPOSITORY = Symbol('ANNOUNCEMENT_REPOSITORY');

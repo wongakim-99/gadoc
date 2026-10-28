@@ -70,7 +70,7 @@ export function FeatureGrid() {
                     </p>
                 </div>
                 <div className="gadoc-story-wordmark" aria-hidden="true">
-                    Ga<span>Doc</span>
+                    gadoc
                     <small>가독</small>
                 </div>
             </section>
