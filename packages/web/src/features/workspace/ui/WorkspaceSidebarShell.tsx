@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useProjectScope } from '@/src/features/project/model/useProjectScope';
+import { useProjects } from '@/src/features/project/model/useProjects';
 import Image from 'next/image';
 import { useWorkspaceConnection } from '../model/useWorkspaceConnection';
 import { usePathname } from 'next/navigation';
@@ -11,8 +13,8 @@ import {
     MessageSquare,
     ListTodo,
     Megaphone,
-    PanelLeftClose,
-    PanelLeftOpen,
+    ChevronsLeft,
+    ChevronsRight,
     Search,
     Trash2,
     Menu,
@@ -56,6 +58,10 @@ export function WorkspaceSidebarShell({
     const connection = useWorkspaceConnection();
     const pathname = connection?.activePath ?? routePathname;
     const settings = area === 'settings';
+    const { projectId } = useProjectScope(teamId);
+    const { projects } = useProjects(teamId);
+    const project = projects.find(item => item.id === projectId);
+    const scopedChannelId = project?.channelIds.includes(channelId ?? '') ? channelId : project?.channelIds[0] ?? channelId;
     const { collapsed: savedCollapsed, setCollapsed } = useSidebarCollapse(teamId, !settings);
     const collapsed = !settings && savedCollapsed;
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -65,11 +71,11 @@ export function WorkspaceSidebarShell({
         { area: 'home', href: `/${teamId}`, icon: Home },
         {
             area: 'channel',
-            href: channelId ? `/${teamId}/channel/${channelId}` : `/${teamId}/channel`,
+            href: scopedChannelId ? `/${teamId}/channel/${scopedChannelId}` : `/${teamId}/channel`,
             icon: MessageSquare,
         },
-        { area: 'docs', href: `/${teamId}/docs`, icon: BookOpen },
-        { area: 'issues', href: `/${teamId}/issues`, icon: ListTodo },
+        { area: 'docs', href: project?.documentId ? `/${teamId}/docs/${project.documentId}` : `/${teamId}/docs`, icon: BookOpen },
+        { area: 'issues', href: `/${teamId}/issues${project ? `?project=${project.id}` : ''}`, icon: ListTodo },
         { area: 'announcements', href: `/${teamId}/announcements`, icon: Megaphone },
     ] as const;
     const hideCollapsed = collapsed ? 'lg:hidden' : '';
@@ -104,7 +110,7 @@ export function WorkspaceSidebarShell({
                         onClick={() => setCollapsed(!collapsed)}
                         className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-control text-text-secondary hover:bg-bg-hover lg:inline-flex"
                     >
-                        {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+                        {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
                     </button>
                 )}
                 <button
@@ -166,7 +172,7 @@ export function WorkspaceSidebarShell({
                                 title={workspaceAreaLabels[target]}
                                 aria-label={workspaceAreaLabels[target]}
                                 aria-current={area === target ? 'location' : undefined}
-                                className={`workspace-sidebar-row flex items-center transition-colors hover:bg-bg-hover ${collapsed ? 'lg:justify-center' : ''} ${area === target ? 'font-medium text-text-primary' : 'text-text-secondary'}`}
+                                className={`workspace-sidebar-row flex items-center font-medium hover:bg-bg-hover ${collapsed ? 'lg:justify-center' : ''} ${area === target ? 'font-medium text-text-primary' : 'text-text-secondary'}`}
                             >
                                 <Icon size={16} className="shrink-0" />
                                 <span className={hideCollapsed}>{workspaceAreaLabels[target]}</span>

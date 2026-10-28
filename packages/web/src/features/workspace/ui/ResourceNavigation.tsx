@@ -1,6 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { PanelRightOpen } from 'lucide-react';
+import { Columns2 } from 'lucide-react';
 import { canLeaveWorkspacePane, useWorkspaceConnection } from '../model/useWorkspaceConnection';
 
 export function ResourceNavigation({ href, title }: { href: string; title: string }) {
@@ -26,7 +26,7 @@ export function ResourceNavigation({ href, title }: { href: string; title: strin
                     onClick={() => connection.open(href, title)}
                     className="inline-flex shrink-0 items-center gap-1 rounded-control px-2 py-1 text-xs text-text-secondary hover:bg-bg-hover"
                 >
-                    <PanelRightOpen size={14} />
+                    <Columns2 size={14} />
                     옆에 열기
                 </button>
             )}

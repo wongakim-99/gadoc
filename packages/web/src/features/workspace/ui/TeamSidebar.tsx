@@ -230,17 +230,17 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
 
                 {/* DM / 소그룹 섹션 */}
                 <div className="mt-4">
-                    <SidebarSection title="DM / 소그룹">
-                        {canWrite ? (
-                            <div className="px-3">
+                    <SidebarSection
+                        title="DM / 소그룹"
+                        action={
+                            canWrite ? (
                                 <DirectRoomLauncher
                                     teamId={teamId}
                                     members={members.filter((member) => member.userId !== currentUserId)}
                                 />
-                            </div>
-                        ) : (
-                            <p className="px-3 py-2 text-xs text-text-tertiary">guest는 읽기 전용입니다.</p>
-                        )}
+                            ) : undefined
+                        }
+                    >
                         <div className="mt-1 space-y-0.5">
                             {directChannels.length === 0 && (
                                 <p className="px-3 py-1.5 text-xs text-text-tertiary">직접 대화가 없습니다.</p>

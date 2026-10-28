@@ -51,13 +51,25 @@ test("native edge drag opens alongside; cross-pane drops preserve drafts and aut
   const edge = page.getByTestId("workspace-edge-drop");
   await expect(edge).toBeVisible();
   await expect(edge).toHaveCSS("position", "absolute");
+  const left = page.getByTestId("workspace-left-drop");
+  await expect(left).toBeVisible();
+  const leftBounds = (await left.boundingBox())!;
+  const rightBounds = (await edge.boundingBox())!;
+  expect(Math.abs(leftBounds.width - rightBounds.width)).toBeLessThanOrEqual(1);
+  expect(leftBounds.x + leftBounds.width).toBeLessThan(rightBounds.x);
   await page.screenshot({ path: testInfo.outputPath("drag-preview.png") });
-  await dropOn(page, edge);
+  await dropOn(page, left);
   const side = page.frameLocator("iframe");
   const message = side
     .locator("[data-message-id]")
     .filter({ hasText: "드래그 연결 근거 메시지" });
   await expect(message).toBeVisible();
+  await expect(page.locator('.connection-toolbar')).toHaveCount(0);
+  await expect(page.locator('.connection-panes')).toHaveClass(/is-reversed/);
+  await page.getByRole('separator', { name: '작업 영역 너비' }).hover({ position: { x: 3, y: 12 } });
+  await page.getByRole('button', { name: '좌우 바꾸기', exact: true }).click();
+  await expect(page.locator('.connection-panes')).not.toHaveClass(/is-reversed/);
+
   await expect(page).toHaveURL(new RegExp(`/docs/${f.documentId}`));
   await expect(edge).toHaveCount(0);
   const title = await page
@@ -74,7 +86,7 @@ test("native edge drag opens alongside; cross-pane drops preserve drafts and aut
   ).toHaveCount(0);
   await message.hover();
   await startDrag(page, message.getByLabel(/대화 원문 .* 연결 메뉴/));
-  await expect(edge).toBeVisible();
+  await expect(edge).toHaveCount(0);
   await dropOn(page, page.locator(".bn-editor [data-id]").first());
   await expect(page.locator(".bn-editor a")).toHaveAttribute(
     "href",
@@ -107,6 +119,13 @@ test("direct open button avoids the picker", async ({ page }) => {
   await expect(
     page.getByRole("dialog", { name: "옆에 볼 내용 선택" }),
   ).toHaveCount(0);
+  await expect(page.locator('.connection-panes')).not.toHaveClass(/is-reversed/);
+  await page.getByRole('separator', { name: '작업 영역 너비' }).focus();
+  await page.getByRole('button', { name: '좌우 바꾸기', exact: true }).click();
+  await expect(page.locator('.connection-panes')).toHaveClass(/is-reversed/);
+  await page.getByRole('button', { name: '채팅 옆에 열기', exact: true }).click();
+  await expect(page.locator('.connection-panes')).not.toHaveClass(/is-reversed/);
+
 });
 
 test("issue reference drag is separate from Kanban status movement", async ({
