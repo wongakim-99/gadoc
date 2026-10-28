@@ -1,6 +1,6 @@
 'use client';
 
-import { Link2, PanelRightOpen, Plus } from 'lucide-react';
+import { Link2, Columns2, Plus } from 'lucide-react';
 import { useWorkspaceConnection } from '../model/useWorkspaceConnection';
 import { referenceMarkdown, workspaceHref, type WorkspaceReference } from '../model/workspaceReference';
 import { useWorkspaceDragSource } from '../model/useWorkspaceDragSource';
@@ -23,7 +23,7 @@ export function WorkspaceOpenButton({ reference }: { reference: WorkspaceReferen
                 connection.open(reference.href, reference.label);
             }}
         >
-            <PanelRightOpen size={15} />
+            <Columns2 size={15} />
         </button>
     );
 }

@@ -6,6 +6,7 @@ import { createReactBlockSpec } from '@blocknote/react';
 import { DatabaseWorkspace } from '@/src/features/database/ui/DatabaseWorkspace';
 import { databaseApi, databaseContainerApi } from '@/lib/api-client';
 import type { KnowledgeDatabase } from '@/src/features/database/model/types';
+import { createDocumentLayoutSpecs } from './DocumentLayoutBlocks';
 
 function DatabaseSetup({
     teamId,
@@ -181,7 +182,7 @@ export function createDocumentSchema(teamId: string, documentId?: string) {
             ),
         },
     );
-    return BlockNoteSchema.create({ blockSpecs: { ...defaultBlockSpecs, database: database() } });
+    return BlockNoteSchema.create({ blockSpecs: { ...defaultBlockSpecs, ...createDocumentLayoutSpecs(), database: database() } });
 }
 
 export type DocumentBlockEditor = ReturnType<typeof createDocumentSchema>['BlockNoteEditor'];

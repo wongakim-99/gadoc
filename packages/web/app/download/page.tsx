@@ -7,7 +7,7 @@ import { getDesktopRelease } from '@/src/features/desktop-download/api/getDeskto
 export const revalidate = 300;
 const packages = [
     {
-        title: 'Windows NSIS',
+        title: 'Windows',
         suffix: 'x64.exe',
         status: '권장',
         description: '설치 뒤 앱 안에서 새 버전을 바로 확인하고 내려받을 수 있습니다.',
@@ -22,18 +22,30 @@ const packages = [
         title: 'macOS ZIP',
         suffix: 'arm64.zip',
         status: '보조 파일',
-        description: 'DMG가 막힐 때 확인용으로 쓸 수 있는 보조 패키지입니다.',
+        description: '압축형 배포 파일이 필요한 환경을 위한 보조 패키지입니다. 같은 서명·공증 기준이 적용됩니다.',
     },
 ];
 
 export default async function DownloadPage() {
     const release = await getDesktopRelease();
+    const macNotarized = release.verification.macos === 'notarized';
     const availablePackages = release
         ? packages.flatMap((item) => {
               const asset = release.assets.find((asset) =>
                   ['GaDoc', 'Slacord'].some((brand) => asset.name === `${brand}-${release.version}-${item.suffix}`),
               );
-              return asset ? [{ ...item, hint: asset.name, href: asset.href }] : [];
+              return asset
+                  ? [
+                        {
+                            ...item,
+                            hint: asset.name,
+                            href: asset.href,
+                            sha256: asset.sha256,
+                            bytes: asset.bytes,
+                            status: item.suffix !== 'x64.exe' && macNotarized ? 'Apple 서명·공증' : item.status,
+                        },
+                    ]
+                  : [];
           })
         : [];
     return (
@@ -53,7 +65,9 @@ export default async function DownloadPage() {
                             이어지고, macOS는 당분간 다운로드 페이지에서 새 설치 파일을 다시 받는 기준으로 운영합니다.{' '}
                             {release && (
                                 <>
-                                    기존 이름으로 배포된 설치 파일은 그대로 제공됩니다. 현재 공개 버전은{' '}
+                                    {release.source === 'verified-fallback'
+                                        ? '최근 검증된 버전은 '
+                                        : '현재 공개 버전은 '}
                                     <span className="font-semibold text-white">v{release.version}</span>입니다.
                                 </>
                             )}
@@ -72,9 +86,8 @@ export default async function DownloadPage() {
                 </div>
                 <div className="grid gap-4 xl:grid-cols-3">
                     {availablePackages.map((item) => (
-                        <a
+                        <article
                             key={item.title}
-                            href={item.href}
                             className="marketing-card rounded-[30px] p-7 transition hover:border-brand-300/40 hover:bg-bg-hover"
                         >
                             <p className="marketing-kicker text-[11px]">Installer</p>
@@ -84,16 +97,33 @@ export default async function DownloadPage() {
                             <h2 className="mt-5 text-[2rem] font-bold tracking-[-0.05em] text-white">{item.title}</h2>
                             <p className="mt-3 font-mono text-[0.95rem] text-text-secondary">{item.hint}</p>
                             <p className="marketing-caption mt-4 text-sm">{item.description}</p>
-                            <span className="mt-8 inline-flex rounded-full bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white">
+                            {item.bytes && (
+                                <p className="marketing-caption mt-3 text-xs">
+                                    {Math.round(item.bytes / 1024 / 1024)} MB
+                                </p>
+                            )}
+                            {item.sha256 && (
+                                <details className="mt-4 text-xs text-text-secondary">
+                                    <summary className="cursor-pointer">SHA256 무결성 확인</summary>
+                                    <code className="mt-2 block break-all rounded-lg border border-border-primary p-3 font-mono">
+                                        {item.sha256}
+                                    </code>
+                                </details>
+                            )}
+                            <a
+                                href={item.href}
+                                aria-label={`${item.title} v${release.version} 다운로드`}
+                                className="mt-8 inline-flex rounded-full bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white"
+                            >
                                 다운로드
-                            </span>
-                        </a>
+                            </a>
+                        </article>
                     ))}
                 </div>
-                {!release && (
+                {release.source === 'verified-fallback' && (
                     <p role="status" className="marketing-card rounded-[30px] p-7 text-white">
-                        설치 파일 정보를 불러오지 못했습니다. 아래 GitHub Releases에서 다운로드하거나 웹에서 바로 시작해
-                        주세요.
+                        최신 릴리즈 조회가 지연되어 최근 검증된 v{release.version} 설치 파일을 제공하고 있습니다. 위
+                        다운로드와 파일별 SHA256 확인은 그대로 사용할 수 있습니다.
                     </p>
                 )}
                 <div className="flex flex-wrap items-center gap-3">
@@ -103,6 +133,12 @@ export default async function DownloadPage() {
                     >
                         GitHub Releases 열기
                     </Link>
+                    <a
+                        href={`https://github.com/kscold/gadoc/releases/download/v${release.version}/SHA256SUMS.txt`}
+                        className="rounded-full border border-border-primary px-5 py-3 text-sm text-text-secondary transition hover:bg-bg-hover"
+                    >
+                        SHA256 체크섬 보기
+                    </a>
                     <Link
                         href="/auth/register"
                         className="rounded-full bg-brand-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-400"
@@ -113,15 +149,22 @@ export default async function DownloadPage() {
                 <div className="marketing-card rounded-[30px] p-6 sm:p-7">
                     <p className="marketing-kicker text-[11px]">설치 안내</p>
                     <p className="marketing-caption mt-4 text-[1rem]">
-                        이번 설치 파일은 코드 서명과 macOS 공증이 없습니다. Windows SmartScreen 또는 macOS Gatekeeper 경고가 표시될 수 있습니다.
-                        공식 GitHub 릴리즈의 파일명과 SHA256 체크섬을 확인하세요. 설치가 차단되면 웹 버전을 이용할 수 있습니다.
+                        {macNotarized
+                            ? '이 macOS 릴리즈는 Developer ID 서명과 Apple 공증 검증을 통과했습니다.'
+                            : release.verification.macos === 'unsigned'
+                              ? '현재 제공 중인 macOS 설치 파일에는 아직 정식 코드 서명과 Apple 공증이 없습니다.'
+                              : '현재 릴리즈의 macOS 서명·공증 근거를 확인하지 못했습니다. 공증 완료로 표시하지 않습니다.'}{' '}
+                        공식 릴리즈의 파일명과 SHA256 체크섬을 확인하세요. 보안 경고를 임의로 해제하지 말고 설치가
+                        차단되면 웹 버전을 이용해 주세요.
                     </p>
                     <p className="marketing-caption mt-4 text-[1rem]">
-                        Windows는 앱 안에서 새 버전을 확인하고 내려받은 뒤 재시작으로 바로 적용할 수 있습니다.
+                        Windows는 앱 안에서 새 버전을 확인하고 내려받은 뒤 재시작으로 적용할 수 있습니다.
+                        {release.verification.windows !== 'signed' &&
+                            ' Windows 코드 서명이 확인되지 않은 파일은 SmartScreen 경고가 표시될 수 있습니다.'}
                     </p>
                     <p className="marketing-caption mt-3 text-[1rem]">
-                        macOS는 정식 서명과 공증이 붙는 릴리즈 전까지 새 설치 파일을 다시 설치하는 기준으로 운영합니다.
-                        업데이트 알림이 보이더라도 다운로드 페이지에서 최신 DMG를 받는 쪽이 가장 안전합니다.
+                        macOS의 첫 정식 서명 버전은 DMG를 내려받아 설치해 주세요. 이 페이지의 공증 표시는 인증서 유무가
+                        아니라 해당 설치 파일의 실제 검증 기록과 일치하는 해시를 기준으로 표시합니다.
                     </p>
                 </div>
             </main>

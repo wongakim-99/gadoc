@@ -1,3 +1,5 @@
+import { canonicalShareOrigin } from '../src/shared/lib/publicLinks';
+
 const DEFAULT_API_URL = 'http://localhost:8082';
 const DEFAULT_APP_URL = 'http://localhost:3002';
 
@@ -30,13 +32,17 @@ export function toApiUrl(path: string) {
 
 export function publicAppUrl() {
     if (typeof window !== 'undefined') {
-        return window.location.origin;
+        return canonicalShareOrigin(window.location.origin);
     }
-    return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_API_URL || DEFAULT_APP_URL;
+    return canonicalShareOrigin(process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_API_URL || DEFAULT_APP_URL);
 }
 
 export function socketUrl() {
     if (typeof window !== 'undefined') {
+        // 두 도메인의 쿠키는 공유되지 않으므로 전환 중에도 현재 호스트로 접속한다.
+        if (['https://gadoc.kr', 'https://www.gadoc.kr', 'https://slacord.cloud', 'https://www.slacord.cloud'].includes(window.location.origin)) {
+            return window.location.origin;
+        }
         const configured = process.env.NEXT_PUBLIC_SOCKET_URL;
         return normalizeBaseUrl(configured || browserApiBaseUrl() || window.location.origin);
     }

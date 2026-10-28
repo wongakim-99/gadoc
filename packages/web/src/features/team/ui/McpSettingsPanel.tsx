@@ -1,4 +1,6 @@
 'use client';
+import { copyText } from '@/src/shared/lib/copyText';
+import { publicAppUrl } from '@/lib/runtime-config';
 
 import { useEffect, useState } from 'react';
 import { Copy, KeyRound, Plus, ShieldCheck } from 'lucide-react';
@@ -33,8 +35,7 @@ export function McpSettingsPanel({ teamId, canWrite }: { teamId: string; canWrit
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
     const [revoking, setRevoking] = useState<Token | null>(null);
-    const endpoint =
-        typeof window === 'undefined' ? 'https://slacord.cloud/api/mcp' : `${window.location.origin}/api/mcp`;
+    const endpoint = `${publicAppUrl()}/api/mcp`;
     const base = `/api/team/${teamId}/integrations`;
 
     useEffect(() => {
@@ -60,8 +61,10 @@ export function McpSettingsPanel({ teamId, canWrite }: { teamId: string; canWrit
     }, [base]);
 
     async function copy(value: string, label: string) {
+        setNotice('');
+        setError('');
         try {
-            await navigator.clipboard.writeText(value);
+            await copyText(value);
             setNotice(`${label} 복사했습니다.`);
         } catch {
             setError('클립보드에 접근하지 못했습니다. 내용을 선택해 복사해 주세요.');

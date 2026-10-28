@@ -15,6 +15,7 @@ import { DocumentAttachmentButton } from './DocumentAttachmentButton';
 import { InsertWorkspaceReference } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
 import { WorkspaceReferenceDropZone } from '@/src/features/workspace/ui/WorkspaceReferenceDropZone';
 import type { WorkspaceReference } from '@/src/features/workspace/model/workspaceReference';
+import { useDocumentLayoutTools } from './useDocumentLayoutTools';
 
 interface Props {
     contentFormat: 'plain' | 'html' | 'json';
@@ -102,7 +103,6 @@ function LiveDocumentEditor({
     const onReadyRef = useRef(onReady);
     onReadyRef.current = onReady;
     onChangeRef.current = onChange;
-    const dropTarget = useRef<HTMLElement | null>(null);
     const [issueSourceError, setIssueSourceError] = useState('');
     const issueSourcePending = useRef(false);
 
@@ -127,24 +127,13 @@ function LiveDocumentEditor({
         },
         [teamId, documentId, provider],
     );
+    const layoutTools = useDocumentLayoutTools(editor, teamId, documentId);
 
     useEffect(() => {
         initialized.current = true;
         onReadyRef.current(JSON.stringify(editor.document));
     }, [editor]);
 
-    const markDropTarget = (target: EventTarget | null) => {
-        dropTarget.current?.removeAttribute('data-reference-drop-target');
-        const block = target instanceof Element ? target.closest<HTMLElement>('[data-id]') : null;
-        dropTarget.current = block;
-        block?.setAttribute('data-reference-drop-target', 'true');
-    };
-    useEffect(
-        () => () => {
-            dropTarget.current?.removeAttribute('data-reference-drop-target');
-        },
-        [],
-    );
     const insertReference = (reference: WorkspaceReference, target?: EventTarget | null) => {
         if (!canEdit) return;
         const id = target instanceof Element ? target.closest<HTMLElement>('[data-id]')?.dataset.id : undefined;
@@ -162,12 +151,13 @@ function LiveDocumentEditor({
 
     return (
         <div className="space-y-3">
+            {canEdit && layoutTools.toolbar}
             {issueSourceError && <p role="alert" className="text-sm text-error">{issueSourceError}</p>}
+            {canEdit && <InsertWorkspaceReference onInsert={(reference) => insertReference(reference)} />}
             {canEdit && (
                 <details className="text-xs text-text-tertiary">
                     <summary className="w-fit cursor-pointer rounded py-1 hover:bg-bg-hover hover:text-text-primary">삽입 도구</summary>
                     <div className="flex flex-wrap items-center gap-3 py-2">
-                    <InsertWorkspaceReference onInsert={(reference) => insertReference(reference)} />
                     <DocumentAttachmentButton
                         documentId={documentId}
                         editor={editor}
@@ -179,7 +169,6 @@ function LiveDocumentEditor({
             )}
             <WorkspaceReferenceDropZone
                 label="놓은 문단 아래에 참조 추가"
-                onHover={markDropTarget}
                 onInsert={(reference, _, event) => insertReference(reference, event.target)}
             >
                 <BlockNoteView
@@ -202,6 +191,7 @@ function LiveDocumentEditor({
                             getItems={async (query) =>
                                 filterSuggestionItems(
                                     [
+                                        ...layoutTools.items,
                                         {
                                             title: '이슈 데이터베이스',
                                             subtext: '워크스페이스 이슈를 같은 원본으로 보기',

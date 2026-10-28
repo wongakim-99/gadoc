@@ -31,7 +31,8 @@ export function ConnectedWorkspace({
     const [secondaryPath, setSecondaryPath] = useState('');
     const [pending, setPending] = useState<WorkspaceReference | null>(null);
     const [dragging, setDragging] = useState<WorkspaceReference | null>(null);
-    const [edgeOver, setEdgeOver] = useState(false);
+    const [edgeOver, setEdgeOver] = useState<'left' | 'right' | null>(null);
+    const [splitDragging, setSplitDragging] = useState(false);
     const [ratio, setRatio] = useState(50);
     const [reversed, setReversed] = useState(false);
     const [activePane, setActivePane] = useState<'primary' | 'secondary'>('primary');
@@ -69,13 +70,19 @@ export function ConnectedWorkspace({
     const drag = useCallback(
         (reference: WorkspaceReference | null) => {
             setDragging(reference);
-            if (!reference) setEdgeOver(false);
+            if (!reference) setEdgeOver(null);
             post(embedded ? window.parent : (frame.current?.contentWindow ?? null), 'drag', reference);
         },
         [embedded, post],
     );
     useEffect(() => {
-        const clear = () => drag(null);
+        const clear = () => {
+            drag(null);
+            setSplitDragging(false);
+        };
+        const start = (event: DragEvent) =>
+            setSplitDragging(event.target instanceof Element && !!event.target.closest('aside'));
+        window.addEventListener('dragstart', start, true);
         // Keep the target mounted until its React drop handler consumes the payload.
         const afterDrop = () => window.setTimeout(clear, 0);
         const escape = (event: KeyboardEvent) => {
@@ -85,6 +92,7 @@ export function ConnectedWorkspace({
         window.addEventListener('drop', afterDrop, true);
         window.addEventListener('keydown', escape);
         return () => {
+            window.removeEventListener('dragstart', start, true);
             window.removeEventListener('dragend', clear);
             window.removeEventListener('drop', afterDrop, true);
             window.removeEventListener('keydown', escape);
@@ -113,7 +121,7 @@ export function ConnectedWorkspace({
         [post],
     );
     const open = useCallback(
-        async (raw: string, label = '관련 내용', right = false) => {
+        async (raw: string, label = '관련 내용', right = false, left?: boolean) => {
             const href = workspaceHref(raw, teamId, window.location.origin);
             if (!href) return;
             if (embedded) {
@@ -132,9 +140,9 @@ export function ConnectedWorkspace({
             try {
                 if (latest.current.secondary?.href !== href && !(await mayClose())) return;
                 if (latest.current.secondary?.href !== href) frameReady.current = false;
-                if (!latest.current.secondary) setRatio(50);
+                if (!latest.current.secondary || left !== undefined) setRatio(50);
                 setSecondary({ href, label });
-                if (right) setReversed(false);
+                if (right || !latest.current.secondary) setReversed(left === true);
                 setSecondaryPath(href);
                 setMobilePane('secondary');
                 setActivePane('secondary');
@@ -182,7 +190,7 @@ export function ConnectedWorkspace({
                 if (payload.data !== null && !reference) return;
                 if (embedded) {
                     setDragging(reference);
-                    if (!reference) setEdgeOver(false);
+                    if (!reference) setEdgeOver(null);
                 } else drag(reference);
                 return;
             }
@@ -350,7 +358,7 @@ export function ConnectedWorkspace({
         drag,
         offer,
         open: (href: string, label?: string) => {
-            void open(href, label);
+            void open(href, label, true);
         },
     };
     if (embedded)
@@ -366,32 +374,7 @@ export function ConnectedWorkspace({
             <div className="workspace-shell connected-workspace flex min-h-screen flex-col bg-bg-primary lg:h-screen lg:overflow-hidden">
                 <div className="connected-body flex min-h-0 flex-1 flex-col lg:flex-row">
                     {sidebar}
-                    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                        {secondary && (
-                            <div className="connection-toolbar" aria-label="연결 작업 도구">
-                                <div className="ml-auto flex min-w-0 items-center gap-1">
-                                    {secondary && (
-                                        <>
-                                            <button
-                                                className="connection-icon hidden lg:inline-flex"
-                                                aria-label="좌우 바꾸기"
-                                                onClick={() => setReversed(!reversed)}
-                                            >
-                                                <ArrowLeftRight size={15} />
-                                            </button>
-                                            <button
-                                                className="connection-icon"
-                                                aria-label="분할 닫기"
-                                                disabled={busy}
-                                                onClick={() => void close()}
-                                            >
-                                                <X size={16} />
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        )}
+                    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
                         {pending && (
                             <div className="connection-reference-tray" role="status">
                                 <Link2 size={14} />
@@ -477,48 +460,69 @@ export function ConnectedWorkspace({
                             </div>
                             {secondary && (
                                 <>
-                                    <div
-                                        role="separator"
-                                        tabIndex={0}
-                                        aria-label="작업 영역 너비"
-                                        aria-orientation="vertical"
-                                        aria-valuemin={30}
-                                        aria-valuemax={70}
-                                        aria-valuenow={Math.round(ratio)}
-                                        className="connection-divider"
-                                        onKeyDown={(event) => {
-                                            if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-                                                event.preventDefault();
-                                                setRatio(
-                                                    Math.max(
-                                                        30,
-                                                        Math.min(
-                                                            70,
-                                                            ratio +
-                                                                (event.key === 'ArrowRight' ? 5 : -5) *
-                                                                    (reversed ? -1 : 1),
+                                    <div className="connection-divider-controls">
+                                        <button
+                                            type="button"
+                                            className="connection-swap connection-icon"
+                                            aria-label="좌우 바꾸기"
+                                            title="좌우 바꾸기"
+                                            onClick={() => setReversed((value) => !value)}
+                                        >
+                                            <ArrowLeftRight size={16} />
+                                        </button>
+                                        <div
+                                            role="separator"
+                                            tabIndex={0}
+                                            aria-label="작업 영역 너비"
+                                            aria-orientation="vertical"
+                                            aria-valuemin={30}
+                                            aria-valuemax={70}
+                                            aria-valuenow={Math.round(ratio)}
+                                            className="connection-divider"
+                                            onKeyDown={(event) => {
+                                                if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                                                    event.preventDefault();
+                                                    setRatio(
+                                                        Math.max(
+                                                            30,
+                                                            Math.min(
+                                                                70,
+                                                                ratio +
+                                                                    (event.key === 'ArrowRight' ? 5 : -5) *
+                                                                        (reversed ? -1 : 1),
+                                                            ),
                                                         ),
-                                                    ),
-                                                );
+                                                    );
+                                                }
+                                                if (event.key === 'Home') setRatio(50);
+                                            }}
+                                            onPointerDown={(event) =>
+                                                event.currentTarget.setPointerCapture(event.pointerId)
                                             }
-                                            if (event.key === 'Home') setRatio(50);
-                                        }}
-                                        onPointerDown={(event) =>
-                                            event.currentTarget.setPointerCapture(event.pointerId)
-                                        }
-                                        onPointerMove={(event) => {
-                                            if (event.currentTarget.hasPointerCapture(event.pointerId))
-                                                resize(event.clientX);
-                                        }}
-                                        onPointerUp={(event) =>
-                                            event.currentTarget.releasePointerCapture(event.pointerId)
-                                        }
-                                    />
+                                            onPointerMove={(event) => {
+                                                if (event.currentTarget.hasPointerCapture(event.pointerId))
+                                                    resize(event.clientX);
+                                            }}
+                                            onPointerUp={(event) =>
+                                                event.currentTarget.releasePointerCapture(event.pointerId)
+                                            }
+                                        />
+                                    </div>
                                     <section
                                         aria-label="옆 작업 영역"
                                         data-active={activePane === 'secondary'}
                                         className={`connection-secondary ${mobilePane !== 'secondary' ? 'mobile-hidden' : ''}`}
                                     >
+                                        <button
+                                            type="button"
+                                            className="connection-pane-close connection-icon"
+                                            aria-label="분할 닫기"
+                                            title="분할 닫기"
+                                            disabled={busy}
+                                            onClick={() => void close()}
+                                        >
+                                            <X size={16} />
+                                        </button>
                                         <iframe
                                             ref={frame}
                                             name={`slacord-pane-${teamId}`}
@@ -538,35 +542,45 @@ export function ConnectedWorkspace({
                                 </>
                             )}
                         </div>
+                        {dragging && (splitDragging || dragging.kind === 'issues') && (
+                            <div className="workspace-split-preview" aria-label="분할 배치 선택">
+                                {(['left', 'right'] as const).map((side) => (
+                                    <div
+                                        key={side}
+                                        data-testid={side === 'right' ? 'workspace-edge-drop' : 'workspace-left-drop'}
+                                        className={`workspace-edge-drop is-${side} ${edgeOver === side ? 'is-over' : ''}`}
+                                        onDragOver={(event) => {
+                                            if (!hasReferenceDrag(event.dataTransfer)) return;
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            event.dataTransfer.dropEffect = 'copy';
+                                            setEdgeOver(side);
+                                        }}
+                                        onDragLeave={() => setEdgeOver(null)}
+                                        onDrop={(event) => {
+                                            if (!hasReferenceDrag(event.dataTransfer)) return;
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            const reference = readReferenceDrag(
+                                                event.dataTransfer,
+                                                teamId,
+                                                window.location.origin,
+                                            );
+                                            drag(null);
+                                            setSplitDragging(false);
+                                            if (reference)
+                                                void open(reference.href, reference.label, true, side === 'left');
+                                        }}
+                                    >
+                                        <Columns2 size={28} />
+                                        <strong>{side === 'left' ? '왼쪽에 열기' : '오른쪽에 열기'}</strong>
+                                        <span className="max-w-full truncate">{dragging.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
-                {dragging && (
-                    <div
-                        data-testid="workspace-edge-drop"
-                        className={`workspace-edge-drop ${edgeOver ? 'is-over' : ''}`}
-                        onDragOver={(event) => {
-                            if (!hasReferenceDrag(event.dataTransfer)) return;
-                            event.preventDefault();
-                            event.stopPropagation();
-                            event.dataTransfer.dropEffect = 'copy';
-                            setEdgeOver(true);
-                        }}
-                        onDragLeave={() => setEdgeOver(false)}
-                        onDrop={(event) => {
-                            if (!hasReferenceDrag(event.dataTransfer)) return;
-                            event.preventDefault();
-                            event.stopPropagation();
-                            const reference = readReferenceDrag(event.dataTransfer, teamId, window.location.origin);
-                            drag(null);
-                            if (reference) void open(reference.href, reference.label, true);
-                        }}
-                    >
-                        <Columns2 size={24} />
-                        <strong>오른쪽에 열기</strong>
-                        <span className="max-w-full truncate">{dragging.label}</span>
-                        <small>{secondary ? '옆 화면 교체 · 현재 작업 유지' : '현재 작업은 그대로 유지됩니다'}</small>
-                    </div>
-                )}
             </div>
         </WorkspaceConnection.Provider>
     );

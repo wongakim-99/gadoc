@@ -25,12 +25,12 @@ export function SidebarNavLink({ href, label, active, icon, unreadCount = 0, men
             <Link
                 href={href}
                 {...(isChannel ? dragSource : {})}
-                title="채널 열기 · 오른쪽 가장자리로 끌면 옆에 열기"
+                title="열기 · 사이드바 옆 분할 영역으로 끌면 옆에 열기"
                 aria-current={active ? 'page' : undefined}
-                className={`flex min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
+                className={`flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-control px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-action active:bg-bg-active ${
                     active
-                        ? 'bg-bg-active font-medium text-text-primary'
-                        : 'text-text-secondary hover:bg-bg-hover hover:text-white'
+                        ? 'bg-selection text-action-text'
+                        : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
                 }`}
             >
                 {icon}

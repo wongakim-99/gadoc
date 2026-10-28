@@ -1,5 +1,6 @@
 'use client';
 
+import { Plus } from 'lucide-react';
 import { DatabaseWorkspace } from '@/src/features/database/ui/DatabaseWorkspace';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { use } from 'react';
@@ -10,6 +11,8 @@ import type { KnowledgeDatabase } from '@/src/features/database/model/types';
 import type { DocumentNode } from '@/src/entities/document/types';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
 import { DocumentTree } from '@/src/widgets/document/ui/DocumentTree';
+import { createDocumentHubTemplate } from '@slacord/document-core';
+import { LayoutTemplate } from 'lucide-react';
 
 interface Props {
     params: Promise<{ teamId: string }>;
@@ -81,7 +84,7 @@ function DocumentIndex({ teamId }: { teamId: string }) {
         };
     }, [teamId]);
 
-    const handleCreate = useCallback(async () => {
+    const handleCreate = useCallback(async (template: 'blank' | 'hub' = 'blank') => {
         if (!canWrite || creating.current) return;
         creating.current = true;
         setSaving(true);
@@ -91,8 +94,8 @@ function DocumentIndex({ teamId }: { teamId: string }) {
                 throw new Error('상위 페이지를 확인할 수 없습니다. 페이지 목록에서 다시 선택해 주세요.');
             const res = await documentApi.createDocument(teamId, {
                 parentId,
-                title: '제목 없음',
-                content: '[]',
+                title: template === 'hub' ? '문서 허브' : '제목 없음',
+                content: template === 'hub' ? JSON.stringify(createDocumentHubTemplate()) : '[]',
                 contentFormat: 'json',
             });
             if (!res.success || !res.data) throw new Error('문서를 생성하지 못했습니다.');
@@ -126,18 +129,18 @@ function DocumentIndex({ teamId }: { teamId: string }) {
                 <div>
                     <h2 className="text-xl font-bold text-white">문서</h2>
                 </div>
-                {canWrite ? (
-                    <button
-                        disabled={saving || loading}
-                        onClick={() => void handleCreate()}
-                        className="px-4 py-2 rounded-lg bg-slack-green text-white text-sm font-medium hover:bg-slack-green/90 transition-colors"
-                    >
-                        {saving ? '생성 중…' : '새 페이지'}
-                    </button>
-                ) : null}
+
             </div>
 
             <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6">
+                {canWrite && !loading && <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-primary pb-5">
+                    <div><h3 className="text-sm font-semibold text-text-primary">문서를 연결해 팀의 시작 페이지로</h3>
+                        <p className="mt-1 text-xs text-text-secondary">섹션과 여러 열에 문서·링크·업무를 자유롭게 배치하세요.</p></div>
+                    <button type="button" disabled={saving} onClick={() => void handleCreate('hub')}
+                        className="inline-flex items-center gap-2 rounded-control border border-border-primary px-3 py-2 text-sm hover:bg-bg-hover disabled:opacity-50">
+                        <LayoutTemplate size={16} /> 문서 허브 만들기
+                    </button>
+                </div>}
                 {error && (
                     <p role="alert" className="text-sm text-red-300">
                         {error}
@@ -150,6 +153,15 @@ function DocumentIndex({ teamId }: { teamId: string }) {
                         <DocumentTree documents={docs} databases={databases} teamId={teamId} canCreate={canWrite} />
                     )
                 )}
+                {canWrite ? (
+                    <button
+                        disabled={saving || loading}
+                        onClick={() => void handleCreate()}
+                        className="flex min-h-9 items-center gap-2 rounded-control px-2 py-2 text-sm text-text-secondary hover:bg-bg-hover disabled:opacity-50"
+                    >
+                        <Plus size={16} aria-hidden="true" />{saving ? '생성 중…' : '새 페이지'}
+                    </button>
+                ) : null}
             </div>
         </div>
     );

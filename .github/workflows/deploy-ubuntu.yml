@@ -34,7 +34,7 @@ jobs:
     timeout-minutes: 40
     environment:
       name: production
-      url: https://slacord.cloud
+      url: https://gadoc.kr
     env:
       GH_TOKEN: ${{ github.token }}
       DEPLOY_HOST: ${{ secrets.SLACORD_SSH_HOST }}
@@ -89,7 +89,7 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$RUNNER_TEMP/slacord-ssh/key"
           printf '%s\n' "$SSH_KNOWN_HOSTS" > "$RUNNER_TEMP/slacord-ssh/known_hosts"
 
-      - name: Check or deploy to ubuntu-slacord
+      - name: Check or deploy to ubuntu-gadoc
         if: steps.release.outputs.skip != 'true'
         env:
           RELEASE_SHA: ${{ steps.release.outputs.sha }}
@@ -114,7 +114,7 @@ jobs:
           fi
           # Markdown backticks in the job summary are literal.
           # shellcheck disable=SC2016
-          printf 'Mode: `%s`\n\nRevision: `%s`\n\nTarget: `ubuntu-slacord` / https://slacord.cloud\n' \
+          printf 'Mode: `%s`\n\nRevision: `%s`\n\nTarget: `ubuntu-gadoc` / https://gadoc.kr\n' \
             "$RELEASE_MODE" "$RELEASE_SHA" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Remove temporary SSH files

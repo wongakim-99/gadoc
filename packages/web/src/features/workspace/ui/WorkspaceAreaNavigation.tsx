@@ -1,3 +1,5 @@
+'use client';
+import { useProjectScope } from '@/src/features/project/model/useProjectScope';
 import Link from 'next/link';
 import { workspaceAreaLabels, type WorkspaceArea } from '../model/workspaceNavigation';
 
@@ -10,12 +12,13 @@ export function WorkspaceAreaNavigation({
     teamId: string;
     canWrite: boolean;
 }) {
+    const { projectId } = useProjectScope(teamId);
     return (
         <div className="space-y-3 px-1">
             <h2 className="text-xs font-semibold text-text-secondary">{workspaceAreaLabels[area]}</h2>
             {area === 'issues' && canWrite && (
                 <Link
-                    href={`/${teamId}/issues?create=1`}
+                    href={`/${teamId}/issues?create=1${projectId ? `&project=${projectId}` : ''}`}
                     className="block rounded-md border border-border-primary px-3 py-2 text-sm hover:bg-bg-hover"
                 >
                     + 이슈 만들기
