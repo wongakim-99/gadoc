@@ -1,0 +1,12 @@
+.expo/
+dist/
+coverage/
+ios/
+android/
+*.local.env
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+.env*
+!.env.example

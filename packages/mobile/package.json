@@ -1,0 +1,59 @@
+{
+  "name": "@gadoc/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "Colding / kscold 가독 iOS·Android 앱",
+  "main": "index.ts",
+  "engines": {
+    "node": "^22.13.0 || ^24.3.0 || >=26.0.0",
+    "pnpm": ">=10.34.9 <11"
+  },
+  "scripts": {
+    "install:mobile": "node scripts/install.cjs",
+    "start": "expo start",
+    "ios": "node scripts/check-disk.cjs && expo run:ios --no-install",
+    "android": "node scripts/check-disk.cjs && expo run:android --no-install",
+    "prebuild": "node scripts/check-disk.cjs && expo prebuild --no-install",
+    "check:native-config": "node scripts/verify-native-config.cjs",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --runInBand",
+    "check:expo": "expo install --check",
+    "doctor": "expo-doctor",
+    "export:web": "node scripts/check-disk.cjs && expo export --platform web --output-dir dist/web",
+    "export:native": "node scripts/check-disk.cjs && expo export --platform ios --platform android --output-dir dist/native"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~58.0.15",
+    "expo": "~58.0.20",
+    "expo-asset": "~58.0.18",
+    "expo-font": "~58.0.10",
+    "expo-secure-store": "~58.0.2",
+    "expo-splash-screen": "~58.0.11",
+    "expo-status-bar": "~58.0.4",
+    "expo-system-ui": "~58.0.6",
+    "htmlparser2": "^12.0.0",
+    "marked": "^18.1.2",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.0",
+    "react-native-safe-area-context": "~5.10.1",
+    "react-native-web": "~0.21.4",
+    "socket.io-client": "^4.8.4",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@react-native/jest-preset": "0.88.0",
+    "@testing-library/react-native": "^14.1.0",
+    "@types/jest": "^30.0.0",
+    "@types/react": "~19.3.0",
+    "babel-preset-expo": "~58.0.21",
+    "expo-doctor": "1.21.5",
+    "jest": "^30.0.0",
+    "jest-expo": "~58.0.12",
+    "react-server-dom-webpack": "19.3.0",
+    "socket.io": "^4.8.4",
+    "typescript": "~6.0.3",
+    "webpack": "~5.112.2"
+  }
+}
