@@ -1,5 +1,5 @@
 import type { OptionIdentity, OptionColorSetting } from '@slacord/document-core';
-import type { NumberFormat } from '@slacord/document-core';
+import type { NumberPresentation, NumberFormat } from '@slacord/document-core';
 import type { FilterGroup, SortRule, Aggregation } from '@slacord/document-core';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Schema as MongoSchema } from 'mongoose';
@@ -30,6 +30,7 @@ export interface DatabaseProperty {
     archived?: boolean;
     prefix?: string;
     numberFormat?: NumberFormat;
+    numberPresentation?: NumberPresentation;
     type: PropertyType;
     options?: string[];
     optionColors?: OptionColorSetting[];
