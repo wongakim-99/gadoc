@@ -1,3 +1,4 @@
+import { resolveOptionFilter, type OptionIdentity } from './option-identity';
 export type FilterOperator =
   | "equals"
   | "not_equals"
@@ -33,6 +34,7 @@ export interface QueryProperty {
   id: string;
   type: string;
   options?: string[];
+  optionIdentities?: OptionIdentity[];
 }
 export interface DatabaseQuery {
   filter?: FilterGroup;
@@ -192,9 +194,10 @@ export function queryDatabaseRows<T extends QueryRow>(
   validateDatabaseQuery(query, properties);
   const propertiesById = new Map(properties.map((prop) => [prop.id, prop]));
   const search = normalize(query.search ?? "");
+  const filter = query.filter ? resolveOptionFilter(query.filter, properties) : undefined;
   const result = rows.filter(
     (row) =>
-      (!query.filter || matches(row, query.filter)) &&
+      (!filter || matches(row, filter)) &&
       (!search ||
         [row.title, ...Object.values(row.values)].some((value) =>
           normalize(value).includes(search),

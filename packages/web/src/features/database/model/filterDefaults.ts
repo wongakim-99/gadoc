@@ -1,4 +1,4 @@
-﻿import { validateDatabaseQuery, type FilterGroup } from '@slacord/document-core';
+﻿import { decodeOptionValue, resolveOptionFilter, validateDatabaseQuery, type FilterGroup } from '@slacord/document-core';
 import type { DatabaseProperty, PropertyValue } from './types';
 /** Only definite positive AND conditions become defaults. Search/OR/ranges never invent data. */
 export function filterDefaults(
@@ -46,8 +46,8 @@ export function filterDefaults(
             }
         }
     };
-    visit(filter);
-    if (status && properties.some((p) => p.id === 'status')) assign('status', status);
+    visit(resolveOptionFilter(filter, properties));
+    if (status && properties.some((p) => p.id === 'status')) assign('status', decodeOptionValue(properties.find((p) => p.id === 'status')?.optionIdentities ?? [], status));
     if (owner && properties.some((p) => p.id === 'owner')) {
         const current = result.owner;
         if (!conflicts.has('owner')) result.owner = [...new Set([...(Array.isArray(current) ? current : []), owner])];

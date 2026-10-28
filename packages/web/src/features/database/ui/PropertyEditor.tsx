@@ -4,7 +4,7 @@ import { AGGREGATION_LABELS, NUMERIC_AGGREGATIONS, DATE_AGGREGATIONS } from '@sl
 import { useLayoutEffect, useRef, useState } from 'react';
 import { AlignLeft, Hash, Users, CircleDot, CalendarDays, SquareCheck, Link, ListFilter, ListChecks, ArrowUpRight, Sigma, Mail, Phone, Clock, User, FunctionSquare, Fingerprint, Search, Plus, X, GripVertical, type LucideIcon } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import { DatabaseOptionTag, OPTION_COLOR_LABELS } from './DatabaseOptionTag';
+import { OPTION_COLOR_LABELS } from './DatabaseOptionTag';
 import { useDialogFocusTrap } from '@/src/shared/ui/useDialogFocusTrap';
 import { PROPERTY_LABELS, type DatabaseProperty, type KnowledgeDatabase, type PropertyType } from '../model/types';
 
@@ -43,7 +43,7 @@ export function PropertyEditor({
     error: string;
     onClose: () => void;
     onArchive?: () => void;
-    onSave: (property: Omit<DatabaseProperty, 'id'>) => void;
+    onSave: (property: Omit<DatabaseProperty, 'id'> & { optionRenames?: Array<{ id: string; name: string }> }) => void;
     anchorRect?: { left: number; right: number; top: number; bottom: number };
     allowedTypes?: PropertyType[];
 }) {
@@ -58,6 +58,8 @@ export function PropertyEditor({
     const [type, setType] = useState<PropertyType>(editing?.type ?? 'text');
     const [options, setOptions] = useState<string[]>(editing?.options ?? []);
     const [optionColors, setOptionColors] = useState(editing?.optionColors ?? []);
+    const [optionRenames, setOptionRenames] = useState<Array<{ id: string; name: string }>>([]);
+    const [optionError, setOptionError] = useState('');
     const [newOption, setNewOption] = useState('');
     const [formula, setFormula] = useState(editing?.formula ?? '');
     const [cardinality, setCardinality] = useState<'one' | 'many'>(editing?.cardinality ?? 'many');
@@ -102,6 +104,21 @@ export function PropertyEditor({
         (!allowedTypes || allowedTypes.includes(value as PropertyType)) &&
         `${label} ${value}`.toLowerCase().includes(typeSearch.trim().toLowerCase()),
     );
+    const renameOption = (oldName: string, nextName: string) => {
+        const next = nextName.trim();
+        if (next === oldName) return true;
+        if (!next || next.length > 80 || options.some((option) => option !== oldName && option === next)) {
+            setOptionError('비어 있지 않은 고유한 이름을 입력하세요.');
+            return false;
+        }
+        const existingRename = optionRenames.find((item) => item.name === oldName);
+        const identity = existingRename ?? editing?.optionIdentities?.find((item) => item.name === oldName && !optionRenames.some((rename) => rename.id === item.id));
+        if (identity) setOptionRenames((items) => [...items.filter((item) => item.id !== identity.id), { id: identity.id, name: next }]);
+        setOptions((items) => items.map((item) => item === oldName ? next : item));
+        setOptionColors((items) => items.map((item) => item.name === oldName ? { ...item, name: next } : item));
+        setOptionError('');
+        return true;
+    };
     const addOption = () => {
         const value = newOption.trim();
         if (value) setOptions((current) => current.includes(value) ? current : [...current, value]);
@@ -148,6 +165,7 @@ export function PropertyEditor({
                         ...(['select', 'multi_select', 'status'].includes(type)
                             ? {
                                   options: [...new Set([...options, newOption.trim()].filter(Boolean))],
+                                  optionRenames,
                                   optionColors: optionColors.filter((item) => [...options, newOption.trim()].includes(item.name)),
                               }
                             : {}),
@@ -280,7 +298,10 @@ export function PropertyEditor({
                                     className="shrink-0 cursor-grab rounded p-1 text-text-tertiary hover:bg-bg-hover"
                                     onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('application/x-gadoc-option', option); }}
                                     onKeyDown={(event) => { if (event.key === 'ArrowUp' || event.key === 'ArrowDown') { event.preventDefault(); moveOption(option, index + (event.key === 'ArrowUp' ? -1 : 1)); } }}><GripVertical size={14} aria-hidden="true" /></button>
-                                <span className="min-w-0 flex-1"><DatabaseOptionTag property={{ optionColors }} name={option} /></span>
+                                <input aria-label={`${option} 이름`} defaultValue={option} maxLength={80} disabled={busy}
+                                    className="min-w-0 flex-1 rounded-control bg-transparent px-1 py-1 text-xs text-text-primary outline-none"
+                                    onBlur={(event) => { if (!renameOption(option, event.target.value)) event.target.value = option; }}
+                                    onKeyDown={(event) => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.blur(); } }} />
                                 <select aria-label={`${option} 색상`} disabled={busy} value={optionColors.find((item) => item.name === option)?.color ?? 'default'}
                                     className="max-w-16 rounded bg-bg-primary py-1 text-xs text-text-secondary"
                                     onChange={(event) => setOptionColors((current) => [...current.filter((item) => item.name !== option), { name: option, color: event.target.value as OptionColor }])}>
@@ -430,6 +451,7 @@ export function PropertyEditor({
                         <p className="text-xs text-text-secondary">열람 가능한 연결 문서의 값만 계산합니다.</p>
                     </>
                 )}
+                {optionError && <p role="alert" className="text-xs text-error">{optionError}</p>}
                 {error && (
                     <p role="alert" className="text-xs text-error">
                         {error}
