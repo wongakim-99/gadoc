@@ -1,5 +1,8 @@
+import { resolveStatusGroups, STATUS_GROUP_KEYS, type StatusOptionGroup } from './status-groups';
 import { resolveOptionFilter, type OptionIdentity } from './option-identity';
 export type FilterOperator =
+  | "status_group_is"
+  | "status_group_is_not"
   | "equals"
   | "not_equals"
   | "contains"
@@ -35,6 +38,7 @@ export interface QueryProperty {
   type: string;
   options?: string[];
   optionIdentities?: OptionIdentity[];
+  statusOptionGroups?: StatusOptionGroup[];
 }
 export interface DatabaseQuery {
   filter?: FilterGroup;
@@ -42,6 +46,8 @@ export interface DatabaseQuery {
   search?: string;
 }
 const operators: FilterOperator[] = [
+  "status_group_is",
+  "status_group_is_not",
   "equals",
   "not_equals",
   "contains",
@@ -94,6 +100,10 @@ export function validateDatabaseQuery(
         !operators.includes(rule.operator as FilterOperator)
       )
         throw new Error("필터 속성 또는 연산자를 확인하세요.");
+      if (['status_group_is', 'status_group_is_not'].includes(String(rule.operator)) &&
+          (properties.find(property => property.id === rule.propertyId)?.type !== 'status' ||
+           !STATUS_GROUP_KEYS.includes(rule.value as typeof STATUS_GROUP_KEYS[number])))
+        throw new Error('상태 그룹 필터의 속성과 범주를 확인하세요.');
       if (
         rule.value !== undefined &&
         rule.value !== null &&
@@ -134,17 +144,22 @@ const empty = (value: unknown) =>
   (Array.isArray(value) && !value.length);
 const field = (row: QueryRow, id: string) =>
   id === "title" ? row.title : row.values[id];
-function matches(row: QueryRow, rule: FilterRule | FilterGroup): boolean {
+function matches(row: QueryRow, rule: FilterRule | FilterGroup, statusGroups: Map<string, Map<string, string>>): boolean {
   if ("conjunction" in rule) {
     // An empty group does not hide every row while the user is editing it.
     if (!rule.rules.length) return true;
     return rule.conjunction === "and"
-      ? rule.rules.every((child) => matches(row, child))
-      : rule.rules.some((child) => matches(row, child));
+      ? rule.rules.every((child) => matches(row, child, statusGroups))
+      : rule.rules.some((child) => matches(row, child, statusGroups));
   }
   const actual = field(row, rule.propertyId),
     expected = rule.value;
   switch (rule.operator) {
+    case "status_group_is":
+    case "status_group_is_not": {
+      const group = typeof actual === 'string' ? statusGroups.get(rule.propertyId)?.get(actual) : undefined;
+      return rule.operator === 'status_group_is' ? group === expected : group !== expected;
+    }
     case "is_empty":
       return empty(actual);
     case "is_not_empty":
@@ -154,13 +169,13 @@ function matches(row: QueryRow, rule: FilterRule | FilterGroup): boolean {
         ? normalize(actual) === normalize(expected)
         : actual === expected;
     case "not_equals":
-      return !matches(row, { ...rule, operator: "equals" });
+      return !matches(row, { ...rule, operator: "equals" }, statusGroups);
     case "contains":
       return Array.isArray(actual)
         ? actual.some((value) => normalize(value) === normalize(expected))
         : normalize(actual).includes(normalize(expected));
     case "not_contains":
-      return !matches(row, { ...rule, operator: "contains" });
+      return !matches(row, { ...rule, operator: "contains" }, statusGroups);
     case "starts_with":
       return normalize(actual).startsWith(normalize(expected));
     case "ends_with":
@@ -193,11 +208,21 @@ export function queryDatabaseRows<T extends QueryRow>(
 ): T[] {
   validateDatabaseQuery(query, properties);
   const propertiesById = new Map(properties.map((prop) => [prop.id, prop]));
+  const statusGroups = new Map(properties.filter(property => property.type === 'status').map(property => {
+    const options = property.optionIdentities ?? (property.options ?? []).map(name => ({ id: name, name }));
+    const groups = resolveStatusGroups(options, property.statusOptionGroups);
+    const values = new Map<string, string>();
+    for (const option of options) {
+      const group = groups.find(item => item.optionId === option.id)!.group;
+      values.set(option.id, group); values.set(option.name, group);
+    }
+    return [property.id, values] as const;
+  }));
   const search = normalize(query.search ?? "");
   const filter = query.filter ? resolveOptionFilter(query.filter, properties) : undefined;
   const result = rows.filter(
     (row) =>
-      (!filter || matches(row, filter)) &&
+      (!filter || matches(row, filter, statusGroups)) &&
       (!search ||
         [row.title, ...Object.values(row.values)].some((value) =>
           normalize(value).includes(search),

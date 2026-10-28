@@ -37,6 +37,7 @@ export function resolveOptionFilter(filter: FilterGroup, properties: readonly { 
         ...group,
         rules: group.rules.map((rule) => {
             if ('conjunction' in rule) return visit(rule);
+            if (rule.operator === 'status_group_is' || rule.operator === 'status_group_is_not') return { ...rule };
             const options = definitions.get(rule.propertyId);
             return options && typeof rule.value === 'string'
                 ? { ...rule, value: decodeOptionValue(options, rule.value) }

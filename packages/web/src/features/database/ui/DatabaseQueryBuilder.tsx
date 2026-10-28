@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { STATUS_GROUP_KEYS, STATUS_GROUP_LABELS } from '@slacord/document-core';
 import type { FilterGroup, FilterOperator, FilterRule, SortRule } from '@slacord/document-core';
 import type { DatabaseProperty } from '../model/types';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
 import { databaseApi } from '@/lib/api-client';
 
 const labels: Record<FilterOperator, string> = {
+    status_group_is: '상태 그룹이 같음',
+    status_group_is_not: '상태 그룹이 다름',
     equals: '같음',
     not_equals: '같지 않음',
     contains: '포함',
@@ -59,7 +62,8 @@ function Condition({
             active = false;
         };
     }, [teamId, prop?.type, prop?.targetDatabaseId]);
-    const choices =
+    const isStatusGroup = rule.operator === 'status_group_is' || rule.operator === 'status_group_is_not';
+    const choices = isStatusGroup ? STATUS_GROUP_KEYS.map(group => ({ id: group, title: STATUS_GROUP_LABELS[group] })) :
         prop?.type === 'person'
             ? members.map((member) => ({ id: member.userId, title: member.user?.username ?? '팀 멤버' }))
             : prop?.type === 'relation'
@@ -93,9 +97,9 @@ function Condition({
                 aria-label="필터 조건"
                 className={inputClass}
                 value={rule.operator}
-                onChange={(e) => onChange({ ...rule, operator: e.target.value as FilterOperator })}
+                onChange={(e) => { const operator = e.target.value as FilterOperator; const nextGroup = operator === 'status_group_is' || operator === 'status_group_is_not'; onChange({ ...rule, operator, value: nextGroup ? (isStatusGroup ? rule.value : 'todo') : isStatusGroup ? '' : rule.value }); }}
             >
-                {Object.entries(labels).map(([key, label]) => (
+                {Object.entries(labels).filter(([key]) => !key.startsWith('status_group_') || prop?.type === 'status').map(([key, label]) => (
                     <option key={key} value={key}>
                         {label}
                     </option>
@@ -116,7 +120,7 @@ function Condition({
                     <select
                         aria-label="필터 값"
                         className={inputClass}
-                        value={prop?.optionIdentities?.find((item) => item.id === rule.value || item.legacyName === rule.value)?.id ?? String(rule.value ?? '')}
+                        value={isStatusGroup ? String(rule.value ?? '') : prop?.optionIdentities?.find((item) => item.id === rule.value || item.legacyName === rule.value)?.id ?? String(rule.value ?? '')}
                         onChange={(e) => onChange({ ...rule, value: e.target.value })}
                     >
                         <option value="">선택</option>
