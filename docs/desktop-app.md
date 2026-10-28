@@ -12,7 +12,7 @@ MIT 라이선스가 아니다.
 | Windows x64         | NSIS EXE                 | 앱 내 확인·다운로드·재시작 적용 |
 | Linux / Intel Mac   | 현재 전용 설치 파일 없음 | 웹 서비스 사용                  |
 
-현재 공개 버전 1.1.1은 macOS 서명·공증과 Windows 코드 서명이 없는 릴리즈다.
+기존 버전 1.1.1은 macOS 서명·공증과 Windows 코드 서명이 없는 릴리즈다.
 CI가 여러 OS에서 통과하는 것과 각 OS용 서명된 설치 파일을 제공하는 것은 다르다.
 최신 배포 파일과 실제 서명 상태는 [GitHub Releases](https://github.com/kscold/gadoc/releases/latest)에서 확인한다.
 
