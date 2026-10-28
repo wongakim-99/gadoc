@@ -263,6 +263,7 @@ export function ConnectedWorkspace({
             if (
                 !anchor ||
                 anchor.hasAttribute('data-manages-draft-navigation') ||
+                anchor.hasAttribute('data-open-in-current-pane') ||
                 !workspaceHref(anchor.href, teamId, window.location.origin)
             )
                 return;

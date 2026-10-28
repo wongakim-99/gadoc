@@ -502,6 +502,7 @@ export function DatabaseWorkspace({
                 </div>
                 <Link
                     href={inline ? `/${teamId}/docs?database=${databaseId}` : `/${teamId}/docs`}
+                    data-open-in-current-pane
                     className={buttonClass}
                 >
                     {inline ? (

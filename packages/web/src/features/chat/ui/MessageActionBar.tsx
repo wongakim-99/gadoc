@@ -33,13 +33,14 @@ export function MessageActionBar({
     visible,
 }: Props) {
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [referenceMenuOpen, setReferenceMenuOpen] = useState(false);
     const connection = useWorkspaceConnection();
     const reference = {
         kind: 'channel' as const,
         href: `/${connection?.teamId || message.teamId}/channel/${message.channelId}?message=${encodeURIComponent(message.id)}&at=${encodeURIComponent(message.createdAt)}`,
         label: `대화 원문 · ${new Date(message.createdAt).toLocaleString('ko-KR')}`,
     };
-    if (!visible && connection?.dragging?.href !== reference.href) return null;
+    if (!visible && !referenceMenuOpen && connection?.dragging?.href !== reference.href) return null;
 
     return (
         <div className="absolute right-5 -top-3.5 z-20 flex items-center gap-px rounded-lg border border-border-primary bg-bg-secondary shadow-lg">
@@ -55,7 +56,7 @@ export function MessageActionBar({
                     <span className="text-xs">이슈 연결</span>
                 </button>
             )}
-            {connection && <WorkspaceReferenceActions reference={reference} />}
+            {connection && <WorkspaceReferenceActions reference={reference} onMenuOpenChange={setReferenceMenuOpen} />}
             {onOpenThread && !message.replyToId ? (
                 <IconButton onClick={onOpenThread} title="스레드">
                     <path
