@@ -4,11 +4,12 @@ import { databaseApi } from '@/lib/api-client';
 
 interface Props {
     teamId: string;
+    projectId?: string;
     canWrite: boolean;
     onCreate: () => void;
 }
 
-export function IssueBoardHeader({ teamId, canWrite, onCreate }: Props) {
+export function IssueBoardHeader({ teamId, projectId, canWrite, onCreate }: Props) {
     const router = useRouter();
     const [opening, setOpening] = useState(false);
     const [error, setError] = useState('');
@@ -19,7 +20,7 @@ export function IssueBoardHeader({ teamId, canWrite, onCreate }: Props) {
         try {
             const result = await databaseApi.issueSource(teamId);
             if (!result.data) throw new Error('이슈 데이터베이스를 열지 못했습니다.');
-            router.push(`/${teamId}/docs?database=${result.data.id}`);
+            router.push(`/${teamId}/docs?database=${result.data.id}${projectId ? `&project=${encodeURIComponent(projectId)}` : ''}`);
         } catch (caught) {
             setError(caught instanceof Error ? caught.message : '이슈 데이터베이스를 열지 못했습니다.');
         } finally { setOpening(false); }
