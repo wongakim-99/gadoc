@@ -694,6 +694,60 @@
     user-select: none;
 }
 
+/* Layouts remain ordinary nested blocks in the same collaborative document. */
+.slacord-blocknote { container-type: inline-size; }
+.slacord-blocknote .bn-block:has(> .bn-react-node-view-renderer > [data-content-type='documentColumns']) > .bn-block-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+    margin: 0;
+    padding: 0;
+    border-left: 0;
+}
+.slacord-blocknote .bn-block:has(> .bn-react-node-view-renderer > [data-content-type='documentColumns'][data-columns='3']) > .bn-block-group {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.slacord-blocknote .bn-block:has(> .bn-react-node-view-renderer > [data-content-type='documentColumn']) > .bn-block-group {
+    margin: 0;
+    padding: 0;
+    border-left: 0;
+}
+.slacord-blocknote .bn-block:has(> .bn-react-node-view-renderer > :is([data-content-type='documentColumn'], [data-content-type='documentColumns'])) > .bn-block-group > .bn-block-outer::before {
+    border-left: 0;
+}
+.slacord-blocknote .bn-block:has(> .bn-react-node-view-renderer > [data-content-type='documentColumn']) > .bn-block-group [data-content-type='heading'][data-level='2'] {
+    font-size: 1.25rem;
+}
+.slacord-blocknote .bn-block:has(> .bn-react-node-view-renderer > [data-content-type='documentColumn']),
+.slacord-blocknote .bn-block:has(> .bn-react-node-view-renderer > [data-content-type='documentColumns']) > .bn-block-group > .bn-block-outer {
+    min-width: 0;
+}
+.document-layout-controls, .document-column-controls {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    color: var(--color-text-tertiary);
+    font-size: 11px;
+}
+.document-layout-controls { padding: 0.75rem 0 0.25rem; }
+.document-column-controls { justify-content: flex-end; }
+.document-layout-controls :is(span, button), .document-column-controls button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.document-layout-controls button, .document-column-controls button { padding: 0.25rem; border-radius: 4px; }
+.document-layout-controls button:hover, .document-column-controls button:hover { background: var(--color-bg-hover); }
+.slacord-blocknote .bn-editor[contenteditable='false'] :is([data-content-type='documentColumns'], [data-content-type='documentColumn']) { display: none; }
+@container (max-width: 620px) {
+    .slacord-blocknote .bn-block:has(> .bn-react-node-view-renderer > [data-content-type='documentColumns']) > .bn-block-group {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 1rem;
+    }
+}
+
 body:has(.workspace-shell) .bn-container[data-color-scheme='dark'] {
     --bn-colors-menu-background: var(--color-bg-secondary);
     --bn-colors-menu-text: var(--color-text-primary);

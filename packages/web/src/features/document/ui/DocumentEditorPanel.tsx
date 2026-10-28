@@ -15,6 +15,7 @@ import { DocumentAttachmentButton } from './DocumentAttachmentButton';
 import { InsertWorkspaceReference } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
 import { WorkspaceReferenceDropZone } from '@/src/features/workspace/ui/WorkspaceReferenceDropZone';
 import type { WorkspaceReference } from '@/src/features/workspace/model/workspaceReference';
+import { useDocumentLayoutTools } from './useDocumentLayoutTools';
 
 interface Props {
     contentFormat: 'plain' | 'html' | 'json';
@@ -126,6 +127,7 @@ function LiveDocumentEditor({
         },
         [teamId, documentId, provider],
     );
+    const layoutTools = useDocumentLayoutTools(editor, teamId, documentId);
 
     useEffect(() => {
         initialized.current = true;
@@ -149,6 +151,7 @@ function LiveDocumentEditor({
 
     return (
         <div className="space-y-3">
+            {canEdit && layoutTools.toolbar}
             {issueSourceError && <p role="alert" className="text-sm text-error">{issueSourceError}</p>}
             {canEdit && <InsertWorkspaceReference onInsert={(reference) => insertReference(reference)} />}
             {canEdit && (
@@ -188,6 +191,7 @@ function LiveDocumentEditor({
                             getItems={async (query) =>
                                 filterSuggestionItems(
                                     [
+                                        ...layoutTools.items,
                                         {
                                             title: '이슈 데이터베이스',
                                             subtext: '워크스페이스 이슈를 같은 원본으로 보기',

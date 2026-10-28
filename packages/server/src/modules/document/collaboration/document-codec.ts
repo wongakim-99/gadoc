@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { documentColumnConfig, documentColumnsConfig } from '@slacord/document-core';
 
 export function documentStateBytes(value: unknown): Buffer | undefined {
     if (value == null) return undefined;
@@ -28,7 +29,12 @@ export class DocumentCodec {
             },
             { render: () => ({ dom: globalThis.document.createElement('div') }) },
         );
-        const schema = core.BlockNoteSchema.create({ blockSpecs: { ...core.defaultBlockSpecs, database: database() } });
+        const layoutRender = { render: () => ({ dom: globalThis.document.createElement('div') }) };
+        const columns = core.createBlockSpec(documentColumnsConfig, layoutRender);
+        const column = core.createBlockSpec(documentColumnConfig, layoutRender);
+        const schema = core.BlockNoteSchema.create({ blockSpecs: {
+            ...core.defaultBlockSpecs, database: database(), documentColumns: columns(), documentColumn: column(),
+        } });
         return { editor: ServerBlockNoteEditor.create({ schema }), Y };
     }
     process(input: Parameters<DocumentCodec['convert']>[0]) {
