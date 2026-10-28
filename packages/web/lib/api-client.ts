@@ -374,6 +374,12 @@ export const teamApi = {
  * 채널 API
  */
 export const channelApi = {
+    async updateChannel(teamId: string, id: string, fields: { name: string; description?: string }) {
+        return apiFetch(`/api/team/${teamId}/channel/${id}`, { method: 'PATCH', body: JSON.stringify(fields) });
+    },
+    async deleteChannel(teamId: string, id: string) {
+        return apiFetch(`/api/team/${teamId}/channel/${id}`, { method: 'DELETE' });
+    },
     async archiveChannel(teamId: string, channelId: string, isArchived: boolean) {
         return apiFetch(`/api/team/${teamId}/channel/${channelId}/archive`, { method: 'PATCH', body: JSON.stringify({ isArchived }) });
     },
@@ -498,6 +504,12 @@ export const issueApi = {
  * 공지사항 API
  */
 export const announcementApi = {
+    async updateAnnouncement(teamId: string, id: string, fields: { title: string; content: string }) {
+        return apiFetch(`/api/team/${teamId}/announcement/${id}`, { method: 'PATCH', body: JSON.stringify(fields) });
+    },
+    async deleteAnnouncement(teamId: string, id: string) {
+        return apiFetch(`/api/team/${teamId}/announcement/${id}`, { method: 'DELETE' });
+    },
     async getAnnouncements(teamId: string) {
         return apiFetch(`/api/team/${teamId}/announcement`);
     },
@@ -626,6 +638,9 @@ export const presenceApi = {
  * 알림 API
  */
 export const notificationApi = {
+    async deleteNotification(teamId: string, id?: string) {
+        return apiFetch(`/api/team/${teamId}/notification${id ? `/${id}` : ''}`, { method: 'DELETE' });
+    },
     async getNotifications(teamId: string) {
         return apiFetch(`/api/team/${teamId}/notification`);
     },

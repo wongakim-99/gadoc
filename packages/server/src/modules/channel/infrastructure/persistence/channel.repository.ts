@@ -15,6 +15,15 @@ export class ChannelRepository implements IChannelRepository {
         return doc ? this.toEntity(doc) : null;
     }
 
+    async updateDetails(channelId: string, teamId: string, name: string, description: string | null) {
+        const doc = await this.channelModel.findOneAndUpdate({ _id: channelId, teamId }, { $set: { name, description } }, { new: true }).lean();
+        return doc ? this.toEntity(doc) : null;
+    }
+
+    async deleteInTeam(channelId: string, teamId: string) {
+        return (await this.channelModel.deleteOne({ _id: channelId, teamId })).deletedCount === 1;
+    }
+
     async setArchived(channelId: string, isArchived: boolean): Promise<ChannelEntity | null> {
         const doc = await this.channelModel.findByIdAndUpdate(channelId, { $set: { isArchived } }, { new: true }).lean();
         return doc ? this.toEntity(doc) : null;

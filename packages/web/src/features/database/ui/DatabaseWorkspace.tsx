@@ -538,7 +538,7 @@ export function DatabaseWorkspace({
             data-database-instance={instanceId}
             className={inline ? 'group/database min-w-0 bg-bg-primary' : 'flex h-full min-h-0 flex-col'}
         >
-            <header className={inline ? 'flex items-center justify-between gap-3 px-1 pb-2' : 'workspace-topbar'}>
+            <header className={inline ? 'flex items-center justify-between gap-3 pb-2' : 'workspace-topbar'}>
                 <div>
                     {!inline && (
                         <Link href={`/${teamId}/docs`} className="text-xs text-text-secondary">
@@ -1422,7 +1422,7 @@ export function DatabaseWorkspace({
                                                 key="title"
                                                 {...columnDragProps('title')}
                                                 style={{ width: columnWidth('title', 240), boxShadow: dropColumn === 'title' ? 'inset 2px 0 var(--color-text-secondary)' : undefined }}
-                                                className="relative bg-bg-primary border-b border-border-primary px-3 py-2 font-normal"
+                                                className="relative bg-bg-primary border-b border-l first:border-l-0 border-border-primary px-3 py-2 font-normal"
                                             >
                                                 {titleNameDraft !== null ? (
                                                     <form onSubmit={async (event) => {
@@ -1515,9 +1515,9 @@ export function DatabaseWorkspace({
                                                 }}
                                             >
                                                 {tableColumns.map((prop) => prop.id === 'title' ? (
-                                                <td key="title" className=" bg-bg-primary px-3 py-1">
+                                                <td key="title" className="border-l first:border-l-0 border-border-primary bg-bg-primary px-3 py-1">
                                                     <div className="flex items-center gap-2">
-                                                        {!isIssueSource && <DatabaseRowActions
+                                                        {!isIssueSource && <div className="order-last shrink-0"><DatabaseRowActions
                                                             teamId={teamId}
                                                             row={row}
                                                             busy={busy}
@@ -1561,7 +1561,7 @@ export function DatabaseWorkspace({
                                                                     );
                                                                 }, '휴지통으로 이동했습니다. 사이드바 휴지통에서 복원할 수 있습니다.');
                                                             }}
-                                                        />}
+                                                        /></div>}
                                                         <DatabasePageTitle
                                                             href={databaseRowHref(teamId, row)}
                                                             rowId={row.documentId}
@@ -1621,7 +1621,7 @@ export function DatabaseWorkspace({
                                         {canCreateRows && (
                                             <tr>
                                                 <td
-                                                    colSpan={tableProperties.length + 2}
+                                                    colSpan={tableColumns.length + (canManageDatabase ? 1 : 0)}
                                                     className="border-b border-border-primary"
                                                 >
                                                     <button
@@ -1637,6 +1637,7 @@ export function DatabaseWorkspace({
                                         )}
                                     </tbody>
                                     <DatabaseTableFooter
+                                        hasActionColumn={canManageDatabase}
                                         rowLabel={isIssueSource ? '이슈' : '페이지'}
                                         rows={filtered}
                                         properties={tableColumns}

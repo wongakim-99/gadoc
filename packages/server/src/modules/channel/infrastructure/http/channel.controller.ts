@@ -1,4 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { ManageChannelUseCase } from '../../application/use-cases/manage-channel.use-case';
+import { UpdateChannelDto } from './dto/update-channel.dto';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../../shared/decorators/current-user.decorator';
@@ -18,6 +20,7 @@ export class ChannelController {
         private readonly createChannelUseCase: CreateChannelUseCase,
         private readonly getChannelsUseCase: GetChannelsUseCase,
         private readonly archiveChannelUseCase: ArchiveChannelUseCase,
+        private readonly manageChannelUseCase: ManageChannelUseCase,
     ) {}
 
     @Get()
@@ -55,5 +58,17 @@ export class ChannelController {
         @Body() dto: ArchiveChannelDto,
     ) {
         return this.archiveChannelUseCase.execute(teamId, channelId, user.userId, dto.isArchived);
+    }
+
+    @Patch(':channelId')
+    async updateChannel(@Param('teamId') teamId: string, @Param('channelId') id: string,
+        @CurrentUser() user: { userId: string }, @Body() dto: UpdateChannelDto) {
+        return this.manageChannelUseCase.update(teamId, id, user.userId, dto);
+    }
+
+    @Delete(':channelId')
+    async deleteChannel(@Param('teamId') teamId: string, @Param('channelId') id: string,
+        @CurrentUser() user: { userId: string }) {
+        return this.manageChannelUseCase.delete(teamId, id, user.userId);
     }
 }

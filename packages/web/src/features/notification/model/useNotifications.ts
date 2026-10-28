@@ -115,5 +115,16 @@ export function useNotifications(teamId: string) {
             setError('알림을 읽음 처리하지 못했습니다. 다시 시도해주세요.');
         }
     };
-    return { notifications, unreadCount, loading, error, markAsRead, markAllAsRead, refresh: load };
+    const deleteNotification = async (id?: string) => {
+        try {
+            const result = await notificationApi.deleteNotification(teamId, id);
+            if (!result.success) throw new Error('알림을 삭제하지 못했습니다.');
+            ++sequence.current;
+            setNotifications((items) => id ? items.filter(item => item.id !== id) : []);
+            await load();
+        } catch {
+            setError('알림을 삭제하지 못했습니다. 다시 시도해 주세요.');
+        }
+    };
+    return { notifications, unreadCount, loading, error, markAsRead, markAllAsRead, deleteNotification, refresh: load };
 }

@@ -14,6 +14,7 @@ import { ChannelReadController } from './infrastructure/http/channel-read.contro
 import { TeamModule } from '../team/team.module';
 import { Message, MessageSchema } from '../message/infrastructure/persistence/message.schema';
 import { ArchiveChannelUseCase } from './application/use-cases/archive-channel.use-case';
+import { ManageChannelUseCase } from './application/use-cases/manage-channel.use-case';
 
 @Module({
     imports: [
@@ -30,6 +31,7 @@ import { ArchiveChannelUseCase } from './application/use-cases/archive-channel.u
         { provide: CHANNEL_READ_REPOSITORY, useClass: ChannelReadRepository },
         CreateChannelUseCase,
         ArchiveChannelUseCase,
+        ManageChannelUseCase,
         GetChannelsUseCase,
         MarkChannelAsReadUseCase,
     ],

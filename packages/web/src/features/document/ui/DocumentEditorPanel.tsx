@@ -57,7 +57,7 @@ export function DocumentEditorPanel(props: Props) {
             )}
             {provider && state?.ready ? (
                 <>
-                    <div
+                    {(!state.connected || state.peers.length > 0) && <div
                         aria-label="공동 편집 참여자"
                         className="flex flex-wrap items-center gap-2 text-xs text-text-secondary"
                     >
@@ -75,7 +75,7 @@ export function DocumentEditorPanel(props: Props) {
                                 {peer.editing ? ' · 편집 중' : ''}
                             </span>
                         ))}
-                    </div>
+                    </div>}
                     <LiveDocumentEditor {...props} provider={provider} canEdit={state.canEdit} />
                 </>
             ) : (
@@ -163,16 +163,19 @@ function LiveDocumentEditor({
     return (
         <div className="space-y-3">
             {issueSourceError && <p role="alert" className="text-sm text-error">{issueSourceError}</p>}
-            {canEdit && <InsertWorkspaceReference onInsert={(reference) => insertReference(reference)} />}
             {canEdit && (
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <details className="text-xs text-text-tertiary">
+                    <summary className="w-fit cursor-pointer rounded py-1 hover:bg-bg-hover hover:text-text-primary">삽입 도구</summary>
+                    <div className="flex flex-wrap items-center gap-3 py-2">
+                    <InsertWorkspaceReference onInsert={(reference) => insertReference(reference)} />
                     <DocumentAttachmentButton
                         documentId={documentId}
                         editor={editor}
                         onUploaded={() => onChangeRef.current(JSON.stringify(editor.document))}
                         teamId={teamId}
                     />
-                </div>
+                    </div>
+                </details>
             )}
             <WorkspaceReferenceDropZone
                 label="놓은 문단 아래에 참조 추가"

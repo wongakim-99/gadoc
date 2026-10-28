@@ -1,4 +1,5 @@
 export interface DocumentNode {
+    isDatabasePage?: boolean;
     id: string;
     teamId: string;
     title: string;

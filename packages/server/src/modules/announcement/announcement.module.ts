@@ -9,6 +9,7 @@ import { CreateAnnouncementUseCase } from './application/use-cases/create-announ
 import { GetAnnouncementsUseCase } from './application/use-cases/get-announcements.use-case';
 import { PinAnnouncementUseCase } from './application/use-cases/pin-announcement.use-case';
 import { AnnouncementController } from './infrastructure/http/announcement.controller';
+import { ManageAnnouncementUseCase } from './application/use-cases/manage-announcement.use-case';
 
 @Module({
     imports: [MongooseModule.forFeature([{ name: Announcement.name, schema: AnnouncementSchema }]), TeamModule, BridgeModule],
@@ -18,6 +19,7 @@ import { AnnouncementController } from './infrastructure/http/announcement.contr
         CreateAnnouncementUseCase,
         GetAnnouncementsUseCase,
         PinAnnouncementUseCase,
+        ManageAnnouncementUseCase,
     ],
 })
 export class AnnouncementModule {}

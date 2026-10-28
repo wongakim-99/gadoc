@@ -23,6 +23,7 @@ describe('NotificationController', () => {
     const mockGetUnreadCountUseCase = { execute: jest.fn() };
     const mockMarkAsReadUseCase = { execute: jest.fn() };
     const mockMarkAllAsReadUseCase = { execute: jest.fn() };
+    const notifications = { deleteOwned: jest.fn() };
 
     let controller: NotificationController;
 
@@ -34,6 +35,7 @@ describe('NotificationController', () => {
             mockGetUnreadCountUseCase as any,
             mockMarkAsReadUseCase as any,
             mockMarkAllAsReadUseCase as any,
+            notifications as any,
         );
     });
 
@@ -63,5 +65,22 @@ describe('NotificationController', () => {
     it('전체 읽음 처리 요청을 위임함', async () => {
         await controller.markAllAsRead('team-1', { userId: 'user-2' });
         expect(mockMarkAllAsReadUseCase.execute).toHaveBeenCalledWith('team-1', 'user-2');
+    });
+
+    it('deletes only notifications owned by the current user in the requested team', async () => {
+        notifications.deleteOwned.mockResolvedValue(1);
+        const id = 'a'.repeat(24);
+        await expect(controller.deleteOne('team-1', id, { userId: 'user-2' })).resolves.toEqual({ deletedCount: 1 });
+        expect(notifications.deleteOwned).toHaveBeenCalledWith('team-1', 'user-2', id);
+        await controller.deleteAll('team-1', { userId: 'user-2' });
+        expect(notifications.deleteOwned).toHaveBeenLastCalledWith('team-1', 'user-2');
+    });
+
+    it('rejects missing or foreign notifications and malformed identifiers', async () => {
+        notifications.deleteOwned.mockResolvedValue(0);
+        await expect(controller.deleteOne('team-1', 'a'.repeat(24), { userId: 'user-2' })).rejects.toThrow();
+        notifications.deleteOwned.mockClear();
+        await expect(controller.deleteOne('team-1', 'invalid', { userId: 'user-2' })).rejects.toThrow();
+        expect(notifications.deleteOwned).not.toHaveBeenCalled();
     });
 });

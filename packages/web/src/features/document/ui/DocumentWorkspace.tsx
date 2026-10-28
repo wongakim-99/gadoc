@@ -238,9 +238,6 @@ export function DocumentWorkspace({
                         ) : (
                             <h1 className="document-title break-words text-text-primary">{autosave.title}</h1>
                         )}
-                        <p className="mt-3 text-xs text-text-tertiary">
-                            마지막 수정 {new Date(autosave.updatedAt).toLocaleString('ko-KR')}
-                        </p>
                         {doc.externalUrl && (
                             <a
                                 href={doc.externalUrl}
@@ -295,7 +292,7 @@ export function DocumentWorkspace({
                     />
                     <DocumentChildrenPanel
                         teamId={doc.teamId}
-                        children={children}
+                        children={children.filter((child) => !child.isDatabasePage)}
                         onCreate={workspace.canWrite && doc.canEdit !== false ? () => void createChild() : undefined}
                         creating={creatingChild || !ready}
                     />

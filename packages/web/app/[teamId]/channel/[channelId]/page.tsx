@@ -183,7 +183,7 @@ function ChannelRoom({
             />
             {linkError && <p role="alert" className="px-4 py-2 text-sm text-text-secondary">{linkError}</p>}
             {room.channel?.isArchived && <p className="border-b border-border-primary px-4 py-2 text-sm text-text-secondary">보관된 채널입니다. 기존 메시지는 계속 확인할 수 있습니다.</p>}
-            {showChannelManagement && <ChannelArchiveDialog teamId={teamId} channelId={channelId} name={room.channelLabel} archived={Boolean(room.channel?.isArchived)} onClose={() => setShowChannelManagement(false)} />}
+            {showChannelManagement && <ChannelArchiveDialog teamId={teamId} channelId={channelId} name={room.channelLabel} description={room.channel?.description ?? ''} archived={Boolean(room.channel?.isArchived)} onClose={() => setShowChannelManagement(false)} />}
             <div className="flex min-h-0 flex-1">
                 <div className="flex min-h-0 flex-1 flex-col">
                     <MessageList
