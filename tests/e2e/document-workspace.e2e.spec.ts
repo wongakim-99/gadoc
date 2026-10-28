@@ -154,7 +154,8 @@ test("workspace design tokens keep readable text and primary actions across surf
   await expect(page.getByRole('heading', { name: '이슈 생성', exact: true })).toBeVisible();
   const title = page.getByRole('textbox', { name: '이슈 제목', exact: true });
   await title.focus();
-  await expect(title).toHaveCSS('outline-style', 'solid');
+  await expect(title).toHaveCSS('outline-style', 'none');
+  await expect(title).toBeFocused();
   const submit = page.getByRole('button', { name: '생성', exact: true });
   await expect(submit).toHaveCSS('background-color', 'rgb(70, 104, 217)');
   await page.screenshot({ path: testInfo.outputPath('issue-modal.png') });
@@ -240,7 +241,7 @@ test("workspace shell stays mounted and aligned across every area", async ({
       });
   }
   await sidebar.getByRole("button", { name: "사용자 메뉴", exact: true }).click();
-  await page.getByRole("dialog", { name: "사용자 메뉴", exact: true }).getByRole("link", { name: "설정", exact: true }).click();
+  await page.getByRole("dialog", { name: "사용자 메뉴", exact: true }).getByRole("link", { name: "워크스페이스 설정", exact: true }).click();
   await expect(page).toHaveURL(/\/settings$/);
   await page.keyboard.press("Escape");
   expect(await modules.boundingBox()).toEqual(initial);
@@ -250,10 +251,8 @@ test("workspace shell stays mounted and aligned across every area", async ({
   expect((await sidebar.boundingBox())?.width).toBe(64);
   await modules.getByRole("link", { name: "이슈", exact: true }).click();
   await expect(page).toHaveURL(/\/issues$/);
-  expect((await sidebar.boundingBox())?.width).toBe(64);
-  await sidebar
-    .getByRole("button", { name: "사이드바 펼치기", exact: true })
-    .click();
+  // Choosing an area from the collapsed rail opens its contextual navigation.
+  await expect(sidebar).toHaveCSS('width', '256px');
   expect((await sidebar.boundingBox())?.width).toBe(256);
 });
 
@@ -523,7 +522,7 @@ test("mobile navigation and read-only page", async ({ page }, testInfo) => {
     0,
   );
   await expect(
-    page.getByRole("button", { name: "아카이브", exact: true }),
+    page.getByRole("button", { name: "삭제", exact: true }),
   ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "하위 페이지 추가", exact: true }),
