@@ -352,8 +352,13 @@ function errorEnvelope(error) {
     code: error.publicCode || "operation_failed",
   };
 }
-function output(value, fd = 1) {
-  fs.writeSync(fd, `${JSON.stringify(value)}\n`);
+export function writeResponse(value, fd = 1) {
+  try {
+    fs.writeSync(fd, `${JSON.stringify(value)}\n`);
+  } catch (error) {
+    // A disconnected SSH launcher must not abort an already persisted apply.
+    if (fd !== 3 || error.code !== "EPIPE") throw error;
+  }
 }
 
 // flock uses the SAME permanent inode as ssh-entrypoint.sh, including for writes.
@@ -444,7 +449,7 @@ export function lockedWorker(
       clearTimeout(timer);
       reject(new Error("worker_unavailable"));
     });
-    child.once("exit", (code) => {
+    child.once("close", (code) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
@@ -463,7 +468,7 @@ async function main() {
   const internal = process.argv[2] === "--locked";
   const reply = (value) => {
     if (acknowledgementSent) return;
-    output(value, internal ? 3 : 1);
+    writeResponse(value, internal ? 3 : 1);
     acknowledgementSent = true;
     if (internal) fs.closeSync(3);
   };

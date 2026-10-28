@@ -484,3 +484,57 @@ test("detached apply survives its SSH launcher exit and owns the shared lock unt
   assert.equal(manager.status(requestId).state, "succeeded");
   assert.equal(fs.readFileSync(count, "utf8"), "activated\n");
 });
+
+test("SSH disconnect before acknowledgement cannot abort a persisted apply", async (t) => {
+  const { state, apps, manager } = fixture(t);
+  const moduleUrl = new URL("../deploy/env-management.mjs", import.meta.url)
+    .href;
+  const flock =
+    process.platform === "darwin"
+      ? "/opt/homebrew/bin/flock"
+      : "/usr/bin/flock";
+  const launcherGone = path.join(state, "launcher-gone");
+  const worker = `
+    import fs from 'node:fs';
+    import { environmentManager, writeResponse } from ${JSON.stringify(moduleUrl)};
+    while (!fs.existsSync(${JSON.stringify(launcherGone)})) await new Promise(resolve => setTimeout(resolve, 10));
+    const manager = environmentManager(${JSON.stringify(state)}, {
+      readApps: () => ${JSON.stringify(apps)},
+      readOrigin: () => 'https://example.test', activate: async () => {},
+    });
+    await manager.apply(${JSON.stringify(requestId)}, ${JSON.stringify(checksum(original))}, record => {
+      writeResponse({ protocol:'env-v1', ok:true, record }, 3);
+      fs.closeSync(3);
+    });
+  `;
+  const options = {
+    flock,
+    runner: [process.execPath, "--input-type=module", "-e", worker],
+  };
+  const launcherSource = `
+    import { lockedWorker } from ${JSON.stringify(moduleUrl)};
+    lockedWorker(${JSON.stringify(state)}, 'env-v1 apply', undefined, true, ${JSON.stringify(options)});
+    setTimeout(() => process.exit(0), 20);
+  `;
+  const launcher = spawn(
+    process.execPath,
+    ["--input-type=module", "-e", launcherSource],
+    { stdio: "ignore" },
+  );
+  await new Promise((resolve, reject) => {
+    launcher.once("error", reject);
+    launcher.once("exit", (code) =>
+      code === 0 ? resolve() : reject(new Error(`launcher exit ${code}`)),
+    );
+  });
+  fs.writeFileSync(launcherGone, "gone");
+  const deadline = Date.now() + 5000;
+  while (manager.status(requestId)?.state !== "succeeded") {
+    assert.ok(
+      Date.now() < deadline,
+      "apply survives the broken acknowledgement pipe",
+    );
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  assert.equal(manager.status(requestId).conclusion, "success");
+});
