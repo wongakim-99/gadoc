@@ -195,6 +195,18 @@ test("linked reply and document show their location and open the exact thread or
   await expect(
     resources.getByText(new RegExp("문서 / .* / 연결된 하위 문서")),
   ).toBeVisible();
+  let releaseHistory!: () => void;
+  let historyHeld = false;
+  const historyGate = new Promise<void>((resolve) => {
+    releaseHistory = resolve;
+  });
+  await page.route(`**/api/channel/${f.channelId}/message?*`, async (route) => {
+    if (new URL(route.request().url()).searchParams.has("before")) {
+      historyHeld = true;
+      await historyGate;
+    }
+    await route.continue();
+  });
   await resources
     .getByRole("link")
     .filter({ hasText: "정확한 답글 위치" })
@@ -203,6 +215,18 @@ test("linked reply and document show their location and open the exact thread or
     name: "스레드",
     exact: true,
   });
+  try {
+    await expect.poll(() => historyHeld).toBe(true);
+    await expect(thread.locator(`[data-message-id="${reply.id}"]`)).toHaveCount(
+      1,
+    );
+  } finally {
+    releaseHistory();
+  }
+  await expect(page.locator(`#message-${parent.id}`)).toBeVisible();
+  await expect(thread.locator(`[data-message-id="${reply.id}"]`)).toHaveCount(
+    1,
+  );
   await expect(thread.locator(`[data-message-id="${reply.id}"]`)).toBeVisible();
   await expect(thread.locator(`[data-message-id="${reply.id}"]`)).toContainText(
     "정확한 답글 위치",
