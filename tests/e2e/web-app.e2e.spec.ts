@@ -126,7 +126,7 @@ test.describe.serial("slacord web e2e", () => {
     await page.getByRole("link", { name: fixture.teamName }).click();
     await page.waitForURL(`**/${fixture.teamId}`);
     await expect(
-      page.getByRole("heading", { name: /작업 공간/ }),
+      page.getByRole("heading", { name: fixture.teamName, exact: true }),
     ).toBeVisible();
 
     await page
