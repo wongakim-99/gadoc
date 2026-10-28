@@ -35,6 +35,7 @@ export function readInlineDatabaseViews(value: string): InlineDatabaseViews {
             ...parsed,
             views: parsed.views.map((view) => ({
                 ...view,
+                statusGrouping: view.statusGrouping === 'group' ? 'group' : 'option',
                 propertyOrder: Array.isArray(view.propertyOrder) ? [...new Set(view.propertyOrder.filter(id=>typeof id==='string'))].slice(0,500) : [],
                 columnWidths: view.columnWidths && typeof view.columnWidths === 'object' && !Array.isArray(view.columnWidths)
                     ? Object.fromEntries(Object.entries(view.columnWidths).filter(([,width])=>Number.isInteger(width)&&width>=120&&width<=800).slice(0,501)) : {},

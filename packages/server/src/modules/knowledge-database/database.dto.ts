@@ -1,3 +1,4 @@
+import { STATUS_GROUP_KEYS, type StatusGroupKey } from '@slacord/document-core';
 import { OPTION_COLORS, type OptionColor } from '@slacord/document-core';
 import { Type } from 'class-transformer';
 import { ValidateNested } from 'class-validator';
@@ -43,7 +44,14 @@ export class NumberPresentationDto {
     @IsIn(OPTION_COLORS) color!: OptionColor;
     @IsBoolean() showNumber!: boolean;
 }
+export class StatusGroupAssignmentDto {
+    @IsString() @MinLength(1) @MaxLength(80) name!: string;
+    @IsIn(STATUS_GROUP_KEYS) group!: StatusGroupKey;
+}
 export class AddPropertyDto {
+    @IsOptional() @IsIn(['select', 'checkbox']) statusDisplay?: 'select' | 'checkbox';
+    @IsOptional() @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => StatusGroupAssignmentDto)
+    statusGroups?: StatusGroupAssignmentDto[];
     @IsOptional() @ValidateNested() @Type(() => NumberPresentationDto)
     numberPresentation?: NumberPresentationDto;
     @IsOptional() @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => RenameOptionDto)
@@ -124,6 +132,7 @@ export class AddViewDto {
     @IsOptional() @IsString() @MaxLength(40) dateProperty?: string;
     @IsOptional() @IsString() @MaxLength(40) endProperty?: string;
     @IsOptional() @IsString() @MaxLength(40) groupProperty?: string;
+    @IsOptional() @IsIn(['option', 'group']) statusGrouping?: 'option' | 'group';
     @IsOptional() @IsArray() @ArrayMaxSize(50) @IsString({ each: true }) hiddenProperties?: string[];
     @IsString() @MaxLength(200) query!: string;
     @IsString() @MaxLength(80) status!: string;

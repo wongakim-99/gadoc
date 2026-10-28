@@ -1,6 +1,6 @@
 'use client';
+import { statusCheckboxState, resolveStatusGroups, STATUS_GROUP_KEYS, STATUS_GROUP_LABELS, formatDatabaseNumber } from '@slacord/document-core';
 import { DatabaseNumberPresentation } from './DatabaseNumberPresentation';
-import { formatDatabaseNumber } from '@slacord/document-core';
 import { useEffect, useRef, useState } from 'react';
 import { DatabaseOptionTag, optionColorStyle } from './DatabaseOptionTag';
 import { DatabaseMenu } from './DatabaseMenu';
@@ -194,6 +194,16 @@ export function DatabaseCell({
                 onChange={(e) => void commit(e.target.checked)}
             />
         );
+    if (property.type === 'status' && property.statusDisplay === 'checkbox') {
+        const identities = property.optionIdentities ?? propertyOptions.map(name => ({ id: name, name }));
+        const state = statusCheckboxState(identities, property.statusOptionGroups, value);
+        return <input type="checkbox" aria-label={label} checked={state.checked}
+            aria-checked={state.indeterminate ? 'mixed' : state.checked}
+            ref={element => { if (element) element.indeterminate = state.indeterminate; }}
+            disabled={disabled || readOnly || state.nextValue === undefined}
+            title={state.nextValue === undefined ? '전환할 상태 옵션이 없습니다.' : String(value ?? '')}
+            onChange={() => { if (state.nextValue !== undefined) void commit(state.nextValue); }} />;
+    }
     if (['status', 'select'].includes(property.type))
         return (
             <div className="flex min-w-0 items-center gap-1">
@@ -206,9 +216,12 @@ export function DatabaseCell({
                 onChange={(e) => void commit(e.target.value || null)}
             >
                 <option value="" disabled={row.resourceKind === 'issue' && ['status', 'priority'].includes(property.id)}>{value ? '비우기' : ' '}</option>
-                {propertyOptions.map((option) => (
-                    <option key={option}>{option}</option>
-                ))}
+                {property.type === 'status' ? STATUS_GROUP_KEYS.map(group => {
+                    const identities = property.optionIdentities ?? propertyOptions.map(name => ({ id: name, name }));
+                    const groups = resolveStatusGroups(identities, property.statusOptionGroups);
+                    const options = propertyOptions.filter(name => (groups.find(item => item.optionId === identities.find(option => option.name === name)?.id)?.group ?? 'todo') === group);
+                    return options.length ? <optgroup key={group} label={STATUS_GROUP_LABELS[group]}>{options.map(option => <option key={option}>{option}</option>)}</optgroup> : null;
+                }) : propertyOptions.map((option) => <option key={option}>{option}</option>)}
             </select>
             {canCreateOption && <DatabaseMenu label={`${property.name} 옵션 추가`} icon="+"
                 triggerClassName="shrink-0 rounded-control px-1.5 py-0.5 text-xs text-text-secondary hover:bg-bg-hover focus-visible:ring-1 focus-visible:ring-action">

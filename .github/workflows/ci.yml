@@ -259,6 +259,15 @@ jobs:
       - name: Run web e2e
         run: pnpm test:e2e:web
 
+      - name: Upload database visual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-visual-review
+          path: test-results/**/status-group-*.png
+          if-no-files-found: ignore
+          retention-days: 3
+
       - name: Upload E2E artifacts
         if: failure()
         uses: actions/upload-artifact@v4

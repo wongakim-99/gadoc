@@ -125,6 +125,7 @@ export function DatabaseWorkspace({
     const [hiddenProperties, setHiddenProperties] = useState<string[]>(
         initialView.current.hiddenProperties ?? localViews.hiddenProperties,
     );
+    const [statusGrouping, setStatusGrouping] = useState<'option' | 'group'>(initialView.current.statusGrouping ?? 'option');
     const [groupProperty, setGroupProperty] = useState(initialView.current.groupProperty ?? 'status');
     const [endProperty, setEndProperty] = useState(initialView.current.endProperty ?? '');
     const [restoreViewVersion, setRestoreViewVersion] = useState(0);
@@ -151,6 +152,7 @@ export function DatabaseWorkspace({
                           dateProperty,
                           endProperty,
                           groupProperty,
+                          statusGrouping,
                           dataSourceId,
                           hiddenProperties,
                           propertyOrder,
@@ -185,6 +187,7 @@ export function DatabaseWorkspace({
         dateProperty,
         endProperty,
         groupProperty,
+        statusGrouping,
         dataSourceId,
         hiddenProperties,
         propertyOrder,
@@ -206,7 +209,7 @@ export function DatabaseWorkspace({
         setSort(saved.sort);
         setDateProperty(saved.dateProperty ?? '');
         setEndProperty(saved.endProperty ?? '');
-        setGroupProperty(saved.groupProperty ?? 'status');
+        setGroupProperty(saved.groupProperty ?? 'status'); setStatusGrouping(saved.statusGrouping ?? 'option');
         setDataSourceId(saved.dataSourceId || database!.id);
         setHiddenProperties(saved.hiddenProperties ?? []);
         setPropertyOrder(saved.propertyOrder ?? []);
@@ -314,6 +317,7 @@ export function DatabaseWorkspace({
                   dateProperty,
                   endProperty,
                   groupProperty,
+                  statusGrouping,
                   dataSourceId,
                   hiddenProperties,
                   propertyOrder,
@@ -677,6 +681,7 @@ export function DatabaseWorkspace({
                                                               dateProperty,
                                                               endProperty,
                                                               groupProperty,
+                                                              statusGrouping,
                                                               dataSourceId,
                                                               hiddenProperties,
                                                               propertyOrder,
@@ -696,7 +701,7 @@ export function DatabaseWorkspace({
                                             setSort(item.sort);
                                             setDateProperty(item.dateProperty ?? '');
                                             setEndProperty(item.endProperty ?? '');
-                                            setGroupProperty(item.groupProperty ?? 'status');
+                                            setGroupProperty(item.groupProperty ?? 'status'); setStatusGrouping(item.statusGrouping ?? 'option');
                                             setDataSourceId(item.dataSourceId ?? '');
                                             setHiddenProperties(item.hiddenProperties ?? []);
                                             setPropertyOrder(item.propertyOrder ?? []);
@@ -767,6 +772,7 @@ export function DatabaseWorkspace({
                                                                               dateProperty,
                                                                               endProperty,
                                                                               groupProperty,
+                                                                              statusGrouping,
                                                                               dataSourceId,
                                                                               hiddenProperties,
                                                                               propertyOrder,
@@ -788,6 +794,7 @@ export function DatabaseWorkspace({
                                                                     dateProperty: prepared.dateProperty,
                                                                     endProperty,
                                                                     groupProperty: prepared.groupProperty,
+                                                                    statusGrouping,
                                                                     dataSourceId,
                                                                     hiddenProperties,
                                                                     propertyOrder,
@@ -816,6 +823,7 @@ export function DatabaseWorkspace({
                                                         dateProperty: prepared.dateProperty,
                                                         endProperty,
                                                         groupProperty: prepared.groupProperty,
+                                                                    statusGrouping,
                                                         dataSourceId,
                                                         hiddenProperties,
                                                         propertyOrder,
@@ -1084,6 +1092,7 @@ export function DatabaseWorkspace({
                                                                               dateProperty,
                                                                               endProperty,
                                                                               groupProperty,
+                                                                              statusGrouping,
                                                                               dataSourceId,
                                                                               hiddenProperties,
                                                                               propertyOrder,
@@ -1106,6 +1115,7 @@ export function DatabaseWorkspace({
                                                                     dateProperty,
                                                                     endProperty,
                                                                     groupProperty,
+                                                                    statusGrouping,
                                                                     dataSourceId,
                                                                     hiddenProperties,
                                                                     propertyOrder,
@@ -1142,7 +1152,7 @@ export function DatabaseWorkspace({
                                                         setSort(next.sort);
                                                         setDateProperty(next.dateProperty ?? '');
                                                         setEndProperty(next.endProperty ?? '');
-                                                        setGroupProperty(next.groupProperty ?? 'status');
+                                                        setGroupProperty(next.groupProperty ?? 'status'); setStatusGrouping(next.statusGrouping ?? 'option');
                                                         setDataSourceId(next.dataSourceId ?? '');
                                                         setHiddenProperties(next.hiddenProperties ?? []);
                                                         setPropertyOrder(next.propertyOrder ?? []);
@@ -1674,6 +1684,8 @@ export function DatabaseWorkspace({
                                 busy={busy}
                                 saveCell={saveCell}
                                 groupProperty={groupProperty}
+                                statusGrouping={statusGrouping}
+                                onStatusGroupingChange={setStatusGrouping}
                                 onGroupPropertyChange={setGroupProperty}
                             />
                         )}

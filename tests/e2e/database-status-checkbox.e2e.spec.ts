@@ -1,0 +1,34 @@
+import { test, expect } from 'playwright/test';
+import { createWorkspaceFixture, jsonFetch } from './support/slacord-api';
+import { loginWithSession } from './support/slacord-session';
+import type { DatabaseDetail, DatabaseProperty } from '../../packages/web/src/features/database/model/types';
+
+test('status checkbox keeps canonical values, mixed progress and presentation through rename', async ({ page }) => {
+    const f = await createWorkspaceFixture();
+    const root = `/team/${f.teamId}/database`;
+    const db = (await jsonFetch<{ id: string }>(root, { method: 'POST', token: f.owner.token, body: { name: '상태 체크박스' } }))!.data!;
+    const call = <T>(path: string, body?: unknown, method: 'GET' | 'POST' | 'PATCH' = body ? 'POST' : 'GET') => jsonFetch<T>(`${root}/${db.id}${path}`, { token: f.owner.token, method, body });
+    const prop = (await call<DatabaseProperty>('/property', { name: '단계', type: 'status', options: ['할 일', '진행 중', '완료'], revision: 0 }))!.data!;
+    await call('/row', { documentId: f.documentId, values: { [prop.id]: '진행 중' } });
+    await expect(call('/property', { name: '잘못된 설정', type: 'text', statusDisplay: 'checkbox', revision: 1 })).rejects.toThrow('400');
+    await loginWithSession(page, f.owner);
+    await page.goto(`/${f.teamId}/docs?database=${db.id}`);
+    await page.getByRole('button', { name: '단계 속성 편집', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: '속성 설정' });
+    await dialog.getByLabel('상태 표시 방식', { exact: true }).selectOption('checkbox');
+    await dialog.getByRole('button', { name: '변경 적용' }).click();
+    const checkbox = page.getByRole('checkbox', { name: / · 단계$/ });
+    await expect(checkbox).toHaveJSProperty('indeterminate', true);
+    await checkbox.click();
+    await expect(checkbox).toBeChecked();
+    await expect.poll(async () => (await call<DatabaseDetail>(''))!.data!.rows[0].values[prop.id]).toBe('완료');
+    const detail = (await call<DatabaseDetail>(''))!.data!;
+    await call(`/property/${prop.id}/configuration`, { name: '작업 상태', type: 'status', options: ['할 일', '진행 중', '완료'], revision: detail.revision }, 'PATCH');
+    await page.reload();
+    const renamed = page.getByRole('checkbox', { name: / · 작업 상태$/ });
+    await expect(renamed).toBeChecked();
+    await renamed.uncheck();
+    await expect.poll(async () => (await call<DatabaseDetail>(''))!.data!.rows[0].values[prop.id]).toBe('할 일');
+    await page.reload();
+    await expect(renamed).not.toBeChecked();
+});
