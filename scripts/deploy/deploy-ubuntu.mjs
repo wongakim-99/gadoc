@@ -89,6 +89,8 @@ export function snapshotApps(apps) {
       args: pm.args,
       interpreter: pm.exec_interpreter || "node",
       exec_mode: "fork",
+      ...runtimeIdentity(pm),
+      ...(pm.filter_env !== undefined ? { filter_env: pm.filter_env } : {}),
       env: pm.env,
       autorestart: true,
       watch: false,
@@ -96,6 +98,84 @@ export function snapshotApps(apps) {
       error_file: pm.pm_err_log_path,
     })),
   };
+}
+
+function runtimeIdentity(pm) {
+  return Object.fromEntries(
+    ["uid", "gid"]
+      .filter((key) => pm[key] !== undefined)
+      .map((key) => [key, pm[key]]),
+  );
+}
+
+export function webEnvironment(env) {
+  const allowed = new Set([
+    "PATH",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "TZ",
+    "TMPDIR",
+    "NODE_ENV",
+    "NODE_OPTIONS",
+    "NEXT_TELEMETRY_DISABLED",
+    "INTERNAL_API_URL",
+    "PORT",
+  ]);
+  return Object.fromEntries(
+    Object.entries(env).filter(
+      ([key]) => allowed.has(key) || key.startsWith("NEXT_PUBLIC_"),
+    ),
+  );
+}
+
+export function prepareRuntimePaths(release, config) {
+  const identities = config.apps.filter(
+    (app) => app.uid !== undefined && Number(app.uid) !== 0,
+  );
+  if (!identities.length) return;
+  for (const app of identities) {
+    if (
+      !Number.isSafeInteger(Number(app.uid)) ||
+      Number(app.uid) <= 0 ||
+      !Number.isSafeInteger(Number(app.gid)) ||
+      Number(app.gid) <= 0
+    ) {
+      throw new Error(
+        "Non-root runtime requires numeric positive uid and gid.",
+      );
+    }
+  }
+  // Allow traversal, not listing, of private deployment parents.
+  for (const directory of [
+    path.dirname(path.dirname(release)),
+    path.dirname(release),
+  ])
+    fs.chmodSync(directory, fs.statSync(directory).mode | 0o111);
+  function makeReadable(directory) {
+    fs.chmodSync(directory, 0o755);
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isSymbolicLink()) continue;
+      if (entry.isDirectory()) makeReadable(file);
+      else if (entry.isFile()) {
+        const privateFile =
+          entry.name.startsWith(".env") ||
+          entry.name === "ecosystem.config.json" ||
+          /\.(pem|key)$/.test(entry.name);
+        // Never briefly make an existing secret readable while fixing artifact permissions.
+        fs.chmodSync(
+          file,
+          privateFile ? 0o600 : 0o644 | (fs.statSync(file).mode & 0o111),
+        );
+      }
+    }
+  }
+  makeReadable(release);
+  const web = identities.find((app) => app.name === APP_NAMES[1]);
+  const next = path.join(release, "packages/web/.next");
+  if (web && fs.existsSync(next))
+    run("chown", ["-R", `${web.uid}:${web.gid}`, next]);
 }
 
 export function readServerOverrides(state) {
@@ -117,16 +197,10 @@ export function readServerOverrides(state) {
 
 export function releaseApps(release, apps, origin, serverOverrides = {}) {
   const server = { ...runtimeEnvironment(apps[0]), ...serverOverrides };
-  const web = runtimeEnvironment(apps[1]);
-  // Legacy launches sometimes inherited backend credentials into both PM2 processes.
-  for (const key of Object.keys(web)) {
-    if (
-      /^(MINIO_|MONGODB_|JWT_|SLACK_|DISCORD_|CONFLUENCE_|GITHUB_WEBHOOK_SECRET)/.test(
-        key,
-      )
-    )
-      delete web[key];
-  }
+  const web = webEnvironment(runtimeEnvironment(apps[1]));
+  // The API needs only its scoped URI, never Mongo bootstrap/admin credentials.
+  for (const key of Object.keys(server))
+    if (key.startsWith("MONGO_")) delete server[key];
   if (!server.MONGODB_URI || !server.JWT_SECRET)
     throw new Error("Existing MONGODB_URI and JWT_SECRET are required.");
   const publicEnv = {
@@ -143,6 +217,9 @@ export function releaseApps(release, apps, origin, serverOverrides = {}) {
         cwd: path.join(release, "packages/server"),
         script: path.join(release, "packages/server/dist/main.js"),
         interpreter: process.execPath,
+        ...runtimeIdentity(apps[0].pm2_env),
+        // PM2 6.0.14 ignores boolean true (.length check); this excludes every inherited key.
+        filter_env: [""],
         env: { ...server, ...publicEnv, HOST: "0.0.0.0", PORT: "8082" },
         autorestart: true,
         watch: false,
@@ -155,6 +232,8 @@ export function releaseApps(release, apps, origin, serverOverrides = {}) {
         cwd: path.join(release, "packages/web"),
         script: path.join(release, "node_modules/next/dist/bin/next"),
         interpreter: process.execPath,
+        ...runtimeIdentity(apps[1].pm2_env),
+        filter_env: [""],
         args: ["start", "--hostname", "0.0.0.0", "--port", "3002"],
         env: { ...web, ...publicEnv, PORT: "3002" },
         autorestart: true,
@@ -231,11 +310,10 @@ export async function activateRelease(
     : null;
   const rollbackFile = path.join(state, "rollback.config.json");
   const ecosystemFile = path.join(release, "ecosystem.config.json");
+  const config = releaseApps(release, apps, origin, readServerOverrides(state));
+  (dependencies.preparePaths || prepareRuntimePaths)(release, config);
   privateJson(rollbackFile, snapshotApps(apps));
-  privateJson(
-    ecosystemFile,
-    releaseApps(release, apps, origin, readServerOverrides(state)),
-  );
+  privateJson(ecosystemFile, config);
 
   try {
     replace(ecosystemFile);

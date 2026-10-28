@@ -6,7 +6,7 @@ import { securityMiddleware } from './shared/http/security.middleware';
 import cookieParser from 'cookie-parser';
 import { json, type Request, type Response, type NextFunction } from 'express';
 import { AppModule } from './app.module';
-import { HttpLoggingInterceptor } from './shared/interceptors/http-logging.interceptor';
+import { ActivityMiddleware } from './modules/activity/activity.middleware';
 import { DiscordErrorFilter } from './shared/filters/discord-error.filter';
 import { DiscordNotifyService } from './modules/discord/discord-notify.service';
 
@@ -20,13 +20,14 @@ async function bootstrap() {
 
     const app = await NestFactory.create(AppModule, { rawBody: true });
 
+    const activity = app.get(ActivityMiddleware);
+    app.use(activity.use.bind(activity));
     app.use(cookieParser());
     app.use(securityMiddleware);
     const mcpBody = json({ limit: '3mb' });
     // Nest detects parser middleware by name. A route-specific jsonParser must
     // not make it skip the default parser used by login, documents and webhooks.
     app.use('/api/mcp', (req: Request, res: Response, next: NextFunction) => mcpBody(req, res, next));
-    app.useGlobalInterceptors(new HttpLoggingInterceptor());
     app.useGlobalFilters(new DiscordErrorFilter(app.get(DiscordNotifyService)));
 
     app.enableCors({
@@ -34,6 +35,7 @@ async function bootstrap() {
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization', 'MCP-Protocol-Version', 'Mcp-Session-Id'],
+        exposedHeaders: ['X-Request-Id'],
     });
 
     app.setGlobalPrefix('api');

@@ -3,6 +3,7 @@ import { repoRoot } from "./profile-env.mjs";
 
 export function resolveProfileCommand(target, env) {
   const webPort = env.SLACORD_WEB_PORT || "3103";
+  const webHost = env.SLACORD_WEB_HOST || "127.0.0.1";
 
   switch (target) {
     case "server:dev":
@@ -20,7 +21,15 @@ export function resolveProfileCommand(target, env) {
     case "web:dev":
       return {
         command: "pnpm",
-        args: ["exec", "next", "dev", "--port", String(webPort)],
+        args: [
+          "exec",
+          "next",
+          "dev",
+          "--hostname",
+          webHost,
+          "--port",
+          String(webPort),
+        ],
         cwd: path.join(repoRoot, "packages", "web"),
       };
     case "web:build":
@@ -32,7 +41,15 @@ export function resolveProfileCommand(target, env) {
     case "web:start":
       return {
         command: "pnpm",
-        args: ["exec", "next", "start", "--port", String(webPort)],
+        args: [
+          "exec",
+          "next",
+          "start",
+          "--hostname",
+          webHost,
+          "--port",
+          String(webPort),
+        ],
         cwd: path.join(repoRoot, "packages", "web"),
       };
     case "verify:e2e":
