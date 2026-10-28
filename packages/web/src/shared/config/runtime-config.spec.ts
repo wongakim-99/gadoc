@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { socketUrl, toApiUrl } from './runtime-config';
+import { socketUrl, toApiUrl } from '../../../lib/runtime-config';
 
 afterEach(() => {
     vi.unstubAllGlobals();
