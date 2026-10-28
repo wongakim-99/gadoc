@@ -1,6 +1,7 @@
 'use client';
 import { formatDatabaseNumber } from '@slacord/document-core';
 import { useEffect, useRef, useState } from 'react';
+import { DatabaseOptionTag, optionColorStyle } from './DatabaseOptionTag';
 import { DatabaseMenu } from './DatabaseMenu';
 import { databaseApi } from '@/lib/api-client';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
@@ -199,6 +200,7 @@ export function DatabaseCell({
                 aria-label={label}
                 disabled={disabled || optionBusy}
                 value={String(value ?? '')}
+                style={value ? optionColorStyle(property, String(value)) : undefined}
                 className={`max-w-full cursor-pointer appearance-none rounded px-1.5 py-0.5 text-xs outline-none focus:ring-1 focus:ring-action ${value ? "bg-bg-hover text-text-primary" : "w-full bg-transparent"}`}
                 onChange={(e) => void commit(e.target.value || null)}
             >
@@ -254,11 +256,11 @@ export function DatabaseCell({
                     ))}
                 {readOnly ? (
                     <span className="text-xs text-text-secondary">
-                        {property.type === 'relation' ? '' : labels.map((item) => item.title).join(', ') || '미지정'}
+                        {property.type === 'multi_select' ? <span className="flex flex-wrap gap-1">{labels.map((item) => <DatabaseOptionTag key={item.id} property={property} name={item.title} />)}</span> : property.type === 'relation' ? '' : labels.map((item) => item.title).join(', ') || '미지정'}
                     </span>
                 ) : (
                     <DatabaseMenu label={label}
-                        icon={property.type === 'relation' ? '연결 편집' : labels.map(item=>item.title).join(', ') || ' '}
+                        icon={property.type === 'multi_select' && labels.length ? <span className="flex flex-wrap gap-1">{labels.map((item) => <DatabaseOptionTag key={item.id} property={property} name={item.title} />)}</span> : property.type === 'relation' ? '연결 편집' : labels.map(item=>item.title).join(', ') || ' '}
                         triggerClassName="block min-h-7 w-full cursor-pointer rounded-control p-1 text-left text-xs text-text-secondary hover:bg-bg-hover focus-visible:ring-1 focus-visible:ring-action"
                         onOpenChange={async (open) => {
                             if (!open || property.type !== 'relation') return;
@@ -325,7 +327,7 @@ export function DatabaseCell({
                                                         )
                                                     }
                                                 />
-                                                {option.title}
+                                                {property.type === 'multi_select' ? <DatabaseOptionTag property={property} name={option.title} /> : option.title}
                                             </label>
                                             {property.type === 'person' && row.resourceKind !== 'issue' &&
                                                 row.availablePersonIds.includes(option.id) && (
