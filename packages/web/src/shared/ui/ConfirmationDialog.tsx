@@ -8,6 +8,7 @@ interface Props {
     cancelLabel?: string;
     confirmLabel: string;
     description: string;
+    error?: string;
     onClose: () => void;
     onConfirm: () => void | Promise<void>;
     open: boolean;
@@ -20,6 +21,7 @@ export function ConfirmationDialog({
     cancelLabel = '취소',
     confirmLabel,
     description,
+    error,
     onClose,
     onConfirm,
     open,
@@ -65,6 +67,7 @@ export function ConfirmationDialog({
                     {title}
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-text-secondary">{description}</p>
+                {error && <p role="alert" className="mt-3 text-sm text-error">{error}</p>}
                 <div className="mt-6 flex flex-wrap justify-end gap-3">
                     <button
                         ref={cancelButtonRef}

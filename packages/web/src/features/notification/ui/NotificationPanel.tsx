@@ -7,9 +7,10 @@ import { formatShortDateTime } from '@/src/shared/lib/datetime';
 import type { AppNotification } from '@/src/entities/notification/types';
 import { buildNotificationCopy } from '@/src/entities/notification/lib/buildNotificationCopy';
 import { useDialogFocusTrap } from '@/src/shared/ui/useDialogFocusTrap';
+import { ConfirmationDialog } from '@/src/shared/ui/ConfirmationDialog';
 
 interface Props {
-    onDelete: (id?: string) => Promise<void>;
+    onDelete: (id?: string) => Promise<boolean>;
     id?: string;
     error?: string | null;
     notifications: AppNotification[];
@@ -30,10 +31,20 @@ export const NotificationPanel = forwardRef<HTMLElement, Props>(function Notific
     const closeButtonRef = useRef<HTMLButtonElement>(null);
     const markAllButtonRef = useRef<HTMLButtonElement>(null);
     const [deleting, setDeleting] = useState(false);
+    const pendingDelete = useRef(false);
+    const [confirmAll, setConfirmAll] = useState(false);
+    const [deleteError, setDeleteError] = useState('');
     const remove = async (id?: string) => {
-        if (deleting || (!id && !window.confirm('이 워크스페이스의 내 알림을 모두 삭제할까요?'))) return;
+        if (pendingDelete.current) return;
+        pendingDelete.current = true;
         setDeleting(true);
-        try { await onDelete(id); } finally { setDeleting(false); }
+        setDeleteError('');
+        try {
+            if (await onDelete(id)) setConfirmAll(false);
+            else setDeleteError('알림을 삭제하지 못했습니다. 목록은 유지됩니다. 다시 시도해 주세요.');
+        } catch {
+            setDeleteError('알림을 삭제하지 못했습니다. 목록은 유지됩니다. 다시 시도해 주세요.');
+        } finally { pendingDelete.current = false; setDeleting(false); }
     };
 
     useDialogFocusTrap({
@@ -68,7 +79,7 @@ export const NotificationPanel = forwardRef<HTMLElement, Props>(function Notific
                     알림
                 </h3>
                 <div className="flex items-center gap-2">
-                    <button type="button" disabled={deleting || !notifications.length} onClick={() => void remove()}
+                    <button type="button" disabled={deleting || !notifications.length} onClick={() => { setDeleteError(''); setConfirmAll(true); }}
                         className="text-xs text-text-tertiary hover:text-text-primary disabled:opacity-40">전체 삭제</button>
                     <button
                         ref={markAllButtonRef}
@@ -96,9 +107,9 @@ export const NotificationPanel = forwardRef<HTMLElement, Props>(function Notific
             </div>
             <NotificationPermissionButton />
             <div className="flex-1 overflow-y-auto">
-                {error && (
+                {(error || deleteError) && !confirmAll && (
                     <p role="alert" className="px-4 py-3 text-sm text-red-300">
-                        {error}
+                        {deleteError || error}
                     </p>
                 )}
                 {notifications.length === 0 && (
@@ -142,6 +153,17 @@ export const NotificationPanel = forwardRef<HTMLElement, Props>(function Notific
                     );
                 })}
             </div>
+            <ConfirmationDialog
+                open={confirmAll}
+                busy={deleting}
+                title="내 알림을 모두 삭제할까요?"
+                description="현재 워크스페이스의 내 알림만 삭제합니다. 메시지·문서·이슈와 다른 사람의 알림은 삭제하지 않습니다."
+                confirmLabel="모두 삭제"
+                tone="danger"
+                error={deleteError}
+                onClose={() => { if (!pendingDelete.current) { setConfirmAll(false); setDeleteError(''); } }}
+                onConfirm={() => remove()}
+            />
         </aside>
     );
 });

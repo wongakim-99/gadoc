@@ -8,6 +8,7 @@ import { useStickyScroll } from '../model/stickyScroll';
 import { MessageInput } from './MessageInput';
 import { MessageItem } from './MessageItem';
 import { getChatSocket } from '../model/socket';
+import type { TeamMemberSummary } from '@/src/entities/team/types';
 
 interface Props {
     highlightMessageId?: string | null;
@@ -15,6 +16,7 @@ interface Props {
     onEdit: (messageId: string, content: string) => Promise<void>;
     onTogglePin: (message: Message) => Promise<unknown>;
     canWrite: boolean;
+    members: TeamMemberSummary[];
     channelId: string;
     teamId: string;
     parentMessage: Message;
@@ -32,6 +34,7 @@ export function ThreadPanel({
     onEdit,
     onTogglePin,
     canWrite,
+    members,
     channelId,
     teamId,
     parentMessage,
@@ -86,6 +89,7 @@ export function ThreadPanel({
     }, [highlightMessageId, replyIds, containerRef]);
 
     const renderMessage = (message: Message) => <MessageItem
+        members={members}
         key={message.id} idPrefix="thread-message" message={message} currentUserId={currentUserId}
         highlighted={highlightMessageId === message.id}
         onReact={(id, emoji) => { if (canWrite) onReact(id, emoji); }}
@@ -141,6 +145,7 @@ export function ThreadPanel({
             </div>
 
             <MessageInput
+                members={members}
                 draftScope={{ userId: currentUserId, teamId, channelId, threadId: parentMessage.id }}
                 channelName="스레드"
                 readOnly={!canWrite}

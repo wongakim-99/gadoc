@@ -12,6 +12,7 @@ import {
 import { resolveViewportRestore, type RestoreTarget } from '@/src/features/chat/model/resolveViewportRestore';
 import { useHuddle } from '@/src/features/huddle/model/useHuddle';
 import { ChannelHeader } from '@/src/features/chat/ui/ChannelHeader';
+import { ChannelMembersDialog } from '@/src/features/chat/ui/ChannelMembersDialog';
 import { ChannelArchiveDialog } from '@/src/features/chat/ui/ChannelArchiveDialog';
 import { MessageList } from '@/src/features/chat/ui/MessageList';
 import { MessageInput } from '@/src/features/chat/ui/MessageInput';
@@ -53,9 +54,12 @@ function ChannelRoom({
     targetMessageAt: string | null;
 }) {
     const room = useChannelRoom(teamId, channelId);
+    const mentionMembers = room.members.filter(member => room.channel && (
+        ['public', 'voice'].includes(room.channel.type) || room.channel.memberIds?.includes(member.userId)));
     const messages = useChatStore((state) => state.messages);
     const [threadMessageId, setThreadMessageId] = useState<string | null>(null);
     const [showPins, setShowPins] = useState(false);
+    const [showMembers, setShowMembers] = useState(false);
     const [showChannelManagement, setShowChannelManagement] = useState(false);
     const [linkedMessage, setLinkedMessage] = useState<Message | null>(null);
     const [linkedParent, setLinkedParent] = useState<Message | null>(null);
@@ -175,6 +179,8 @@ function ChannelRoom({
                 isArchived={room.channel?.isArchived}
                 onManageChannel={room.canManageChannel ? () => setShowChannelManagement(true) : undefined}
                 channelName={room.channelLabel}
+                memberCount={room.channel ? mentionMembers.length : undefined}
+                onOpenMembers={() => setShowMembers(true)}
                 channelType={room.channel?.type}
                 onOpenPins={() => setShowPins(true)}
                 onStartHuddle={handleStartHuddle}
@@ -182,11 +188,13 @@ function ChannelRoom({
                 huddleReady={huddle.socketReady}
             />
             {linkError && <p role="alert" className="px-4 py-2 text-sm text-text-secondary">{linkError}</p>}
+            {showMembers && <ChannelMembersDialog members={mentionMembers} channelName={room.channelLabel} channelType={room.channel?.type} currentUserId={room.currentUserId} onClose={() => setShowMembers(false)} />}
             {room.channel?.isArchived && <p className="border-b border-border-primary px-4 py-2 text-sm text-text-secondary">보관된 채널입니다. 기존 메시지는 계속 확인할 수 있습니다.</p>}
             {showChannelManagement && <ChannelArchiveDialog teamId={teamId} channelId={channelId} name={room.channelLabel} description={room.channel?.description ?? ''} archived={Boolean(room.channel?.isArchived)} onClose={() => setShowChannelManagement(false)} />}
             <div className="flex min-h-0 flex-1">
                 <div className="flex min-h-0 flex-1 flex-col">
                     <MessageList
+                        members={mentionMembers}
                         currentUserId={room.currentUserId}
                         hasOlderMessages={room.hasOlderMessages}
                         highlightMessageId={targetMessageId}
@@ -204,7 +212,7 @@ function ChannelRoom({
                     <MessageInput
                         draftScope={{ userId: room.currentUserId, teamId, channelId }}
                         channelName={room.channelLabel}
-                        members={room.members}
+                        members={mentionMembers}
                         readOnly={!room.canWrite}
                         readOnlyMessage={room.channel?.isArchived ? '보관된 채널은 읽기 전용입니다.' : undefined}
                         onSend={(content) => room.sendMessage(content)}
@@ -223,6 +231,7 @@ function ChannelRoom({
                 )}
                 {threadMessage && (
                     <ThreadPanel
+                        members={mentionMembers}
                         key={threadMessage.id}
                         teamId={teamId}
                         canWrite={room.canWrite}

@@ -1,3 +1,5 @@
+import { Settings2, UsersRound } from 'lucide-react';
+
 interface Props {
     canStartHuddle?: boolean;
     channelName: string;
@@ -9,6 +11,8 @@ interface Props {
     huddleReady?: boolean;
     onManageChannel?: () => void;
     isArchived?: boolean;
+    memberCount?: number;
+    onOpenMembers?: () => void;
 }
 
 export function ChannelHeader({
@@ -22,6 +26,8 @@ export function ChannelHeader({
     huddleReady = true,
     onManageChannel,
     isArchived,
+    memberCount,
+    onOpenMembers,
 }: Props) {
     const label = channelType === 'dm' ? 'Direct Message' : channelType === 'voice' ? 'Voice Channel' : 'Channel';
 
@@ -33,7 +39,7 @@ export function ChannelHeader({
                         {channelType === 'dm' ? channelName : `# ${channelName}`}
                     </h2>
                     {isArchived && <span className="text-xs text-text-tertiary">보관됨</span>}
-                    <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-text-tertiary">
+                    <span className="hidden shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-text-tertiary sm:inline">
                         {label}
                     </span>
                 </div>
@@ -42,7 +48,9 @@ export function ChannelHeader({
                 )}
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-                {onManageChannel && <button type="button" onClick={onManageChannel} className="rounded-lg border border-border-primary px-3 py-1.5 text-xs text-text-secondary hover:bg-bg-hover" aria-label="채널 관리">채널 관리</button>}
+                {onOpenMembers && memberCount !== undefined && <button type="button" onClick={onOpenMembers} aria-label={`채널 참여자 ${memberCount}명 보기`} title="채널 참여자"
+                    className="flex items-center gap-1.5 rounded-lg border border-border-primary px-2 py-1.5 text-xs text-text-secondary hover:bg-bg-hover"><UsersRound size={15} /><span>{memberCount}</span></button>}
+                {onManageChannel && <button type="button" onClick={onManageChannel} className="flex items-center gap-1.5 rounded-lg border border-border-primary px-2 py-1.5 text-xs text-text-secondary hover:bg-bg-hover" aria-label="채널 관리" title="채널 관리"><Settings2 size={15} /><span className="hidden lg:inline">채널 관리</span></button>}
                 {onStartHuddle && (
                     <button
                         onClick={onStartHuddle}
@@ -66,7 +74,7 @@ export function ChannelHeader({
                                 d="M15.536 8.464a5 5 0 010 7.072M12 6a6.978 6.978 0 00-3 .682M18.364 5.636a9 9 0 010 12.728M6.343 6.343a8.96 8.96 0 00-1.659 2.3M9.879 9.879a3 3 0 010 4.242"
                             />
                         </svg>
-                        {huddleActive ? '통화 중' : '허들'}
+                        <span className="hidden sm:inline">{huddleActive ? '통화 중' : '허들'}</span>
                         {huddleActive && <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />}
                     </button>
                 )}

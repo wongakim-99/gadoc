@@ -6,9 +6,11 @@ import { TypingIndicator } from './TypingIndicator';
 import { useChatStore } from '../model/chat.store';
 import { isNearBottom, useStickyScroll } from '../model/stickyScroll';
 import type { ChannelViewportAnchor } from '../model/channelViewportAnchor';
+import type { TeamMemberSummary } from '@/src/entities/team/types';
 
 interface Props {
     currentUserId: string;
+    members: TeamMemberSummary[];
     isRestoring?: boolean;
     restoreAnchor?: ChannelViewportAnchor | null;
     hasOlderMessages?: boolean;
@@ -25,6 +27,7 @@ interface Props {
 
 export function MessageList({
     currentUserId,
+    members,
     isRestoring = false,
     restoreAnchor = null,
     hasOlderMessages = false,
@@ -170,6 +173,7 @@ export function MessageList({
                 )}
                 {mainMessages.map((msg) => (
                     <MessageItem
+                        members={members}
                         key={msg.id}
                         highlighted={highlightMessageId === msg.id}
                         message={msg}

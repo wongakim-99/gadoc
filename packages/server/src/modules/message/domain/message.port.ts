@@ -19,7 +19,7 @@ export interface IMessageRepository {
         replyToId: string | null;
         mentions: string[];
     }): Promise<MessageEntity>;
-    updateContent(id: string, content: string): Promise<MessageEntity | null>;
+    updateContent(id: string, content: string, options?: { mentions: string[]; expectedContent: string }): Promise<MessageEntity | null>;
     setPinned(id: string, isPinned: boolean): Promise<MessageEntity | null>;
     deleteById(id: string): Promise<boolean>;
     findByExternalRef(channelId: string, source: string, externalId: string): Promise<MessageEntity | null>;

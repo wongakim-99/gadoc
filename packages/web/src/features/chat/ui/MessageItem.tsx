@@ -11,6 +11,7 @@ import { getAvatarColor } from '@/src/shared/lib/avatar';
 import type { Message } from '@/src/entities/message/types';
 import { useMessageActionMenu } from '../model/useMessageActionMenu';
 import { useMessageItemEditor } from '../model/useMessageItemEditor';
+import type { TeamMemberSummary } from '@/src/entities/team/types';
 
 interface Props {
     idPrefix?: string;
@@ -22,6 +23,7 @@ interface Props {
     onEdit?: (messageId: string, content: string) => Promise<void>;
     onOpenThread?: (message: Message) => void;
     onTogglePin?: (message: Message) => Promise<unknown>;
+    members?: TeamMemberSummary[];
 }
 
 export function MessageItem({
@@ -34,6 +36,7 @@ export function MessageItem({
     onEdit,
     onOpenThread,
     onTogglePin,
+    members = [],
 }: Props) {
     const time = new Date(message.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
     const isOwn = message.authorId === currentUserId;
@@ -105,6 +108,7 @@ export function MessageItem({
                     isPinned={message.isPinned}
                 />
                 <MessageBodyContent
+                    members={members}
                     currentUserId={currentUserId}
                     editRef={editRef}
                     editing={editing}

@@ -46,27 +46,7 @@ function ScopedMessageInput({
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (readOnly) return;
-        if (composer.mentionQuery !== null && composer.mentionCandidates.length > 0) {
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                composer.setMentionIndex((i) => Math.max(0, i - 1));
-                return;
-            }
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                composer.setMentionIndex((i) => Math.min(composer.mentionCandidates.length - 1, i + 1));
-                return;
-            }
-            if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                composer.insertMention(composer.mentionCandidates[composer.mentionIndex]?.user?.username ?? '');
-                return;
-            }
-            if (e.key === 'Escape') {
-                composer.setMentionQuery(null);
-                return;
-            }
-        }
+        if (composer.handleMentionKeyDown(e)) return;
 
         if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault();
@@ -123,6 +103,8 @@ function ScopedMessageInput({
                     <div className="relative flex items-end gap-2">
                         {composer.mentionQuery !== null && composer.mentionCandidates.length > 0 ? (
                             <MentionSuggestions
+                                anchorRef={composer.textareaRef}
+                                id={composer.mentionListId}
                                 activeIndex={composer.mentionIndex}
                                 members={composer.mentionCandidates}
                                 onSelect={composer.insertMention}
@@ -145,6 +127,11 @@ function ScopedMessageInput({
                                     : composer.handleChange(event.target.value, event.target.selectionStart)
                             }
                             onKeyDown={handleKeyDown}
+                            onSelect={readOnly ? undefined : composer.onSelect}
+                            onBlur={composer.dismissMention}
+                            aria-autocomplete="list"
+                            aria-controls={composer.mentionQuery !== null ? composer.mentionListId : undefined}
+                            aria-activedescendant={composer.mentionCandidates.length ? `${composer.mentionListId}-${composer.mentionIndex}` : undefined}
                             onPaste={readOnly ? undefined : composer.handlePaste}
                             placeholder={
                                 readOnly

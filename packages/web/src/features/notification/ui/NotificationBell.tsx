@@ -90,6 +90,7 @@ export function NotificationBell({ teamId, compact = false }: Props) {
                         {/* 뒷배경 오버레이 (클릭 시 닫힘) */}
                         <div className="flex-1" onClick={() => setOpen(false)} />
                         <NotificationPanel
+                            key={teamId}
                             ref={panelRef}
                             id={panelId}
                             open={open}

@@ -23,6 +23,7 @@ import { ChannelModule } from '../channel/channel.module';
 import { TeamModule } from '../team/team.module';
 import { StorageModule } from '../../shared/storage/storage.module';
 import { MessageAccessService } from './application/services/message-access.service';
+import { MessageMentionsService } from './application/services/message-mentions.service';
 
 @Module({
     imports: [
@@ -46,6 +47,7 @@ import { MessageAccessService } from './application/services/message-access.serv
         ReactMessageUseCase,
         UploadMessageAttachmentUseCase,
         MessageAccessService,
+        MessageMentionsService,
         MessageGateway,
         MessageBroadcastListener,
     ],

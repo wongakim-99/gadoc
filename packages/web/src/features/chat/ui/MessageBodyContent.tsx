@@ -3,6 +3,7 @@ import { MessageAttachments } from './MessageAttachments';
 import { MessageEditForm } from './MessageEditForm';
 import type { Message } from '@/src/entities/message/types';
 import { ConnectedText } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
+import type { TeamMemberSummary } from '@/src/entities/team/types';
 
 interface Props {
     currentUserId: string;
@@ -14,6 +15,7 @@ interface Props {
     onEditKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     onOpenThread?: (message: Message) => void;
     onReact: (emoji: string) => void;
+    members: TeamMemberSummary[];
 }
 
 export function MessageBodyContent({
@@ -26,6 +28,7 @@ export function MessageBodyContent({
     onEditKeyDown,
     onOpenThread,
     onReact,
+    members,
 }: Props) {
     const replyCount = message.replyCount ?? 0;
 
@@ -33,6 +36,7 @@ export function MessageBodyContent({
         <>
             {editing ? (
                 <MessageEditForm
+                    members={members}
                     editRef={editRef}
                     onChange={onChangeEdit}
                     onKeyDown={onEditKeyDown}

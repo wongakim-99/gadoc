@@ -1,16 +1,14 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { IMessageRepository } from '../../domain/message.port';
 import { MESSAGE_REPOSITORY } from '../../domain/message.port';
 import { Attachment, MessageEntity, MessageType } from '../../domain/message.entity';
-import { TEAM_REPOSITORY, type ITeamRepository } from '../../../team/domain/team.port';
-import { USER_REPOSITORY, type IUserRepository } from '../../../auth/domain/auth.port';
+import { MessageMentionsService } from '../services/message-mentions.service';
 import {
     NOTIFICATION_EVENTS,
     type MentionedEvent,
     type ThreadRepliedEvent,
 } from '../../../../shared/events/notification-events';
-import { extractMentionTokens, resolveMentionUserIds } from '../../../../shared/lib/mention-extraction';
 
 export interface SendMessageInput {
     teamId: string;
@@ -31,8 +29,7 @@ export interface SendMessageInput {
 export class SendMessageUseCase {
     constructor(
         @Inject(MESSAGE_REPOSITORY) private readonly messageRepo: IMessageRepository,
-        @Inject(TEAM_REPOSITORY) private readonly teamRepo: ITeamRepository,
-        @Inject(USER_REPOSITORY) private readonly userRepo: IUserRepository,
+        private readonly mentions: MessageMentionsService,
         private readonly eventEmitter: EventEmitter2,
     ) {}
 
@@ -40,7 +37,10 @@ export class SendMessageUseCase {
         const content = input.content?.trim() ?? '';
         const attachments = input.attachments ?? [];
         const type = attachments.length > 0 ? 'file' : (input.type ?? 'text');
-        const mentionUserIds = await this.findMentionedUserIds(input.teamId, input.authorId, content);
+        const mentionUserIds = await this.mentions.resolve(input.teamId, input.channelId, input.authorId, content);
+        const parent = input.replyToId ? await this.messageRepo.findById(input.replyToId) : null;
+        if (input.replyToId && (!parent || parent.teamId !== input.teamId || parent.channelId !== input.channelId))
+            throw new BadRequestException('같은 채널의 메시지에만 답글을 작성할 수 있습니다.');
 
         const message = await this.messageRepo.save({
             teamId: input.teamId,
@@ -69,8 +69,7 @@ export class SendMessageUseCase {
         }
 
         if (input.replyToId) {
-            const parent = await this.messageRepo.findById(input.replyToId);
-            if (parent && parent.authorId !== input.authorId) {
+            if (parent && parent.authorId !== input.authorId && !mentionUserIds.includes(parent.authorId)) {
                 const event: ThreadRepliedEvent = {
                     teamId: input.teamId,
                     recipientId: parent.authorId,
@@ -88,18 +87,4 @@ export class SendMessageUseCase {
         return message;
     }
 
-    private async findMentionedUserIds(teamId: string, authorId: string, content: string) {
-        const tokens = extractMentionTokens(content);
-        if (tokens.length === 0) return [];
-
-        const team = await this.teamRepo.findById(teamId);
-        if (!team) return [];
-
-        const users = await this.userRepo.findByIds(team.members.map((member) => member.userId));
-        return resolveMentionUserIds(
-            tokens,
-            users.map((u) => ({ userId: u.id, username: u.username })),
-            authorId,
-        );
-    }
 }

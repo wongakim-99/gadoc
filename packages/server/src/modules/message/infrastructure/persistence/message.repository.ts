@@ -90,8 +90,12 @@ export class MessageRepository implements IMessageRepository {
         return this.toEntity(doc.toObject());
     }
 
-    async updateContent(id: string, content: string): Promise<MessageEntity | null> {
-        const doc = await this.messageModel.findByIdAndUpdate(id, { content, isEdited: true }, { new: true }).lean();
+    async updateContent(id: string, content: string, options?: { mentions: string[]; expectedContent: string }): Promise<MessageEntity | null> {
+        const doc = await this.messageModel.findOneAndUpdate(
+            { _id: id, ...(options ? { content: options.expectedContent } : {}) },
+            { $set: { content, isEdited: true, ...(options ? { mentions: options.mentions } : {}) } },
+            { returnDocument: 'after' },
+        ).lean();
         return doc ? this.toEntity(doc) : null;
     }
 

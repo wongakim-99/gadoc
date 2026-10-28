@@ -29,7 +29,7 @@ test('thread replies retain actions and deletion while the chosen theme survives
     const row = thread.locator(`[data-message-id="${replyId}"]`);
     await row.focus();
     await row.getByRole('button', { name: '리액션', exact: true }).click();
-    await row.getByRole('button', { name: '👍', exact: true }).click();
+    await page.getByRole('dialog', { name: '리액션 선택', exact: true }).getByRole('button', { name: '👍 좋아요', exact: true }).click();
     await expect(row.getByRole('button', { name: '👍 1', exact: true })).toBeVisible();
     await row.hover();
     await row.getByRole('button', { name: '편집', exact: true }).click();

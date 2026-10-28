@@ -5,7 +5,7 @@
  * 각각 동일한 구현이 있었음 — 두 곳에서 같이 쓰도록 추출.
  */
 
-const MENTION_PATTERN = /@([^\s@]+)/g;
+const MENTION_PATTERN = /(?<![\p{L}\p{N}_.%+/@-])@([^\s@]+)/gu;
 const TRAILING_PUNCTUATION = /[.,!?;:]+$/g;
 
 /**

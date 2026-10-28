@@ -18,24 +18,27 @@ export function useNotifications(teamId: string) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const sequence = useRef(0);
+    const activeTeam = useRef(teamId);
+    activeTeam.current = teamId;
 
     const load = useCallback(async () => {
+        if (activeTeam.current !== teamId) return;
         const request = ++sequence.current;
         try {
             const [listRes, countRes] = await Promise.all([
                 notificationApi.getNotifications(teamId),
                 notificationApi.getUnreadCount(teamId),
             ]);
-            if (request !== sequence.current) return;
+            if (request !== sequence.current || activeTeam.current !== teamId) return;
             if (!listRes.success || !countRes.success) throw new Error('알림을 불러오지 못했습니다.');
             setNotifications(unwrapApiArray<AppNotification>(listRes));
             const count = unwrapApiData<{ count: number }>(countRes);
             if (count) setUnreadCount(count.count);
             setError(null);
         } catch {
-            if (request === sequence.current) setError('알림을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+            if (request === sequence.current && activeTeam.current === teamId) setError('알림을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
         } finally {
-            if (request === sequence.current) setLoading(false);
+            if (request === sequence.current && activeTeam.current === teamId) setLoading(false);
         }
     }, [teamId]);
 
@@ -101,6 +104,7 @@ export function useNotifications(teamId: string) {
 
     const markAsRead = async (id: string) => {
         const result = await notificationApi.markAsRead(teamId, id);
+        if (activeTeam.current !== teamId) return;
         if (!result.success) throw new Error('알림을 읽음 처리하지 못했습니다.');
         setNotifications((prev) => applyNotificationRead(prev, id));
         await load();
@@ -108,22 +112,26 @@ export function useNotifications(teamId: string) {
     const markAllAsRead = async () => {
         try {
             const result = await notificationApi.markAllAsRead(teamId);
+            if (activeTeam.current !== teamId) return;
             if (!result.success) throw new Error();
             setNotifications((prev) => applyNotificationReadAll(prev));
             await load();
         } catch {
-            setError('알림을 읽음 처리하지 못했습니다. 다시 시도해주세요.');
+            if (activeTeam.current === teamId) setError('알림을 읽음 처리하지 못했습니다. 다시 시도해주세요.');
         }
     };
     const deleteNotification = async (id?: string) => {
         try {
             const result = await notificationApi.deleteNotification(teamId, id);
+            if (activeTeam.current !== teamId) return false;
             if (!result.success) throw new Error('알림을 삭제하지 못했습니다.');
             ++sequence.current;
             setNotifications((items) => id ? items.filter(item => item.id !== id) : []);
             await load();
+            return true;
         } catch {
-            setError('알림을 삭제하지 못했습니다. 다시 시도해 주세요.');
+            if (activeTeam.current === teamId) setError('알림을 삭제하지 못했습니다. 다시 시도해 주세요.');
+            return false;
         }
     };
     return { notifications, unreadCount, loading, error, markAsRead, markAllAsRead, deleteNotification, refresh: load };

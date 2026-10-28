@@ -30,35 +30,20 @@ describe('SendMessageUseCase', () => {
         findById: jest.fn(),
     };
     const mockEventEmitter = { emit: jest.fn() };
-    const mockTeamRepo = {
-        findById: jest.fn(),
-    };
-    const mockUserRepo = {
-        findByIds: jest.fn(),
-    };
+    const mockMentions = { resolve: jest.fn() };
 
     let useCase: SendMessageUseCase;
 
     beforeEach(() => {
         jest.clearAllMocks();
-        useCase = new SendMessageUseCase(
-            mockMessageRepo as any,
-            mockTeamRepo as any,
-            mockUserRepo as any,
-            mockEventEmitter as any,
-        );
+        mockMentions.resolve.mockResolvedValue([]);
+        mockMessageRepo.findById.mockResolvedValue(null);
+        useCase = new SendMessageUseCase(mockMessageRepo as any, mockMentions as any, mockEventEmitter as any);
     });
 
     it('팀 멤버 username을 실제 사용자 ID로 해석해 멘션 알림을 만든다', async () => {
         const savedMessage = makeMessage('message-1', ['user-2', 'user-3']);
-        mockTeamRepo.findById.mockResolvedValue({
-            members: [{ userId: 'user-1' }, { userId: 'user-2' }, { userId: 'user-3' }],
-        });
-        mockUserRepo.findByIds.mockResolvedValue([
-            { id: 'user-1', username: 'writer' },
-            { id: 'user-2', username: 'Alice' },
-            { id: 'user-3', username: 'bob' },
-        ]);
+        mockMentions.resolve.mockResolvedValue(['user-2', 'user-3']);
         mockMessageRepo.save.mockResolvedValue(savedMessage);
 
         const result = await useCase.execute({
@@ -83,5 +68,43 @@ describe('SendMessageUseCase', () => {
             }),
         );
         expect(result).toBe(savedMessage);
+    });
+
+    it.each([
+        { teamId: 'other-team', channelId: 'channel-1' },
+        { teamId: 'team-1', channelId: 'other-channel' },
+    ])('rejects a reply whose parent belongs to a different scope: %o', async (scope) => {
+        mockMessageRepo.findById.mockResolvedValue({ ...makeMessage('parent', []), ...scope });
+        await expect(
+            useCase.execute({
+                teamId: 'team-1',
+                channelId: 'channel-1',
+                authorId: 'user-1',
+                authorName: 'writer',
+                content: 'reply',
+                replyToId: 'parent',
+            }),
+        ).rejects.toThrow('같은 채널');
+        expect(mockMessageRepo.save).not.toHaveBeenCalled();
+        expect(mockEventEmitter.emit).not.toHaveBeenCalled();
+    });
+
+    it('does not create a second thread notification for an explicitly mentioned parent author', async () => {
+        mockMessageRepo.findById.mockResolvedValue({ ...makeMessage('parent', []), authorId: 'user-2' });
+        mockMentions.resolve.mockResolvedValue(['user-2']);
+        mockMessageRepo.save.mockResolvedValue(makeMessage('reply', ['user-2']));
+        await useCase.execute({
+            teamId: 'team-1',
+            channelId: 'channel-1',
+            authorId: 'user-1',
+            authorName: 'writer',
+            content: '@parent reply',
+            replyToId: 'parent',
+        });
+        expect(mockEventEmitter.emit).toHaveBeenCalledTimes(1);
+        expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+            'notification.mentioned',
+            expect.objectContaining({ recipientIds: ['user-2'] }),
+        );
     });
 });

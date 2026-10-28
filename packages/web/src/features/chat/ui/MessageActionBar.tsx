@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import type { Message } from '@/src/entities/message/types';
 import { EmojiPickerPopover } from './EmojiPickerPopover';
 import { useWorkspaceConnection } from '@/src/features/workspace/model/useWorkspaceConnection';
@@ -33,6 +33,7 @@ export function MessageActionBar({
     visible,
 }: Props) {
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const pickerAnchor = useRef<HTMLButtonElement>(null);
     const [referenceMenuOpen, setReferenceMenuOpen] = useState(false);
     const connection = useWorkspaceConnection();
     const reference = {
@@ -40,7 +41,7 @@ export function MessageActionBar({
         href: `/${connection?.teamId || message.teamId}/channel/${message.channelId}?message=${encodeURIComponent(message.id)}&at=${encodeURIComponent(message.createdAt)}`,
         label: `대화 원문 · ${new Date(message.createdAt).toLocaleString('ko-KR')}`,
     };
-    if (!visible && !referenceMenuOpen && connection?.dragging?.href !== reference.href) return null;
+    if (!visible && !referenceMenuOpen && !showEmojiPicker && connection?.dragging?.href !== reference.href) return null;
 
     return (
         <div className="absolute right-5 -top-3.5 z-20 flex items-center gap-px rounded-lg border border-border-primary bg-bg-secondary shadow-lg">
@@ -92,7 +93,7 @@ export function MessageActionBar({
                 </IconButton>
             ) : null}
             <div className="relative">
-                <IconButton onClick={() => setShowEmojiPicker((prev) => !prev)} title="리액션">
+                <IconButton anchorRef={pickerAnchor} expanded={showEmojiPicker} onClick={() => setShowEmojiPicker((prev) => !prev)} title="리액션">
                     <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -102,6 +103,7 @@ export function MessageActionBar({
                 </IconButton>
                 <EmojiPickerPopover
                     align="right"
+                    anchorRef={pickerAnchor}
                     emojis={QUICK_EMOJIS}
                     onClose={() => setShowEmojiPicker(false)}
                     onSelect={onReact}
@@ -127,11 +129,15 @@ function IconButton({
     onClick,
     title,
     accent,
+    anchorRef,
+    expanded,
 }: {
     children: React.ReactNode;
     onClick: () => void;
     title: string;
     accent?: 'danger' | 'pin';
+    anchorRef?: RefObject<HTMLButtonElement | null>;
+    expanded?: boolean;
 }) {
     const accentClass =
         accent === 'danger'
@@ -141,6 +147,10 @@ function IconButton({
               : 'hover:bg-white/5 hover:text-white';
     return (
         <button
+            type="button"
+            ref={anchorRef}
+            aria-haspopup={expanded !== undefined ? 'dialog' : undefined}
+            aria-expanded={expanded}
             onClick={onClick}
             className={`px-2 py-1.5 text-text-tertiary transition-colors ${accentClass}`}
             title={title}
