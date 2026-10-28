@@ -1,6 +1,7 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
 import { DiscordNotifyService } from '../../modules/discord/discord-notify.service';
+import { safeRequestRoute, type ActivityRequest } from '../../modules/activity/activity-event';
 
 @Catch()
 export class DiscordErrorFilter implements ExceptionFilter {
@@ -10,7 +11,7 @@ export class DiscordErrorFilter implements ExceptionFilter {
 
     catch(exception: unknown, host: ArgumentsHost) {
         const ctx = host.switchToHttp();
-        const req = ctx.getRequest<Request>();
+        const req = ctx.getRequest<ActivityRequest>();
         const res = ctx.getResponse<Response>();
 
         if (!req || !res?.status) return;
@@ -18,19 +19,22 @@ export class DiscordErrorFilter implements ExceptionFilter {
         const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
         const message = exception instanceof Error ? exception.message : String(exception);
-        const stack = exception instanceof Error ? exception.stack : undefined;
+        const route = safeRequestRoute(req);
 
         // 500번대 에러만 디스코드 알림
         if (status >= 500) {
-            this.discord.notifyError(req.method, req.path, status, message, stack).catch(() => {});
-            this.logger.error(`${req.method} ${req.path} ${status} - ${message}`);
+            // 예외 원문에는 쿼리나 키가 포함될 수 있어 외부 알림에는 식별자만 전송한다.
+            const reference = `requestId=${req.activity?.requestId ?? 'unavailable'}`;
+            this.discord.notifyError(req.method, route, status, reference).catch(() => {});
+            this.logger.error(`${req.method} ${route} ${status} ${reference}`);
         }
 
         res.status(status).json({
             statusCode: status,
             message: status >= 500 ? '서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.' : message,
             timestamp: new Date().toISOString(),
-            path: req.path,
+            path: route,
+            requestId: req.activity?.requestId,
         });
     }
 }
