@@ -37,6 +37,10 @@ export function publicAppUrl() {
 
 export function socketUrl() {
     if (typeof window !== 'undefined') {
+        // 두 도메인의 쿠키는 공유되지 않으므로 전환 중에도 현재 호스트로 접속한다.
+        if (['https://gadoc.kr', 'https://www.gadoc.kr', 'https://slacord.cloud', 'https://www.slacord.cloud'].includes(window.location.origin)) {
+            return window.location.origin;
+        }
         const configured = process.env.NEXT_PUBLIC_SOCKET_URL;
         return normalizeBaseUrl(configured || browserApiBaseUrl() || window.location.origin);
     }
