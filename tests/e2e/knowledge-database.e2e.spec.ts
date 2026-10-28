@@ -42,7 +42,8 @@ test("creates a database and page in UI; failed cell saves retain drafts and blo
   await page.getByRole("button", { name: "속성 추가", exact: true }).click();
   const modal = page.getByRole("dialog", { name: "속성 추가" });
   await modal.getByLabel("속성 이름", { exact: true }).fill("요약");
-  await modal.getByRole("button", { name: "속성 만들기" }).click();
+  await modal.getByRole("button", { name: "텍스트", exact: true }).click();
+  await expect(modal).toHaveCount(0);
   const input = page.getByRole("textbox", {
     name: "배포 절차 · 요약",
     exact: true,
@@ -120,7 +121,7 @@ test("database UI persists owners, relations and rollups; dashboard shares works
   await page.getByRole("button", { name: "속성 추가", exact: true }).click();
   const modal = page.getByRole("dialog", { name: "속성 추가" });
   await modal.getByLabel("속성 이름", { exact: true }).fill("참고 문서");
-  await modal.getByLabel("유형", { exact: true }).selectOption("relation");
+  await modal.getByRole("button", { name: "관계형", exact: true }).click();
   await modal.getByLabel("연결할 데이터베이스").selectOption(target.id);
   await modal.getByRole("button", { name: "속성 만들기" }).click();
   await expect(modal).toHaveCount(0);
@@ -144,7 +145,7 @@ test("database UI persists owners, relations and rollups; dashboard shares works
   ).toBeVisible();
   await page.getByRole("button", { name: "속성 추가", exact: true }).click();
   await modal.getByLabel("속성 이름", { exact: true }).fill("총 시간");
-  await modal.getByLabel("유형", { exact: true }).selectOption("rollup");
+  await modal.getByRole("button", { name: "롤업", exact: true }).click();
   await modal
     .getByLabel("관계형 속성", { exact: true })
     .selectOption({ label: "참고 문서" });

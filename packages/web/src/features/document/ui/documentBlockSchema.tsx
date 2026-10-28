@@ -23,6 +23,7 @@ function DatabaseSetup({
     const [items, setItems] = useState<KnowledgeDatabase[] | null>(null);
     const [error, setError] = useState('');
     const [attempt, setAttempt] = useState(0);
+    const [connecting, setConnecting] = useState(false);
     const select = useRef(onSelect);
     select.current = onSelect;
     useEffect(() => {
@@ -76,6 +77,22 @@ function DatabaseSetup({
                 </div>
             ) : linked && items ? (
                 <div className="max-h-64 overflow-auto rounded-control border border-border-primary">
+                    {!items.some((item) => item.sourceKind === 'issues') && (
+                        <button type="button" disabled={connecting}
+                            className="block w-full px-3 py-2 text-left text-sm hover:bg-bg-hover disabled:opacity-50"
+                            onClick={async () => {
+                                if (connecting) return;
+                                setConnecting(true);
+                                try {
+                                    const result = await databaseApi.issueSource(teamId);
+                                    if (!result.data) throw new Error('이슈를 연결하지 못했습니다.');
+                                    onSelect(result.data.id);
+                                } catch (caught) { setError(caught instanceof Error ? caught.message : '이슈를 연결하지 못했습니다.'); }
+                                finally { setConnecting(false); }
+                            }}>
+                            {connecting ? '연결 중…' : '워크스페이스 이슈'}
+                        </button>
+                    )}
                     {items.map((item) => (
                         <button
                             key={item.id}
@@ -86,9 +103,6 @@ function DatabaseSetup({
                             {item.name}
                         </button>
                     ))}
-                    {!items.length && (
-                        <p className="p-3 text-sm text-text-secondary">연결할 데이터베이스가 없습니다.</p>
-                    )}
                 </div>
             ) : (
                 <p role="status" className="text-sm text-text-tertiary">

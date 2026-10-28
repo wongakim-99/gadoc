@@ -13,6 +13,7 @@ import { ThreadParentMessage } from './ThreadParentMessage';
 interface Props {
     canWrite: boolean;
     channelId: string;
+    teamId: string;
     parentMessage: Message;
     currentUserId: string;
     onClose: () => void;
@@ -25,6 +26,7 @@ interface Props {
 export function ThreadPanel({
     canWrite,
     channelId,
+    teamId,
     parentMessage,
     currentUserId,
     onClose,
@@ -111,6 +113,7 @@ export function ThreadPanel({
             </div>
 
             <MessageInput
+                draftScope={{ userId: currentUserId, teamId, channelId, threadId: parentMessage.id }}
                 channelName="스레드"
                 readOnly={!canWrite}
                 readOnlyMessage="guest는 스레드 답글을 보낼 수 없습니다."

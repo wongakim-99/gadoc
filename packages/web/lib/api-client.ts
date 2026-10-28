@@ -122,6 +122,8 @@ export const databaseContainerApi = {
 };
 
 export const databaseApi = {
+    issueSource: (teamId: string) =>
+        apiFetch<KnowledgeDatabase>(`/api/team/${teamId}/database/issue-source`, { method: 'POST' }),
     rename: (teamId:string,id:string,name:string,revision:number)=>apiFetch(`/api/team/${teamId}/database/${id}`,{method:'PATCH',body:JSON.stringify({name,revision})}),
     setLock: (teamId: string, id: string, locked: boolean, revision: number) =>
         apiFetch(`/api/team/${teamId}/database/${id}/lock`, {

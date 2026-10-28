@@ -4,14 +4,17 @@ import { useEffect, useMemo, useRef } from 'react';
 import { MessageItem } from './MessageItem';
 import { TypingIndicator } from './TypingIndicator';
 import { useChatStore } from '../model/chat.store';
-import { useStickyScroll } from '../model/stickyScroll';
+import { isNearBottom, useStickyScroll } from '../model/stickyScroll';
+import type { ChannelViewportAnchor } from '../model/channelViewportAnchor';
 
 interface Props {
     currentUserId: string;
+    isRestoring?: boolean;
+    restoreAnchor?: ChannelViewportAnchor | null;
     hasOlderMessages?: boolean;
     highlightMessageId?: string | null;
     isLoadingOlder?: boolean;
-    onViewportAnchorChange?: (anchor: { createdAt: string; messageId: string } | null) => void;
+    onViewportAnchorChange?: (anchor: ChannelViewportAnchor | null) => void;
     onLoadOlder?: () => void | Promise<unknown>;
     onReact: (messageId: string, emoji: string) => void;
     onDelete: (messageId: string) => void;
@@ -22,6 +25,8 @@ interface Props {
 
 export function MessageList({
     currentUserId,
+    isRestoring = false,
+    restoreAnchor = null,
     hasOlderMessages = false,
     highlightMessageId = null,
     isLoadingOlder = false,
@@ -35,7 +40,6 @@ export function MessageList({
 }: Props) {
     const { messages, typingUsers, isLoading } = useChatStore();
     const lastScrolledHighlightRef = useRef<string | null>(null);
-    const anchorFrameRef = useRef<number | null>(null);
 
     // 스레드 답글 수를 로컬 store에서 실시간 계산
     const replyCountMap = useMemo(() => {
@@ -65,68 +69,73 @@ export function MessageList({
     const { bottomRef, containerRef, handleScroll, prepareForPrepend, scrollToBottom, showJumpToLatest } =
         useStickyScroll({
             itemIds: mainMessageIds,
+            ready: !isLoading && !isRestoring,
+            restoreAnchor,
         });
 
     useEffect(() => {
-        if (!onViewportAnchorChange) return;
+        if (!onViewportAnchorChange || isLoading || isRestoring) return;
 
         const publishAnchor = () => {
             const container = containerRef.current;
             if (!container || mainMessages.length === 0) {
-                onViewportAnchorChange(null);
                 return;
             }
 
             const containerRect = container.getBoundingClientRect();
+            const elements = new Map(
+                Array.from(container.querySelectorAll<HTMLElement>('[id]')).map((element) => [element.id, element]),
+            );
             const anchor =
                 mainMessages.find((message) => {
-                    const element = document.getElementById(`message-${message.id}`);
+                    const element = elements.get(`message-${message.id}`);
                     if (!element) return false;
                     const rect = element.getBoundingClientRect();
                     return rect.bottom >= containerRect.top + 12;
                 }) ?? mainMessages[mainMessages.length - 1];
 
+            const element = elements.get(`message-${anchor.id}`);
             onViewportAnchorChange({
                 messageId: anchor.id,
                 createdAt: anchor.createdAt,
+                offset: element ? element.getBoundingClientRect().top - containerRect.top : 0,
+                atBottom: isNearBottom(container, 2),
             });
         };
 
-        const scheduleAnchorPublish = () => {
-            if (anchorFrameRef.current !== null) {
-                window.cancelAnimationFrame(anchorFrameRef.current);
-            }
-            anchorFrameRef.current = window.requestAnimationFrame(() => {
-                anchorFrameRef.current = null;
-                publishAnchor();
-            });
-        };
-
-        scheduleAnchorPublish();
+        publishAnchor();
         const container = containerRef.current;
-        container?.addEventListener('scroll', scheduleAnchorPublish, { passive: true });
+        container?.addEventListener('scroll', publishAnchor, { passive: true });
 
         return () => {
-            if (anchorFrameRef.current !== null) {
-                window.cancelAnimationFrame(anchorFrameRef.current);
-            }
-            container?.removeEventListener('scroll', scheduleAnchorPublish);
+            container?.removeEventListener('scroll', publishAnchor);
         };
-    }, [containerRef, mainMessages, onViewportAnchorChange]);
+    }, [containerRef, isLoading, isRestoring, mainMessages, onViewportAnchorChange]);
 
     useEffect(() => {
-        if (!highlightMessageId) return;
+        if (!highlightMessageId || isLoading || isRestoring) return;
         if (lastScrolledHighlightRef.current === highlightMessageId) return;
 
         const frame = window.requestAnimationFrame(() => {
-            const target = document.getElementById(`message-${highlightMessageId}`);
+            const target = Array.from(containerRef.current?.querySelectorAll<HTMLElement>('[id]') ?? []).find(
+                (element) => element.id === `message-${highlightMessageId}`,
+            );
             if (!target) return;
             lastScrolledHighlightRef.current = highlightMessageId;
-            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const container = containerRef.current;
+            if (container)
+                container.scrollTo({
+                    top:
+                        container.scrollTop +
+                        target.getBoundingClientRect().top -
+                        container.getBoundingClientRect().top -
+                        (container.clientHeight - target.clientHeight) / 2,
+                    behavior: 'smooth',
+                });
         });
 
         return () => window.cancelAnimationFrame(frame);
-    }, [highlightMessageId, mainMessageIds]);
+    }, [containerRef, highlightMessageId, isLoading, isRestoring, mainMessageIds]);
 
     if (isLoading) {
         return (
@@ -137,8 +146,8 @@ export function MessageList({
     }
 
     return (
-        <div className="relative flex-1">
-            <div ref={containerRef} onScroll={handleScroll} className="h-full overflow-y-auto py-2">
+        <div className="relative min-h-0 flex-1">
+            <div ref={containerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto py-2">
                 {hasOlderMessages && onLoadOlder ? (
                     <div className="px-5 pb-2">
                         <button

@@ -778,3 +778,15 @@ body:has(.workspace-shell) ::selection {
     pointer-events: none;
     border-top: 2px solid var(--color-action);
 }
+
+/* A pane's available width, rather than the whole window, selects its board layout. */
+.issue-workspace { container: issue-workspace / inline-size; }
+.issue-board-columns { display: none; }
+.issue-workspace .workspace-topbar { flex-wrap: wrap; gap: 0.75rem; }
+.issue-board-filter-controls > select { flex-basis: 8rem; }
+@container issue-workspace (min-width: 960px) {
+  .issue-board-stacked { display: none; }
+  .issue-board-columns { display: block; }
+  .issue-board-filters { flex-direction: row; align-items: center; }
+  .issue-board-filter-controls { flex-shrink: 0; }
+}

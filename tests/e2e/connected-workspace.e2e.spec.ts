@@ -164,18 +164,7 @@ test("document and chat exchange durable references without sending drafts autom
   await expect(page.locator(".connection-panes")).toHaveClass(/is-reversed/);
   await page.screenshot({ path: testInfo.outputPath("document-chat.png") });
   await composer.fill("전송하지 않은 초안");
-  const dismissed = page
-    .waitForEvent("dialog")
-    .then((dialog) => dialog.dismiss());
   await page.getByRole("button", { name: "분할 닫기" }).click();
-  await dismissed;
-  await expect(page.getByRole("button", { name: "분할 닫기" })).toBeEnabled();
-  await expect(composer).toHaveValue("전송하지 않은 초안");
-  const accepted = page
-    .waitForEvent("dialog")
-    .then((dialog) => dialog.accept());
-  await page.getByRole("button", { name: "분할 닫기" }).click();
-  await accepted;
   await expect(page.locator("iframe")).toHaveCount(0);
   await page.reload();
   await expect(page.locator(".bn-editor a")).toHaveAttribute(
@@ -188,6 +177,8 @@ test("document and chat exchange durable references without sending drafts autom
       .frameLocator("iframe")
       .getByText("분할 화면에서 결정 근거 연결 검증", { exact: true }),
   ).toBeVisible();
+  await expect(page.frameLocator("iframe").locator("textarea").last()).toHaveValue("전송하지 않은 초안");
+  await expect(page.frameLocator("iframe").locator("[data-message-id]").filter({ hasText: "전송하지 않은 초안" })).toHaveCount(0);
 });
 
 test("two channel panes remain isolated and the side draft survives primary navigation", async ({

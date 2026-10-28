@@ -100,7 +100,7 @@ test("formula results follow cell edits and stable references survive property r
   await page.getByRole("button", { name: "속성 추가", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "속성 추가" });
   await dialog.getByLabel("속성 이름", { exact: true }).fill("수식 UI");
-  await dialog.getByLabel("유형", { exact: true }).selectOption("formula");
+  await dialog.getByRole("button", { name: "수식", exact: true }).click();
   await dialog
     .getByLabel("수식", { exact: true })
     .fill('prop("판매 가격") + 1');

@@ -33,6 +33,7 @@ export class DocumentUploadController {
     @TeamRole('member')
     @UseInterceptors(
         FileInterceptor('file', {
+            defParamCharset: 'utf8',
             limits: { fileSize: 20 * 1024 * 1024, files: 1, fields: 8, parts: 9, fieldSize: 16 * 1024 },
         }),
     )
@@ -58,6 +59,7 @@ export class DocumentUploadController {
     @TeamRole('writable')
     @UseInterceptors(
         FileInterceptor('file', {
+            defParamCharset: 'utf8',
             limits: { fileSize: 20 * 1024 * 1024, files: 1, fields: 8, parts: 9, fieldSize: 16 * 1024 },
         }),
     )

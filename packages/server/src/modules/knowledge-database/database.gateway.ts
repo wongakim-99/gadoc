@@ -48,7 +48,7 @@ export class DatabaseGateway implements OnGatewayConnection {
         if (typeof data?.teamId === 'string') void client.leave(`database:${data.teamId}`);
     }
     @OnEvent(CONTENT_CHANGED)
-    async changed({ teamId }: { teamId: string }) {
+    async changed({ teamId, sourceId, resourceKind }: { teamId: string; sourceId?: string; resourceKind?: string }) {
         if (!this.server) return;
         const team = await this.teams.findById(teamId);
         const clients = await this.server.in(`database:${teamId}`).fetchSockets();
@@ -60,7 +60,7 @@ export class DatabaseGateway implements OnGatewayConnection {
                     continue;
                 }
                 // Invalidate only: never broadcast document titles, property values or people.
-                client.emit('database:changed', { teamId });
+                client.emit('database:changed', { teamId, ...(sourceId ? { sourceId, resourceKind } : {}) });
             } catch {
                 client.disconnect(true);
             }

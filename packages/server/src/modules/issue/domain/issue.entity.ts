@@ -17,11 +17,13 @@ export class IssueEntity {
         public readonly createdAt: Date,
         public readonly updatedAt: Date,
         public readonly links: IssueLink[] = [],
+        public readonly revision: number = 0,
     ) {}
 
     toPublic() {
         return {
             id: this.id,
+            revision: this.revision,
             teamId: this.teamId,
             title: this.title,
             description: this.description,

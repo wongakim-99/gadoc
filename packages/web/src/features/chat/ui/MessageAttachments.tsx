@@ -1,5 +1,6 @@
 'use client';
 
+import { attachmentFilename } from '@/src/entities/message/lib/attachmentFilename';
 import { useState } from 'react';
 import { Download, ImageOff } from 'lucide-react';
 import { privateFileUrl } from '@/src/shared/lib/private-files';
@@ -17,6 +18,7 @@ export function MessageAttachments({ attachments }: Props) {
         return null;
     }
 
+    attachments = attachments.map((attachment) => ({ ...attachment, name: attachmentFilename(attachment.name) }));
     const mediaAttachments = attachments.filter((attachment) => getAttachmentKind(attachment) !== 'other');
     const otherAttachments = attachments.filter((attachment) => getAttachmentKind(attachment) === 'other');
     const images = mediaAttachments.filter((attachment) => getAttachmentKind(attachment) === 'image');

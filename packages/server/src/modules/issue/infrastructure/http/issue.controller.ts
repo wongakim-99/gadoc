@@ -120,6 +120,7 @@ export class IssueController {
         const { updated: issue, previousAssigneeIds } = await this.updateIssueUseCase.execute({
             id: issueId,
             ...dto,
+            actorId: user.userId,
         });
         const newAssigneeIds = (dto.assigneeIds ?? []).filter((id) => !previousAssigneeIds.includes(id));
         if (newAssigneeIds.length > 0) {
