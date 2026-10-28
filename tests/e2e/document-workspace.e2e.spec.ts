@@ -1,4 +1,4 @@
-﻿import { test, expect, type Page } from "playwright/test";
+import { test, expect, type Page } from "playwright/test";
 
 import { mockDocumentSocket } from './support/document-socket';
 
@@ -279,7 +279,7 @@ test("mobile workspace navigation closes on area changes and exposes contextual 
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
   await toggle.click();
   await expect(
-    navigation.getByRole("button", { name: "+ DM / 소그룹 열기", exact: true }),
+    navigation.getByRole("button", { name: "DM / 소그룹 열기", exact: true }),
   ).toBeVisible();
   await navigation.getByRole("link", { name: "이슈", exact: true }).click();
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
