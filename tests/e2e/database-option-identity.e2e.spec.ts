@@ -1,0 +1,78 @@
+import { test, expect } from 'playwright/test';
+import { createWorkspaceFixture, createGuestSessionForTeam, jsonFetch } from './support/slacord-api';
+import { loginWithSession } from './support/slacord-session';
+import type { DatabaseDetail, DatabaseProperty } from '../../packages/web/src/features/database/model/types';
+
+test('option rename keeps selected identity and legacy filters while a reused name becomes a new option', async ({ page }) => {
+    const f = await createWorkspaceFixture();
+    const root = `/team/${f.teamId}/database`;
+    const db = (await jsonFetch<{ id: string }>(root, { method: 'POST', token: f.owner.token, body: { name: '옵션 식별자' } }))!.data!;
+    const call = <T>(path: string, body?: unknown, method = body ? 'POST' : 'GET') => jsonFetch<T>(`${root}/${db.id}${path}`, { token: f.owner.token, body, method });
+    const prop = (await call<DatabaseProperty>('/property', { name: '분류', type: 'select', options: ['기획', '개발'], optionColors: [{ name: '기획', color: 'blue' }], revision: 0 }))!.data!;
+    const originalId = prop.optionIdentities![0].id;
+    await call('/row', { documentId: f.documentId, values: { [prop.id]: '기획' } });
+    await loginWithSession(page, f.owner);
+    await page.goto(`/${f.teamId}/docs?database=${db.id}`);
+    await page.getByRole('button', { name: '분류 속성 편집', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: '속성 설정' });
+    await dialog.getByLabel('기획 이름', { exact: true }).fill('설계');
+    await dialog.getByLabel('기획 이름', { exact: true }).press('Tab');
+    await dialog.getByLabel('선택 항목 추가', { exact: true }).fill('기획');
+    await dialog.getByRole('button', { name: '옵션 추가', exact: true }).click();
+    await dialog.getByLabel('기획 이름', { exact: true }).fill('임시');
+    await dialog.getByLabel('기획 이름', { exact: true }).press('Tab');
+    await dialog.getByRole('button', { name: '변경 적용' }).click();
+    await expect(dialog).not.toBeVisible();
+    let read = (await call<DatabaseDetail>(''))!.data!;
+    let property = read.properties.find(p => p.id === prop.id)!;
+    expect(read.rows[0].values[prop.id]).toBe('설계');
+    expect(property.optionIdentities!.find(p => p.id === originalId)?.name).toBe('설계');
+    expect(property.optionColors).toEqual([{ name: '설계', color: 'blue' }]);
+    const query = (value: string) => call<DatabaseDetail>('/query', { filter: { conjunction: 'and', rules: [{ propertyId: prop.id, operator: 'equals', value }] } });
+    expect((await query('기획'))!.data!.rows).toHaveLength(1);
+    expect((await query(originalId))!.data!.rows).toHaveLength(1);
+    await call(`/property/${prop.id}/configuration`, { name: '분류', type: 'select', options: ['설계', '개발', '기획'], revision: read.revision }, 'PATCH');
+    read = (await call<DatabaseDetail>(''))!.data!;
+    property = read.properties.find(p => p.id === prop.id)!;
+    const newId = property.optionIdentities!.find(p => p.name === '기획')!.id;
+    expect(newId).not.toBe(originalId);
+    await call(`/row/${f.documentId}/${prop.id}`, { value: '기획', revision: read.rows[0].revision }, 'PATCH');
+    expect((await query(originalId))!.data!.rows).toHaveLength(0);
+    expect((await query(newId))!.data!.rows).toHaveLength(1);
+    await expect(call(`/property/${prop.id}/configuration`, { name: '분류', type: 'select', options: ['설계', '개발'], revision: 0 }, 'PATCH')).rejects.toThrow();
+    await page.reload();
+    await expect(page.getByRole('table').getByRole('combobox', { name: / · 분류$/ })).toHaveValue('기획');
+});
+
+
+test('template status and issue multi-select defaults follow renamed options', async () => {
+    const f = await createWorkspaceFixture();
+    const call = async <T>(path: string, body?: unknown, method = body ? 'POST' : 'GET') =>
+        (await jsonFetch<T>(`/team/${f.teamId}${path}`, { token: f.owner.token, body, method }))!.data!;
+    const id = () => crypto.randomUUID().replaceAll('-', '').slice(0, 24);
+    const db = await call<{ id: string }>('/database', { name: '템플릿 옵션' });
+    const api = `/database/${db.id}`;
+    const template = await call<{ id: string; documentId: string }>(`${api}/template`, { name: '회의', creationId: id(), revision: 0 });
+    await call(`${api}/row/${template.documentId}`, { values: { status: '검토 중' }, revision: 0 }, 'PATCH');
+    let detail = await call<DatabaseDetail>(api);
+    const status = detail.properties.find(p => p.id === 'status')!;
+    await call(`${api}/property/status/configuration`, { name: status.name, type: 'status', options: status.options!.map(name => name === '검토 중' ? '승인 대기' : name), optionRenames: [{ id: status.optionIdentities!.find(item => item.name === '검토 중')!.id, name: '승인 대기' }], revision: detail.revision }, 'PATCH');
+    const copy = await call<{ documentId: string }>(`${api}/template/${template.id}/page`, { creationId: id() });
+    detail = await call<DatabaseDetail>(api);
+    expect(detail.rows.find(row => row.documentId === copy.documentId)?.values.status).toBe('승인 대기');
+    const issue = await call<{ id: string }>('/issue', { title: '선택값 보존' });
+    const source = await call<{ id: string }>('/database/issue-source', {});
+    const issueApi = `/database/${source.id}`;
+    let issueDb = await call<DatabaseDetail>(issueApi);
+    const prop = await call<DatabaseProperty>(`${issueApi}/property`, { name: '분류', type: 'multi_select', options: ['기획', '개발'], revision: issueDb.revision });
+    issueDb = await call<DatabaseDetail>(issueApi);
+    await call(`${issueApi}/row/${issue.id}/${prop.id}`, { value: ['기획', '개발'], revision: issueDb.rows.find(row => row.documentId === issue.id)!.revision }, 'PATCH');
+    issueDb = await call<DatabaseDetail>(issueApi);
+    const patch = { name: '분류', type: 'multi_select', options: ['설계', '개발'], optionRenames: [{ id: prop.optionIdentities![0].id, name: '설계' }], revision: issueDb.revision };
+    await call(`${issueApi}/property/${prop.id}/configuration`, patch, 'PATCH');
+    issueDb = await call<DatabaseDetail>(issueApi);
+    expect(issueDb.rows.find(row => row.documentId === issue.id)?.values[prop.id]).toEqual(['설계', '개발']);
+    await expect(call(`${issueApi}/property/${prop.id}/configuration`, patch, 'PATCH')).rejects.toThrow('409');
+    const guest = await createGuestSessionForTeam({ ownerToken: f.owner.token, teamId: f.teamId });
+    await expect(jsonFetch(`/team/${f.teamId}${issueApi}/property/${prop.id}/configuration`, { method: 'PATCH', token: guest.token, body: { ...patch, revision: issueDb.revision } })).rejects.toThrow('403');
+});

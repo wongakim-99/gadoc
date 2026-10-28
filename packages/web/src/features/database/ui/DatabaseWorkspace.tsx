@@ -1,4 +1,6 @@
 'use client';
+
+import { decodeOptionValue } from '@slacord/document-core';
 import { databaseRowHref } from '../model/databaseRowHref';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -503,7 +505,7 @@ export function DatabaseWorkspace({
             .filter(
                 (row) =>
                     row.documentId === revealedRow ||
-                    ((!status || row.values.status === status) &&
+                    ((!status || row.values.status === decodeOptionValue(database.properties.find((p) => p.id === 'status')?.optionIdentities ?? [], status)) &&
                         (!owner || (Array.isArray(row.values.owner) && row.values.owner.includes(owner)))),
             )
             .sort((a, b) =>
