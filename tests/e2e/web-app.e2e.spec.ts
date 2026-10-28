@@ -277,7 +277,8 @@ test.describe.serial("slacord web e2e", () => {
     await page.getByRole("button", { name: /알림/ }).click();
     await expect(page.getByText(issueTitle)).toBeVisible();
 
-    await page.getByRole("button", { name: new RegExp(issueTitle) }).click();
+    await page.getByRole("dialog", { name: "알림", exact: true })
+      .getByRole("button").filter({ has: page.getByText(issueTitle, { exact: false }) }).click();
     await page.waitForURL(`**/${fixture.teamId}/issues?issue=${issueId}`);
     await expect(
       page.getByRole("dialog", { name: "이슈 상세" }),
