@@ -108,26 +108,105 @@ export class MessageRepository implements IMessageRepository {
     }
 
     async toggleReaction(id: string, emoji: string, userId: string): Promise<MessageEntity | null> {
-        const doc = await this.messageModel.findById(id);
-        if (!doc) return null;
-
-        const existing = doc.reactions.find((r) => r.emoji === emoji);
-        if (existing) {
-            const idx = existing.userIds.indexOf(userId);
-            if (idx >= 0) {
-                existing.userIds.splice(idx, 1);
-                if (existing.userIds.length === 0) {
-                    doc.reactions = doc.reactions.filter((r) => r.emoji !== emoji);
-                }
-            } else {
-                existing.userIds.push(userId);
-            }
-        } else {
-            doc.reactions.push({ emoji, userIds: [userId] });
-        }
-
-        await doc.save();
-        return this.toEntity(doc.toObject());
+        const value = { $literal: emoji };
+        const actor = { $literal: userId };
+        // One document update serializes concurrent toggles. Fold legacy duplicate
+        // emoji entries without losing any of their participants or other reactions.
+        const doc = await this.messageModel
+            .findByIdAndUpdate(
+                id,
+                [
+                    {
+                        $set: {
+                            reactions: {
+                                $let: {
+                                    vars: { reactions: { $ifNull: ['$reactions', []] } },
+                                    in: {
+                                        $let: {
+                                            vars: {
+                                                index: { $indexOfArray: ['$$reactions.emoji', value] },
+                                                users: {
+                                                    $reduce: {
+                                                        input: {
+                                                            $filter: {
+                                                                input: '$$reactions',
+                                                                as: 'r',
+                                                                cond: { $eq: ['$$r.emoji', value] },
+                                                            },
+                                                        },
+                                                        initialValue: [],
+                                                        in: { $setUnion: ['$$value', '$$this.userIds'] },
+                                                    },
+                                                },
+                                            },
+                                            in: {
+                                                $let: {
+                                                    vars: {
+                                                        users: {
+                                                            $cond: [
+                                                                { $in: [actor, '$$users'] },
+                                                                {
+                                                                    $filter: {
+                                                                        input: '$$users',
+                                                                        as: 'user',
+                                                                        cond: { $ne: ['$$user', actor] },
+                                                                    },
+                                                                },
+                                                                { $concatArrays: ['$$users', [actor]] },
+                                                            ],
+                                                        },
+                                                    },
+                                                    in: {
+                                                        $let: {
+                                                            vars: {
+                                                                entry: {
+                                                                    $cond: [
+                                                                        { $gt: [{ $size: '$$users' }, 0] },
+                                                                        [{ emoji: value, userIds: '$$users' }],
+                                                                        [],
+                                                                    ],
+                                                                },
+                                                            },
+                                                            in: {
+                                                                $cond: [
+                                                                    { $lt: ['$$index', 0] },
+                                                                    { $concatArrays: ['$$reactions', '$$entry'] },
+                                                                    {
+                                                                        $concatArrays: [
+                                                                            { $slice: ['$$reactions', '$$index'] },
+                                                                            '$$entry',
+                                                                            {
+                                                                                $filter: {
+                                                                                    input: {
+                                                                                        $slice: [
+                                                                                            '$$reactions',
+                                                                                            { $add: ['$$index', 1] },
+                                                                                            { $size: '$$reactions' },
+                                                                                        ],
+                                                                                    },
+                                                                                    as: 'r',
+                                                                                    cond: { $ne: ['$$r.emoji', value] },
+                                                                                },
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                ],
+                                                            },
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                ],
+                { returnDocument: 'after', updatePipeline: true },
+            )
+            .lean();
+        return doc ? this.toEntity(doc) : null;
     }
 
     async findByExternalRef(channelId: string, source: string, externalId: string): Promise<MessageEntity | null> {
