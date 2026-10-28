@@ -1,5 +1,5 @@
 'use client';
-import { OPTION_COLORS, type OptionColor, NUMBER_FORMATS, type NumberFormat } from '@slacord/document-core';
+import { OPTION_COLORS, type OptionColor, NUMBER_FORMATS, type NumberFormat, type NumberPresentation } from '@slacord/document-core';
 import { AGGREGATION_LABELS, NUMERIC_AGGREGATIONS, DATE_AGGREGATIONS } from '@slacord/document-core';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { AlignLeft, Hash, Users, CircleDot, CalendarDays, SquareCheck, Link, ListFilter, ListChecks, ArrowUpRight, Sigma, Mail, Phone, Clock, User, FunctionSquare, Fingerprint, Search, Plus, X, GripVertical, type LucideIcon } from 'lucide-react';
@@ -50,6 +50,7 @@ export function PropertyEditor({
     const [bidirectional, setBidirectional] = useState(!!editing?.inverse);
     const [inverseName, setInverseName] = useState(editing?.inverse?.name ?? '연결된 항목');
     const [numberFormat, setNumberFormat] = useState<NumberFormat>(editing?.numberFormat ?? 'number');
+    const [numberPresentation, setNumberPresentation] = useState<NumberPresentation>(editing?.numberPresentation ?? { display: 'number', divideBy: editing?.numberFormat === 'percent' ? 1 : 100, color: 'blue', showNumber: true });
     const [prefix, setPrefix] = useState(editing?.prefix ?? 'ID');
     const [name, setName] = useState(editing?.name ?? '');
     const [typeSearch, setTypeSearch] = useState('');
@@ -159,7 +160,7 @@ export function PropertyEditor({
                     onSave({
                         name: name.trim() || nextPropertyName(database, type),
                         type,
-                        ...(['number', 'formula', 'rollup'].includes(type) ? { numberFormat } : {}),
+                        ...(['number', 'formula', 'rollup'].includes(type) ? { numberFormat, numberPresentation } : {}),
                         ...(type === 'unique_id' ? { prefix } : {}),
                         ...(['select', 'multi_select', 'status'].includes(type)
                             ? {
@@ -204,6 +205,28 @@ export function PropertyEditor({
                         </select>
                     </label>
                 )}
+                {['number', 'formula', 'rollup'].includes(type) && !choosingType && <div className="space-y-2 text-xs">
+                    <label className="block">표시 방식
+                        <select aria-label="표시 방식" className={inputClass} disabled={busy} value={numberPresentation.display}
+                            onChange={(event) => setNumberPresentation((current) => ({ ...current, display: event.target.value as NumberPresentation['display'], divideBy: Number.isFinite(current.divideBy) && current.divideBy > 0 ? current.divideBy : 100 }))}>
+                            <option value="number">숫자</option><option value="bar">막대</option><option value="ring">원형</option>
+                        </select>
+                    </label>
+                    {numberPresentation.display !== 'number' && <>
+                        <label className="block">기준값
+                            <input aria-label="기준값" type="number" required min={Number.MIN_VALUE} step="any" disabled={busy} className={inputClass} value={Number.isFinite(numberPresentation.divideBy) ? numberPresentation.divideBy : ''}
+                                onChange={(event) => setNumberPresentation((current) => ({ ...current, divideBy: event.target.valueAsNumber }))} />
+                        </label>
+                        <label className="block">진행률 색상
+                            <select aria-label="진행률 색상" disabled={busy} className={inputClass} value={numberPresentation.color}
+                                onChange={(event) => setNumberPresentation((current) => ({ ...current, color: event.target.value as OptionColor }))}>
+                                {OPTION_COLORS.map((color) => <option key={color} value={color}>{OPTION_COLOR_LABELS[color]}</option>)}
+                            </select>
+                        </label>
+                        <label className="flex items-center gap-2"><input type="checkbox" disabled={busy} checked={numberPresentation.showNumber}
+                            onChange={(event) => setNumberPresentation((current) => ({ ...current, showNumber: event.target.checked }))} />숫자 함께 표시</label>
+                    </>}
+                </div>}
                 {type === 'unique_id' && (
                     <label className="block text-xs">
                         ID 접두사

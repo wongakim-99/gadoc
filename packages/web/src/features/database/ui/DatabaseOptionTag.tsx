@@ -9,6 +9,7 @@ const colors: Record<OptionColor, string> = {
     default: 'var(--text-tertiary, #888888)', gray: '#808080', brown: '#a87a55', orange: '#d97706',
     yellow: '#ca9a04', green: '#269867', blue: '#4285d4', purple: '#9564c4', pink: '#cb6398', red: '#dc5b5b',
 };
+export function optionColorValue(color: OptionColor) { return colors[color] ?? colors.default; }
 export function optionColorStyle(property: Pick<DatabaseProperty, 'optionColors'>, name: string): CSSProperties {
     const color = property.optionColors?.find((item) => item.name === name)?.color ?? 'default';
     return { backgroundColor: `color-mix(in srgb, ${colors[color] ?? colors.default} 22%, transparent)` };

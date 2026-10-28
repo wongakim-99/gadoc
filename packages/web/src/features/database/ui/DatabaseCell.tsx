@@ -1,4 +1,5 @@
 'use client';
+import { DatabaseNumberPresentation } from './DatabaseNumberPresentation';
 import { formatDatabaseNumber } from '@slacord/document-core';
 import { useEffect, useRef, useState } from 'react';
 import { DatabaseOptionTag, optionColorStyle } from './DatabaseOptionTag';
@@ -174,7 +175,7 @@ export function DatabaseCell({
                       ? value
                           ? '참'
                           : '거짓'
-                      : typeof value === 'number' ? formatDatabaseNumber(value, property.numberFormat) : (value ?? '—')}
+                      : typeof value === 'number' ? <DatabaseNumberPresentation value={value} property={property} label={label} /> : (value ?? '—')}
             </span>
         );
     if (property.type === 'unique_id')
@@ -395,12 +396,15 @@ export function DatabaseCell({
             </div>
         );
     }
+    const progressVisible = property.type === 'number' && property.numberPresentation?.display && property.numberPresentation.display !== 'number' && !numberFocused && draft !== '' && Number.isFinite(Number(draft));
     const conflict = editing.current && draftRevision.current !== row.revision && draft !== String(savedValue ?? '');
     return (
-        <div data-manages-draft-navigation="true">
+        <div data-manages-draft-navigation="true" className="relative">
+            {progressVisible && <div className="pointer-events-none absolute inset-x-0 top-0 flex min-h-9 items-center px-2 text-xs"><div className="w-full"><DatabaseNumberPresentation value={Number(draft)} property={property} label={label} /></div></div>}
             <input
                 aria-label={label}
                 disabled={disabled}
+                style={progressVisible ? { color: 'transparent' } : undefined}
                 className={`${cellClass} ${property.type === 'date' && !draft ? 'text-transparent focus:text-text-primary [&::-webkit-calendar-picker-indicator]:opacity-0 focus:[&::-webkit-calendar-picker-indicator]:opacity-100' : ''}`}
                 value={property.type === 'number' && !numberFocused && draft !== '' && Number.isFinite(Number(draft)) ? formatDatabaseNumber(Number(draft), property.numberFormat) : draft}
                 onFocus={() => { if (property.type === 'number') setNumberFocused(true); }}
