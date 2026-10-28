@@ -27,6 +27,17 @@ export function useDocumentLayoutTools(editor: DocumentBlockEditor, teamId: stri
     };
     const items = [
         {
+            title: 'Mermaid 다이어그램',
+            subtext: '코드로 다이어그램 작성',
+            aliases: ['mermaid', '다이어그램', 'diagram'],
+            group: '페이지 구성',
+            icon: <Columns2 size={17} />,
+            onItemClick: () => {
+                if (!editor.isEditable) return;
+                editor.insertBlocks([{ type: 'mermaid' }], editor.getTextCursorPosition().block, 'after');
+            },
+        },
+        {
             title: '문서 링크',
             subtext: '기존 문서를 찾아 현재 위치에 연결',
             aliases: ['링크', 'link', '연결', '문서 연결'],
