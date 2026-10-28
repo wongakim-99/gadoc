@@ -1,5 +1,5 @@
 import { test } from 'playwright/test';
-import { authRequest } from './auth-request';
+import { pacedAuthRequest } from './auth-request';
 
 interface ApiOptions {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
@@ -55,8 +55,8 @@ export async function jsonFetch<T = unknown>(
   const fixtureAuth = options.method === "POST" &&
     (pathName === "/auth/register" || pathName === "/auth/login");
   const response = fixtureAuth
-    ? await authRequest(send, async (milliseconds) => {
-        // Extend only this test's setup budget by the server-requested cooldown.
+    ? await pacedAuthRequest(send, async (milliseconds) => {
+        // Account for deliberate pacing and the server-requested cooldown in this test only.
         const info = test.info();
         if (info.timeout > 0) info.setTimeout(info.timeout + milliseconds);
         await new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -73,6 +73,7 @@ export async function jsonFetch<T = unknown>(
 }
 
 export async function createUserSession(label: string) {
+  ensureRemoteSeedAllowed();
   const stamp = `${Date.now()}-${Math.round(Math.random() * 1000)}`;
   const email = `e2e_${label}_${stamp}@example.com`;
   const password = "test1234";
@@ -337,8 +338,10 @@ export async function sendSocketMessages(input: {
 }
 
 function ensureRemoteSeedAllowed() {
-  const host = new URL(e2eBaseUrl).hostname;
-  const isLocal = host === "127.0.0.1" || host === "localhost";
+  const isLocal = [e2eBaseUrl, e2eApiUrl].every((url) => {
+    const host = new URL(url).hostname;
+    return host === "127.0.0.1" || host === "localhost" || host === "[::1]";
+  });
   if (!isLocal && process.env.SLACORD_E2E_ALLOW_REMOTE_SEED !== "1") {
     throw new Error(
       "원격 환경에서는 SLACORD_E2E_ALLOW_REMOTE_SEED=1 일 때만 테스트 데이터를 만들 수 있어요.",
