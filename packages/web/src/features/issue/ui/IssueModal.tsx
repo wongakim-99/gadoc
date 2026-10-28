@@ -8,13 +8,14 @@ import { IssueModalFields } from './IssueModalFields';
 import { IssueLinkedResources } from './IssueLinkedResources';
 import { useDialogFocusTrap } from '@/src/shared/ui/useDialogFocusTrap';
 import {
-    ConnectedText,
     InsertWorkspaceReference,
     WorkspaceReferenceActions,
 } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
 import { useWorkspaceLeaveGuard } from '@/src/features/workspace/model/useWorkspaceConnection';
 import { useProjects } from '@/src/features/project/model/useProjects';
 import { ConfirmationDialog } from '@/src/shared/ui/ConfirmationDialog';
+import { IssueDetails } from './IssueDetails';
+import { MarkdownContent } from '@/src/shared/ui/MarkdownContent';
 
 interface CreateProps {
     initialProjectId?: string;
@@ -49,8 +50,12 @@ type Props = (CreateProps | EditProps) & { presentation?: 'modal' | 'pane' };
 
 export function IssueModal(props: Props) {
     const isEdit = props.mode === 'edit';
+    const [editing, setEditing] = useState(!isEdit);
+    const [preview, setPreview] = useState(false);
     const { projects, error: projectsError } = useProjects(isEdit ? props.issue.teamId : props.teamId);
-    const initialProject = isEdit ? props.issue.projectId ?? '' : props.initialProjectId ?? (props.sourceNotice ? 'auto' : '');
+    const initialProject = isEdit
+        ? (props.issue.projectId ?? '')
+        : (props.initialProjectId ?? (props.sourceNotice ? 'auto' : ''));
     const [projectId, setProjectId] = useState(initialProject);
     const pane = props.presentation === 'pane';
     const [saved, setSaved] = useState(false);
@@ -75,38 +80,72 @@ export function IssueModal(props: Props) {
     useEffect(() => {
         // Follow remote DB changes only while this form has no local edits.
         if (!currentIssue || saving || formSnapshot !== baseline.current) return;
-        const next = { title: currentIssue.title, description: currentIssue.description ?? '',
-            priority: currentIssue.priority, status: currentIssue.status,
-            assigneeIds: currentIssue.assigneeIds ?? [], labels: currentIssue.labels ?? [], projectId: currentIssue.projectId ?? '' };
+        const next = {
+            title: currentIssue.title,
+            description: currentIssue.description ?? '',
+            priority: currentIssue.priority,
+            status: currentIssue.status,
+            assigneeIds: currentIssue.assigneeIds ?? [],
+            labels: currentIssue.labels ?? [],
+            projectId: currentIssue.projectId ?? '',
+        };
         baseline.current = JSON.stringify(next);
         revision.current = currentIssue.revision;
-        setTitle(next.title); setDescription(next.description); setPriority(next.priority);
-        setStatus(next.status); setAssigneeIds(next.assigneeIds); setLabels(next.labels);
+        setTitle(next.title);
+        setDescription(next.description);
+        setPriority(next.priority);
+        setStatus(next.status);
+        setAssigneeIds(next.assigneeIds);
+        setLabels(next.labels);
         setProjectId(next.projectId);
     }, [currentIssue, saving, formSnapshot]);
     const mayClose = () =>
         !saving &&
         (readOnly ||
-            (title === (isEdit ? props.issue.title : (props.initialTitle ?? '')) &&
-                description === (isEdit ? (props.issue.description ?? '') : '') &&
-                priority === (isEdit ? props.issue.priority : 'medium') &&
-                status === (isEdit ? props.issue.status : 'todo') &&
-                projectId === initialProject &&
-                JSON.stringify(assigneeIds) === JSON.stringify(isEdit ? (props.issue.assigneeIds ?? []) : []) &&
-                JSON.stringify(labels) === JSON.stringify(isEdit ? (props.issue.labels ?? []) : [])) ||
+            formSnapshot === baseline.current ||
             window.confirm('저장하지 않은 이슈 변경이 있습니다. 이 화면을 닫을까요?'));
     useWorkspaceLeaveGuard(mayClose);
     const close = () => {
         if (mayClose()) props.onClose();
     };
+    const cancelEdit = () => {
+        if (!isEdit) {
+            close();
+            return;
+        }
+        if (!mayClose()) return;
+        const issue = props.issue;
+        const next = {
+            title: issue.title,
+            description: issue.description ?? '',
+            priority: issue.priority,
+            status: issue.status,
+            assigneeIds: issue.assigneeIds ?? [],
+            labels: issue.labels ?? [],
+            projectId: issue.projectId ?? '',
+        };
+        baseline.current = JSON.stringify(next);
+        revision.current = issue.revision;
+        setTitle(next.title);
+        setDescription(next.description);
+        setPriority(next.priority);
+        setStatus(next.status);
+        setAssigneeIds(next.assigneeIds);
+        setLabels(next.labels);
+        setProjectId(next.projectId);
+        setSaveError('');
+        setPreview(false);
+        setEditing(false);
+    };
     const surface = useRef<HTMLFormElement>(null);
-    useDialogFocusTrap({ open: !pane && !confirmDelete, surfaceRef: surface, onEscape: close });
+    useDialogFocusTrap({ open: !pane && editing && !confirmDelete, surfaceRef: surface, onEscape: close });
 
     const toggleAssignee = (userId: string) => {
         setAssigneeIds((prev) => (prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]));
     };
 
     const addLabel = () => {
+        if (readOnly || saving) return;
         const trimmed = labelInput.trim();
         if (!trimmed || labels.includes(trimmed)) {
             setLabelInput('');
@@ -141,14 +180,32 @@ export function IssueModal(props: Props) {
         setSaved(false);
         try {
             if (isEdit) {
-                await props.onSubmit({ title, description, priority, status, assigneeIds, labels, projectId: projectId || null, revision: revision.current });
+                await props.onSubmit({
+                    title,
+                    description,
+                    priority,
+                    status,
+                    assigneeIds,
+                    labels,
+                    projectId: projectId || null,
+                    revision: revision.current,
+                });
                 if (revision.current !== undefined) revision.current++;
                 baseline.current = formSnapshot;
             } else {
-                await props.onSubmit({ title, description, priority, assigneeIds, labels,
-                    ...(projectId === 'auto' ? {} : { projectId: projectId || null }) });
+                await props.onSubmit({
+                    title,
+                    description,
+                    priority,
+                    assigneeIds,
+                    labels,
+                    ...(projectId === 'auto' ? {} : { projectId: projectId || null }),
+                });
             }
-            if (!pane) props.onClose();
+            if (isEdit) {
+                setSaved(true);
+                setEditing(false);
+            } else if (!pane) props.onClose();
             else setSaved(true);
         } catch (error) {
             setSaveError(error instanceof Error ? error.message : '저장하지 못했습니다. 작성 내용은 유지됩니다.');
@@ -157,12 +214,33 @@ export function IssueModal(props: Props) {
         }
     };
 
+    if (isEdit && !editing)
+        return (
+            <IssueDetails
+                issue={props.issue}
+                members={members}
+                projectName={
+                    projects.find((project) => project.id === props.issue.projectId)?.name ??
+                    (props.issue.projectId ? '현재 업무' : '미분류')
+                }
+                pane={pane}
+                readOnly={readOnly}
+                saved={saved}
+                onEdit={() => {
+                    setEditing(true);
+                    setSaved(false);
+                    setPreview(false);
+                }}
+                onClose={close}
+            />
+        );
+
     return (
         <div
             className={
                 pane
                     ? 'h-full overflow-y-auto bg-bg-primary'
-                    : 'fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm'
+                    : 'fixed inset-0 z-50 flex items-center justify-center bg-overlay p-3 sm:p-6'
             }
             onClick={() => {
                 if (!pane) close();
@@ -178,8 +256,8 @@ export function IssueModal(props: Props) {
                 aria-busy={saving}
                 className={
                     pane
-                        ? 'mx-auto w-full max-w-3xl p-4 sm:p-6'
-                        : 'bg-bg-secondary border border-border-primary rounded-panel p-6 w-full max-w-md shadow-2xl max-h-[85vh] overflow-y-auto'
+                        ? 'mx-auto w-full max-w-5xl p-4 sm:p-6'
+                        : 'bg-bg-secondary border border-border-primary rounded-panel p-5 sm:p-8 w-full max-w-4xl shadow-2xl max-h-[92dvh] overflow-y-auto'
                 }
             >
                 <h3 className="text-lg font-bold text-white mb-4">
@@ -220,12 +298,27 @@ export function IssueModal(props: Props) {
                     disabled={readOnly || saving}
                     onInsert={(_, markdown) => setDescription((value) => [value, markdown].filter(Boolean).join('\n'))}
                 />
-                {description.includes('](') && (
-                    <div className="mb-3 whitespace-pre-wrap break-words rounded-control border border-border-primary p-3 text-xs text-text-secondary">
-                        <ConnectedText text={description} />
-                    </div>
+                <button
+                    type="button"
+                    aria-pressed={preview}
+                    onClick={() => setPreview(!preview)}
+                    className="mb-3 rounded-control border border-border-primary px-3 py-1.5 text-xs hover:bg-bg-hover"
+                >
+                    {preview ? '마크다운 원문 편집' : '설명 미리 보기'}
+                </button>
+                {preview && (
+                    <section
+                        aria-label="설명 미리 보기"
+                        className="mb-4 min-h-40 rounded-control border border-border-primary p-4"
+                    >
+                        <MarkdownContent openLinksInNewTab>{description || '아직 설명이 없습니다.'}</MarkdownContent>
+                        <p className="mt-4 text-xs text-text-tertiary">
+                            초안을 유지하기 위해 미리 보기의 링크는 새 창에서 열립니다.
+                        </p>
+                    </section>
                 )}
                 <IssueModalFields
+                    hideDescription={preview}
                     description={description}
                     isEdit={isEdit}
                     priority={priority}
@@ -238,18 +331,32 @@ export function IssueModal(props: Props) {
                     title={title}
                 />
 
-                <label className="mb-4 block text-xs font-medium text-text-secondary">업무
-                    <select aria-label="이슈 업무" value={projectId} disabled={readOnly || saving}
+                <label className="mb-4 block text-xs font-medium text-text-secondary">
+                    업무
+                    <select
+                        aria-label="이슈 업무"
+                        value={projectId}
+                        disabled={readOnly || saving}
                         onChange={(e) => setProjectId(e.target.value)}
-                        className="mt-1.5 w-full rounded-control border border-border-primary bg-bg-primary px-3 py-2 text-sm text-text-primary">
+                        className="mt-1.5 w-full rounded-control border border-border-primary bg-bg-primary px-3 py-2 text-sm text-text-primary"
+                    >
                         {!isEdit && props.sourceNotice && <option value="auto">생성 채널의 업무로 자동 분류</option>}
                         <option value="">미분류</option>
-                        {projectId && projectId !== 'auto' && !projects.some((p) => p.id === projectId) &&
-                            <option value={projectId}>현재 업무</option>}
-                        {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+                        {projectId && projectId !== 'auto' && !projects.some((p) => p.id === projectId) && (
+                            <option value={projectId}>현재 업무</option>
+                        )}
+                        {projects.map((project) => (
+                            <option key={project.id} value={project.id}>
+                                {project.name}
+                            </option>
+                        ))}
                     </select>
                 </label>
-                {projectsError && <p role="alert" className="mb-3 text-xs text-error">{projectsError}</p>}
+                {projectsError && (
+                    <p role="alert" className="mb-3 text-xs text-error">
+                        {projectsError}
+                    </p>
+                )}
 
                 {/* 라벨 태그 입력 */}
                 <div className="mb-4">
@@ -268,6 +375,7 @@ export function IssueModal(props: Props) {
                                 {!readOnly && (
                                     <button
                                         type="button"
+                                        disabled={saving}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             removeLabel(label);
@@ -284,6 +392,7 @@ export function IssueModal(props: Props) {
                             <input
                                 ref={labelInputRef}
                                 type="text"
+                                disabled={saving}
                                 value={labelInput}
                                 onChange={(e) => setLabelInput(e.target.value)}
                                 onKeyDown={handleLabelKeyDown}
@@ -303,7 +412,7 @@ export function IssueModal(props: Props) {
                 {members.length > 0 ? (
                     <IssueAssigneePicker
                         assigneeIds={assigneeIds}
-                        disabled={readOnly}
+                        disabled={readOnly || saving}
                         members={members}
                         open={showAssignees}
                         onToggleAssignee={toggleAssignee}
@@ -320,7 +429,7 @@ export function IssueModal(props: Props) {
                     )}
                     <button
                         type="button"
-                        onClick={close}
+                        onClick={cancelEdit}
                         disabled={saving}
                         className="flex-1 py-2 rounded-lg border border-border-primary text-text-secondary hover:text-white hover:bg-bg-hover transition-colors text-sm"
                     >

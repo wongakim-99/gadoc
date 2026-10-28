@@ -22,7 +22,7 @@ test('chat issues and database views edit the same records and retain their sour
     const side = page.frameLocator('iframe');
     await side.getByPlaceholder('이슈 제목', { exact: true }).fill('채팅에서 시작한 작업');
     await side.getByRole('button', { name: '생성', exact: true }).click();
-    await expect(side.getByRole('region', { name: '이슈 수정', exact: true })).toBeVisible();
+    await expect(side.getByRole('region', { name: '이슈 상세', exact: true })).toBeVisible();
     await expect(page.locator('textarea').last()).toHaveValue('보존되어야 할 채팅 초안');
     const issues = () => jsonFetch<Array<{ id: string; title: string; status: string; assigneeIds: string[] }>>(`/team/${f.teamId}/issue`, { token: f.owner.token });
     const issue = (await issues())!.data!.find((item) => item.title === '채팅에서 시작한 작업')!;

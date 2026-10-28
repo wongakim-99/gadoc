@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { LogOut, Settings, UserRound, Palette, ChevronRight } from 'lucide-react';
 import { PopoverMenu } from '@/src/shared/ui/PopoverMenu';
 import { ThemePreference } from '@/src/features/appearance/ThemePreference';
+import { useTeamWorkspaceData } from '@/src/features/team/model/useTeamWorkspaceData';
 interface Props { username: string; teamId: string; collapsed?: boolean; onLogout: () => Promise<void>; }
 export function SidebarUserBar({ username, teamId, collapsed, onLogout }: Props) {
+    const { me } = useTeamWorkspaceData(teamId);
     const [open, setOpen] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
@@ -24,7 +26,7 @@ export function SidebarUserBar({ username, teamId, collapsed, onLogout }: Props)
                 </>}>
                 <div className="flex items-center gap-3 border-b border-border-primary px-2 pb-3 pt-1">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-selection text-lg font-bold text-action-text">{username.slice(0, 1) || '?'}</span>
-                    <div className="min-w-0"><p className="truncate font-bold text-text-primary">{username}</p><p className="mt-0.5 text-xs text-text-tertiary">GaDoc 계정</p></div>
+                    <div className="min-w-0"><p className="truncate font-bold text-text-primary">{username}</p><p className="mt-0.5 break-all text-xs text-text-tertiary" aria-label="내 계정 이메일">{me?.email || '계정 확인 중'}</p></div>
                 </div>
                 <div>
                     <Link href={`${href}?section=account`} onClick={() => setOpen(false)} className={row}><UserRound size={17} />내 계정<ChevronRight size={14} className="ml-auto" /></Link>

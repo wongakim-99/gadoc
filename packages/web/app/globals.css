@@ -746,6 +746,30 @@ body:has(.workspace-shell) ::selection {
 .workspace-shell .chat-composer-input:focus,
 .workspace-shell .chat-composer-input:focus-visible { outline: none; box-shadow: none; }
 .issue-filter-reset-label { display: none; }
+.issue-detail { container: issue-detail / inline-size; }
+.issue-detail-grid { display: grid; grid-template-columns: minmax(0, 1fr); }
+@container issue-detail (min-width: 760px) {
+  .issue-detail-grid { grid-template-columns: minmax(0, 1fr) 300px; }
+  .issue-detail-grid > aside { border-top: 0; border-left: 1px solid var(--color-border-primary); }
+}
+.issue-markdown :is(h1,h2,h3,h4,h5,h6) { margin: 1.5em 0 0.6em; font-weight: 700; line-height: 1.4; }
+.issue-markdown > :first-child { margin-top: 0; }
+.issue-markdown h1 { font-size: 1.6em; }
+.issue-markdown h2 { font-size: 1.35em; padding-bottom: 0.4em; border-bottom: 1px solid var(--color-border-primary); }
+.issue-markdown h3 { font-size: 1.15em; }
+.issue-markdown p { margin: 0.8em 0; }
+.issue-markdown :is(ul,ol) { padding-left: 1.6em; margin: 0.8em 0; }
+.issue-markdown ul { list-style: disc; }
+.issue-markdown ol { list-style: decimal; }
+.issue-markdown li > :is(ul,ol) { margin: 0.25em 0; }
+.issue-markdown .contains-task-list { list-style: none; padding-left: 0; }
+.issue-markdown input[type="checkbox"] { margin-right: 0.6em; accent-color: var(--color-action); }
+.issue-markdown blockquote { margin: 1em 0; border-left: 3px solid var(--color-border-primary); padding-left: 1em; color: var(--color-text-secondary); }
+.issue-markdown pre { max-width: 100%; overflow-x: auto; border: 1px solid var(--color-border-primary); border-radius: 8px; padding: 1em; margin: 1em 0; background: var(--color-bg-secondary); }
+.issue-markdown :not(pre) > code { background: var(--color-bg-hover); padding: 0.1em 0.35em; border-radius: 4px; }
+.issue-markdown :is(th,td) { border: 1px solid var(--color-border-primary); padding: 0.4em 0.75em; }
+.issue-markdown th { background: var(--color-bg-secondary); text-align: left; }
+.issue-markdown hr { margin: 1.8em 0; border-color: var(--color-border-primary); }
 @container issue-workspace (min-width: 960px) {
   .issue-board-stacked { display: none; }
   .issue-board-columns { display: block; }

@@ -29,7 +29,22 @@ export class IssueLinksService {
         if (link.kind === 'document') {
             const doc = await this.documents.findById(link.resourceId);
             if (!doc || doc.teamId !== teamId || doc.isArchived || !doc.canView(userId, role)) return null;
-            return { ...link, title: doc.title, href: `/${teamId}/docs/${doc.id}` };
+            const path = [doc.title];
+            const visited = new Set([doc.id]);
+            let parentId = doc.parentId;
+            while (parentId && !visited.has(parentId) && visited.size < 32) {
+                visited.add(parentId);
+                const parent = await this.documents.findById(parentId);
+                if (!parent || parent.teamId !== teamId || parent.isArchived || !parent.canView(userId, role)) break;
+                path.unshift(parent.title);
+                parentId = parent.parentId;
+            }
+            return {
+                ...link,
+                title: doc.title,
+                location: ['문서', ...path].join(' / '),
+                href: `/${teamId}/docs/${doc.id}`,
+            };
         }
         const message = await this.messages.findById(link.resourceId);
         if (!message || message.teamId !== teamId) return null;
@@ -43,7 +58,9 @@ export class IssueLinksService {
         return {
             ...link,
             title: `#${channel.name} · ${message.content.slice(0, 100) || '첨부 메시지'}`,
-            href: `/${teamId}/channel/${channel.id}?message=${message.id}&at=${encodeURIComponent(message.createdAt.toISOString())}`,
+            location: `#${channel.name} / ${message.replyToId ? '스레드 답글' : '채널 메시지'} / ${message.createdAt.toISOString()}`,
+            // A reply needs its parent resolved by the channel page before restoring history.
+            href: `/${teamId}/channel/${channel.id}?message=${message.id}${message.replyToId ? '' : `&at=${encodeURIComponent(message.createdAt.toISOString())}`}`,
         };
     }
 

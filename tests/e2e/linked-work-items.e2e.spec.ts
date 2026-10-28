@@ -57,7 +57,7 @@ test("message creates a sourced issue, retains failed drafts, links documents an
   await page.unroute(endpoint);
   await form.getByRole("button", { name: "생성", exact: true }).click();
   await expect(form).toHaveCount(0);
-  const issueForm = side.getByRole("region", { name: "이슈 수정" });
+  const issueForm = side.getByRole("region", { name: "이슈 상세" });
   await expect(issueForm.getByText("생성 근거", { exact: true })).toBeVisible();
   await expect(
     issueForm.getByRole("link").filter({ hasText: "운영 점검 논의의 원문" }),
@@ -95,6 +95,7 @@ test("message creates a sourced issue, retains failed drafts, links documents an
   await related
     .getByRole("button", { name: "운영 점검 후속 업무 옆에 열기" })
     .click();
+  await side.getByRole("region", { name: "이슈 상세" }).getByRole("button", { name: "편집", exact: true }).click();
   await side
     .getByRole("region", { name: "이슈 수정" })
     .locator('select:has(option[value="done"])')

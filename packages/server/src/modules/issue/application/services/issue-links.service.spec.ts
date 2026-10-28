@@ -103,4 +103,39 @@ describe('Issue links access and persistence boundary', () => {
         documents.findById.mockRejectedValue(new Error('offline'));
         await expect(service.list('team', 'user', issueId)).rejects.toThrow('offline');
     });
+    it('shows a visible document path without leaking restricted ancestors or looping on cycles', async () => {
+        documents.findById.mockImplementation(async (id: string) => ({
+            id,
+            teamId: 'team',
+            isArchived: false,
+            canView: () => id !== 'secret',
+            title: id === docId ? '하위 문서' : id === 'parent' ? '상위 문서' : '비공개 제목',
+            parentId: id === docId ? 'parent' : 'secret',
+        }));
+        const result = await service.list('team', 'user', issueId);
+        expect(result[0]?.location).toBe('문서 / 상위 문서 / 하위 문서');
+        expect(JSON.stringify(result)).not.toContain('비공개 제목');
+        documents.findById.mockImplementation(async (id: string) => ({
+            id,
+            teamId: 'team',
+            title: '순환 문서',
+            parentId: docId,
+            isArchived: false,
+            canView: () => true,
+        }));
+        expect((await service.list('team', 'user', issueId))[0]?.location).toBe('문서 / 순환 문서');
+    });
+    it('links replies through parent resolution instead of highlighting them in the main list', async () => {
+        messages.findById.mockResolvedValue({
+            id: msgId,
+            teamId: 'team',
+            channelId: 'channel',
+            content: '답글 근거',
+            replyToId: 'parent',
+            createdAt: new Date('2026-10-28T01:00:00.000Z'),
+        });
+        const result = await service.list('team', 'user', issueId);
+        expect(result[1]?.href).toBe(`/team/channel/channel?message=${msgId}`);
+        expect(result[1]?.location).toBe('#general / 스레드 답글 / 2026-10-28T01:00:00.000Z');
+    });
 });

@@ -1008,6 +1008,7 @@ export function DatabaseWorkspace({
                                             aria-label="레이아웃"
                                             className={inputClass}
                                             value={view}
+                                            disabled={busy}
                                             onChange={(e) => {
                                                 const layout = e.target.value as DatabaseView['layout'];
                                                 void mutate(async () => {

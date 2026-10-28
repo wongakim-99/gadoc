@@ -41,7 +41,9 @@ export function MessageItem({
     const [actionError, setActionError] = useState('');
     const runAction = async (action: () => unknown) => {
         setActionError('');
-        try { await action(); } catch (error) {
+        try {
+            await action();
+        } catch (error) {
             setActionError(error instanceof Error ? error.message : '변경하지 못했습니다. 다시 시도해 주세요.');
         }
     };
@@ -86,7 +88,7 @@ export function MessageItem({
             }}
             onMouseEnter={supportsHover ? openMenu : undefined}
             onMouseLeave={supportsHover ? closeMenu : undefined}
-            className={`relative flex items-start gap-3 px-5 py-1.5 transition-colors ${highlighted ? 'bg-brand-500/10 ring-1 ring-inset ring-brand-400/40' : editing ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]'}`}
+            className={`relative flex items-start gap-3 px-5 py-1.5 transition-colors ${highlighted ? "bg-brand-500/5 before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-brand-400/40 before:content-['']" : editing ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]'}`}
         >
             <div
                 className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[13px] font-semibold shrink-0 select-none"
@@ -114,7 +116,11 @@ export function MessageItem({
                     onReact={(emoji) => onReact(message.id, emoji)}
                 />
                 {workOpen && <MessageWorkPanel message={message} />}
-                {actionError && <p role="alert" className="mt-1 text-xs text-error">{actionError}</p>}
+                {actionError && (
+                    <p role="alert" className="mt-1 text-xs text-error">
+                        {actionError}
+                    </p>
+                )}
             </div>
             <div className="shrink-0 pt-1 sm:hidden">
                 <MessageActionToggle onClick={toggleMenu} />
