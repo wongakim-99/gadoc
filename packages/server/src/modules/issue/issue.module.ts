@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ProjectModule } from '../project/project.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from '../auth/auth.module';
 import { TeamModule } from '../team/team.module';
@@ -18,6 +19,7 @@ import { ChannelModule } from '../channel/channel.module';
 
 @Module({
     imports: [
+        ProjectModule,
         MongooseModule.forFeature([{ name: Issue.name, schema: IssueSchema }]),
         AuthModule,
         TeamModule,

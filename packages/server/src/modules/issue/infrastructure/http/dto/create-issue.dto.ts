@@ -1,8 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsArray, IsEnum, IsOptional, IsString, MinLength, IsMongoId } from 'class-validator';
-import type { IssuePriority } from '../../../domain/issue.entity';
+import type { IssuePriority, IssueStatus } from '../../../domain/issue.entity';
 
 export class CreateIssueDto {
+    @IsOptional() @IsEnum(['todo', 'in_progress', 'in_review', 'done']) status?: IssueStatus;
+    @IsOptional() @IsMongoId() projectId?: string | null;
     @IsOptional()
     @IsMongoId()
     sourceMessageId?: string;

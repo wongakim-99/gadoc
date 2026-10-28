@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { isMongoId } from 'class-validator';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../../shared/decorators/current-user.decorator';
@@ -40,11 +41,16 @@ export class IssueController {
         @Query('status') status?: string,
         @Query('q') query?: string,
         @Query('assigneeId') assigneeId?: string,
+        @Query('projectId') projectId?: string,
     ) {
+        if (projectId !== undefined && (typeof projectId !== 'string' ||
+            (projectId !== 'unassigned' && !isMongoId(projectId))))
+            throw new BadRequestException('업무 범위를 확인하세요.');
         return this.getIssuesUseCase.execute(teamId, {
             status: status as IssueStatus | undefined,
             query,
             assigneeId,
+            ...(projectId ? { projectId: projectId === 'unassigned' ? null : projectId } : {}),
         });
     }
 

@@ -12,6 +12,7 @@ import { CONTENT_CHANGED } from '../../shared/interceptors/content-change.interc
 import { NOTIFICATION_EVENTS } from '../../shared/events/notification-events';
 import { KnowledgeDatabase, type DatabaseProperty, type PropertyValue } from './database.schema';
 import { parseFormula, evaluateFormula, type FormulaValue } from './formula';
+import { ProjectService } from '../project/project.service';
 
 export const ISSUE_PROPERTIES: DatabaseProperty[] = [
     { id: 'status', name: '상태', type: 'status', options: Object.values(ISSUE_STATUS_LABELS) },
@@ -31,6 +32,7 @@ export class IssueSourceService {
         private readonly access: TeamAccessService,
         @Inject(TEAM_REPOSITORY) private readonly teams: ITeamRepository,
         private readonly events: EventEmitter2,
+        private readonly projects: ProjectService,
     ) {}
 
     async provision(teamId: string, userId: string) {
@@ -66,11 +68,13 @@ export class IssueSourceService {
         };
     }
 
-    async read(teamId: string, userId: string, db: KnowledgeDatabase & { _id: unknown }, onlyId?: string) {
+    async read(teamId: string, userId: string, db: KnowledgeDatabase & { _id: unknown }, onlyId?: string, projectId?: string) {
         const { role } = await this.access.requireMember(teamId, userId);
+        if (projectId && projectId !== 'unassigned') await this.projects.requireProject(teamId, projectId);
         if (onlyId && !isMongoId(onlyId)) throw new NotFoundException('이슈를 찾을 수 없습니다.');
         const issues = await this.issues
-            .find({ teamId, ...(onlyId ? { _id: onlyId } : {}) })
+            .find({ teamId, ...(onlyId ? { _id: onlyId } : {}),
+                ...(projectId ? { projectId: projectId === 'unassigned' ? null : projectId } : {}) })
             .sort({ createdAt: 1, _id: 1 })
             .lean();
         if (onlyId && !issues.length) throw new NotFoundException('이슈를 찾을 수 없습니다.');
@@ -114,6 +118,7 @@ export class IssueSourceService {
                 canEdit: role !== 'guest',
                 availablePersonIds,
                 resourceKind: 'issue' as const,
+                projectId: issue.projectId ?? null,
                 revision: issue.revision ?? 0,
                 ...this.rowValues(db.properties, issue),
                 relations: {} as Record<string, Array<{ id: string; title: string }>>,
@@ -331,11 +336,14 @@ export class IssueSourceService {
         title: string,
         creationId: string,
         values: Record<string, PropertyValue>,
+        projectId?: string | null,
     ) {
         await this.access.requireWritableMember(teamId, userId);
+        if (projectId !== undefined && projectId !== null) await this.projects.requireProject(teamId, projectId);
         if (!isMongoId(creationId) || typeof title !== 'string' || !title.trim())
             throw new BadRequestException('이슈 이름과 생성 식별자를 지정하세요.');
-        const patch = { ...(await this.patch(teamId, values)), ...(await this.patch(teamId, { title })) };
+        const patch: Record<string, unknown> = { ...(await this.patch(teamId, values)), ...(await this.patch(teamId, { title })),
+            ...(projectId !== undefined ? { projectId } : {}) };
         const creationHash = createHash('sha256')
             .update(JSON.stringify(Object.entries(patch).sort(([a], [b]) => a.localeCompare(b))))
             .digest('hex');

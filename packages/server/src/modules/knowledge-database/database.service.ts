@@ -386,10 +386,10 @@ export class DatabaseService {
             await this.ensureRowNumbers(teamId, id);
         return { documentId };
     }
-    async read(teamId: string, userId: string, id: string, onlyDocumentId?: string) {
+    async read(teamId: string, userId: string, id: string, onlyDocumentId?: string, projectId?: string) {
         const { role } = await this.access.requireMember(teamId, userId);
         const db = await this.database(teamId, id, userId);
-        if (db.sourceKind === 'issues') return this.issueSource.read(teamId, userId, db, onlyDocumentId);
+        if (db.sourceKind === 'issues') return this.issueSource.read(teamId, userId, db, onlyDocumentId, projectId);
         const [visible, team] = await Promise.all([
             this.visibleDocuments(teamId, userId, role),
             this.teams.findById(teamId),
@@ -1151,10 +1151,12 @@ export class DatabaseService {
         title: string,
         creationId: string,
         values: Record<string, PropertyValue> = {},
+        projectId?: string | null,
     ) {
         await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
-        if (db.sourceKind === 'issues') return this.issueSource.create(teamId, userId, title, creationId, values);
+        if (db.sourceKind === 'issues') return this.issueSource.create(teamId, userId, title, creationId, values, projectId);
+        if (projectId !== undefined) throw new BadRequestException('업무 분류는 이슈 데이터 소스에서만 지정할 수 있습니다.');
         if (!title.trim()) throw new BadRequestException('페이지 이름을 입력하세요.');
         if (db.defaultTemplateId) {
             return this.applyTemplate(teamId, userId, id, db.defaultTemplateId, creationId, values, title.trim());

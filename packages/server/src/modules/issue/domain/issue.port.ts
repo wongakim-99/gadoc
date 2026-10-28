@@ -2,6 +2,7 @@ import { IssueEntity, IssueStatus, IssuePriority } from './issue.entity';
 import type { IssueLink } from './issue-link';
 
 export interface IssueSearchFilters {
+    projectId?: string | null;
     status?: IssueStatus;
     query?: string;
     assigneeId?: string;
@@ -14,6 +15,8 @@ export interface IIssueRepository {
     findByTeam(teamId: string, filters?: IssueSearchFilters): Promise<IssueEntity[]>;
     findById(id: string): Promise<IssueEntity | null>;
     save(data: {
+        projectId?: string | null;
+        status?: IssueStatus;
         teamId: string;
         title: string;
         description: string;
@@ -26,6 +29,7 @@ export interface IIssueRepository {
     update(
         id: string,
         data: Partial<{
+            projectId: string | null;
             databaseUpdatedBy: string;
             title: string;
             description: string;
