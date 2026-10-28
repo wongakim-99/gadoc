@@ -27,6 +27,8 @@ test('status membership persists across rename and board grouping preserves cano
     await page.getByRole('button', { name: '단계 속성 편집', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: '속성 설정' });
     await dialog.getByRole('combobox', { name: '검수 상태 그룹', exact: true }).selectOption('complete');
+    await expect(dialog.getByRole('region', { name: '완료 상태 옵션', exact: true }).getByRole('textbox', { name: '검수 이름', exact: true })).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath('status-group-editor.png') });
     await dialog.getByRole('button', { name: '변경 적용' }).click();
     await expect(page.locator('optgroup[label="완료"] option', { hasText: '검수' })).toHaveCount(1);
     await page.getByRole('button', { name: '보기 옵션', exact: true }).click();
