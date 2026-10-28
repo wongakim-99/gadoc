@@ -84,6 +84,13 @@ test('status membership persists across rename and board grouping preserves cano
     await page.getByText('숨긴 그룹', { exact: true }).click();
     await page.getByRole('button', { name: '할 일 그룹 다시 표시', exact: true }).click();
     await expect(todo.getByRole('article')).toHaveCount(1);
+    const board = page.getByLabel('데이터베이스 보드', { exact: true });
+    await expect(board.locator(':scope > section').first()).toHaveAttribute('aria-label', '진행 중 그룹');
+    await expect.poll(async () => (await call<DatabaseDetail>(''))!.data!.views.find(view => view.name === '범주별')?.hiddenBoardGroups).toEqual([]);
+    await page.reload();
+    await expect(board.locator(':scope > section').first()).toHaveAttribute('aria-label', '진행 중 그룹');
+    await expect(todo.getByRole('article')).toHaveCount(1);
+
 
 
 });

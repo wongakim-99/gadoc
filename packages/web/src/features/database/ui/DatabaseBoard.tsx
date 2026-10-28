@@ -85,6 +85,10 @@ export function DatabaseBoard({
         const rank = (key: string) => { const index = boardGroupOrder.indexOf(groupId(key)); return index < 0 ? Number.MAX_SAFE_INTEGER : index; };
         return rank(a) - rank(b);
     });
+    const groupedRows = new Map([...labels.keys()].map(key => [key, rows.filter(row =>
+        key === '' ? keys(row).length === 0 : keys(row).includes(key))]));
+    const visibleGroups = ordered.filter(([key]) => !hiddenBoardGroups.includes(groupId(key)) &&
+        !((key === '' || hideEmptyGroups) && groupedRows.get(key)!.length === 0));
     const reorder = (source: string, target: string) => {
         if (busy || source === target) return;
         const ids = ordered.map(([key]) => groupId(key));
@@ -137,12 +141,8 @@ export function DatabaseBoard({
                 )}</div>
             </details>}
             <div className="flex gap-3 overflow-x-auto pb-3" aria-label="데이터베이스 보드">
-                {ordered.map(([key, label], index) => {
-                    const grouped = rows.filter((row) =>
-                        key === '' ? keys(row).length === 0 : keys(row).includes(key),
-                    );
-                    if (hiddenBoardGroups.includes(groupId(key))) return null;
-                    if ((key === '' || hideEmptyGroups) && grouped.length === 0) return null;
+                {visibleGroups.map(([key, label], index) => {
+                    const grouped = groupedRows.get(key)!;
                     return (
                         <section
                             key={key}
@@ -185,8 +185,8 @@ export function DatabaseBoard({
                                     <summary aria-label={`${label} 그룹 옵션`} className="cursor-pointer list-none rounded px-2 py-1 hover:bg-bg-hover">···</summary>
                                     <div className="absolute right-0 z-20 w-36 rounded border border-border-primary bg-bg-primary p-1 shadow-lg">
                                         <button type="button" disabled={busy} className="block w-full p-2 text-left hover:bg-bg-hover" onClick={() => onHiddenBoardGroupsChange?.([...new Set([...hiddenBoardGroups, groupId(key)])].slice(-500))}>그룹 숨기기</button>
-                                        <button type="button" disabled={busy || index === 0} className="block w-full p-2 text-left hover:bg-bg-hover disabled:opacity-40" onClick={() => reorder(groupId(key), groupId(ordered[index - 1][0]))}>왼쪽으로 이동</button>
-                                        <button type="button" disabled={busy || index === ordered.length - 1} className="block w-full p-2 text-left hover:bg-bg-hover disabled:opacity-40" onClick={() => reorder(groupId(key), groupId(ordered[index + 1][0]))}>오른쪽으로 이동</button>
+                                        <button type="button" disabled={busy || index === 0} className="block w-full p-2 text-left hover:bg-bg-hover disabled:opacity-40" onClick={() => reorder(groupId(key), groupId(visibleGroups[index - 1][0]))}>왼쪽으로 이동</button>
+                                        <button type="button" disabled={busy || index === visibleGroups.length - 1} className="block w-full p-2 text-left hover:bg-bg-hover disabled:opacity-40" onClick={() => reorder(groupId(key), groupId(visibleGroups[index + 1][0]))}>오른쪽으로 이동</button>
                                     </div>
                                 </details>
                             </h3>
