@@ -93,4 +93,14 @@ test('status membership persists across rename and board grouping preserves cano
 
 
 
+    await completed.getByLabel('완료 그룹 옵션', { exact: true }).click();
+    await completed.getByRole('button', { name: '그룹 숨기기', exact: true }).click();
+    await page.getByText('숨긴 그룹', { exact: true }).click();
+    const hiddenTarget = page.getByLabel('완료 숨긴 그룹에 카드 이동', { exact: true });
+    await todo.getByRole('button', { name: /카드 끌기/ }).dragTo(hiddenTarget);
+    await expect.poll(async () => (await call<DatabaseDetail>(''))!.data!.rows[0].values[prop.id]).toBe('검수');
+    await expect(completed).toHaveCount(0);
+    await page.getByRole('button', { name: '완료 그룹 다시 표시', exact: true }).click();
+    await expect(completed.getByRole('article')).toHaveCount(1);
+
 });
