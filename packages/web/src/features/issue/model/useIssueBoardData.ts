@@ -23,6 +23,8 @@ interface Props {
 export function useIssueBoardData({ teamId, filters }: Props) {
     const searchParams = useSearchParams();
     const projectId = searchParams.get('project') ?? '';
+    const updatedAfter = searchParams.get('updatedAfter') ?? '';
+    const cutoff = Number.isFinite(Date.parse(updatedAfter)) ? Date.parse(updatedAfter) : 0;
     const { issues, setIssues, setLoading } = useIssueStore();
     const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
     const workspace = useTeamWorkspaceData(teamId);
@@ -38,11 +40,11 @@ export function useIssueBoardData({ teamId, filters }: Props) {
                 status: filters.statusFilter === 'all' ? undefined : filters.statusFilter,
                 projectId: projectId || undefined,
             });
-            if (version === requestVersion.current) setIssues(unwrapApiArray<Issue>(response));
+            if (version === requestVersion.current) setIssues(unwrapApiArray<Issue>(response).filter((issue) => !cutoff || Date.parse(issue.updatedAt) >= cutoff));
         } finally {
             if (version === requestVersion.current) setLoading(false);
         }
-    }, [filters.assigneeId, filters.query, filters.statusFilter, projectId, setIssues, setLoading, teamId]);
+    }, [filters.assigneeId, filters.query, filters.statusFilter, projectId, cutoff, setIssues, setLoading, teamId]);
 
     useEffect(() => {
         const timeout = window.setTimeout(

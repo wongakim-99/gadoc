@@ -123,6 +123,10 @@ export default function IssuesPage({ params }: Props) {
                 }}
             />
             <ProjectScopeBar teamId={teamId} />
+            {searchParams.get('updatedAfter') && Number.isFinite(Date.parse(searchParams.get('updatedAfter')!)) && <div className="flex items-center gap-2 px-4 py-2 text-xs text-text-secondary">
+                <span>{new Date(searchParams.get('updatedAfter')!).toLocaleDateString('ko-KR')} 이후 변경</span>
+                <button type="button" onClick={() => { const next = new URLSearchParams(searchParams.toString()); next.delete('updatedAfter'); router.replace(`${pathname}?${next}`, { scroll: false }); }} className="underline">기간 해제</button>
+            </div>}
             <IssueBoardFilters
                 query={board.query}
                 assigneeId={board.assigneeId}
@@ -135,6 +139,9 @@ export default function IssuesPage({ params }: Props) {
                     board.setQuery('');
                     board.setAssigneeId('');
                     board.setStatusFilter('all');
+                    const next = new URLSearchParams(searchParams.toString());
+                    next.delete('filterStatus'); next.delete('filterAssignee'); next.delete('updatedAfter');
+                    router.replace(next.size ? `${pathname}?${next}` : pathname, { scroll: false });
                 }}
             />
 
