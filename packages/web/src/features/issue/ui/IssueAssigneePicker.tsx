@@ -1,6 +1,6 @@
 'use client';
 
-import { getAvatarColor } from '@/src/shared/lib/avatar';
+import { UserAvatar } from '@/src/entities/user/ui/UserAvatar';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
 
 interface Props {
@@ -30,12 +30,7 @@ export function IssueAssigneePicker({ assigneeIds, disabled = false, members, op
                             const name = member.user?.username ?? member.userId.slice(-4);
                             return (
                                 <span key={member.userId} className="flex items-center gap-1 rounded-full bg-bg-tertiary px-2 py-0.5 text-xs text-white">
-                                    <span
-                                        className="h-4 w-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
-                                        style={{ backgroundColor: getAvatarColor(member.userId) }}
-                                    >
-                                        {name.slice(0, 1).toUpperCase()}
-                                    </span>
+                                    <UserAvatar userId={member.userId} name={name} size={16} className="h-4 w-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center" />
                                     {name}
                                 </span>
                             );
@@ -58,12 +53,7 @@ export function IssueAssigneePicker({ assigneeIds, disabled = false, members, op
                                 onClick={() => onToggleAssignee(member.userId)}
                                 className={`flex w-full items-center gap-2.5 px-3 py-2 text-sm transition-colors disabled:opacity-50 ${selected ? 'bg-white/8 text-white' : 'text-text-secondary hover:bg-white/5'}`}
                             >
-                                <div
-                                    className="h-6 w-6 shrink-0 rounded-full text-[10px] font-bold text-white flex items-center justify-center"
-                                    style={{ backgroundColor: getAvatarColor(member.userId) }}
-                                >
-                                    {name.slice(0, 1).toUpperCase()}
-                                </div>
+                                <UserAvatar userId={member.userId} name={name} size={24} className="h-6 w-6 shrink-0 rounded-full text-[10px] font-bold text-white flex items-center justify-center" />
                                 <span className="flex-1 text-left">{name}</span>
                                 {selected ? (
                                     <svg className="h-4 w-4 shrink-0 text-slack-green" fill="currentColor" viewBox="0 0 20 20">

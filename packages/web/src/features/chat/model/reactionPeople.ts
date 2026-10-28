@@ -1,6 +1,6 @@
 import type { Reaction } from '../../../entities/message/types';
 import type { TeamMemberSummary } from '../../../entities/team/types';
-import { privateFileUrl } from '../../../shared/lib/private-files';
+import { avatarImageUrl } from '../../../shared/lib/avatar-image';
 
 export function normalizeReactions(reactions: Reaction[]): Reaction[] {
     const groups = new Map<string, Set<string>>();
@@ -24,9 +24,7 @@ export function reactionPeople(reaction: Reaction, members: TeamMemberSummary[])
 }
 
 export function reactionAvatarUrl(value?: string | null): string | null {
-    if (!value) return null;
-    const url = privateFileUrl(value);
-    return /^\/api\/files\?key=/.test(url) && !url.includes('\\') ? url : null;
+    return avatarImageUrl(value);
 }
 
 export function reactionPeopleLabel(reaction: Reaction, members: TeamMemberSummary[]) {

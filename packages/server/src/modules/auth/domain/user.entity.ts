@@ -10,6 +10,7 @@ export class UserEntity {
         public readonly passwordHash: string,
         public readonly avatarUrl: string | null,
         public readonly createdAt: Date,
+        public readonly updatedAt: Date = createdAt,
     ) {}
 
     /** 이메일이 유효한 형식인지 검증 */
@@ -25,6 +26,17 @@ export class UserEntity {
             username: this.username,
             avatarUrl: this.avatarUrl,
             createdAt: this.createdAt,
+            profileUpdatedAt: this.updatedAt.toISOString(),
+        };
+    }
+
+    /** 멤버 identity 동기화에는 로그인 이메일을 포함하지 않음. */
+    toIdentity() {
+        return {
+            id: this.id,
+            username: this.username,
+            avatarUrl: this.avatarUrl,
+            profileUpdatedAt: this.updatedAt.toISOString(),
         };
     }
 }

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { IUserRepository } from '../../domain/auth.port';
+import type { IUserRepository, UserSaveData } from '../../domain/auth.port';
 import { UserEntity } from '../../domain/user.entity';
 import { User, UserDocument } from './user.schema';
 
@@ -26,13 +26,22 @@ export class UserRepository implements IUserRepository {
         return doc ? this.toEntity(doc) : null;
     }
 
-    async save(data: Omit<UserEntity, 'id' | 'createdAt'>): Promise<UserEntity> {
+    async save(data: UserSaveData): Promise<UserEntity> {
         const doc = await this.userModel.create(data);
         return this.toEntity(doc.toObject());
     }
 
     async existsByEmail(email: string): Promise<boolean> {
         return !!(await this.userModel.exists({ email }));
+    }
+
+    async replaceAvatar(id: string, expectedUrl: string | null, avatarUrl: string | null): Promise<UserEntity | null> {
+        const doc = await this.userModel.findOneAndUpdate(
+            { _id: id, avatarUrl: expectedUrl },
+            { $set: { avatarUrl } },
+            { new: true },
+        ).lean();
+        return doc ? this.toEntity(doc) : null;
     }
 
     private toEntity(doc: UserDocument): UserEntity {
@@ -43,6 +52,7 @@ export class UserRepository implements IUserRepository {
             doc.passwordHash,
             doc.avatarUrl,
             doc.createdAt,
+            doc.updatedAt,
         );
     }
 }

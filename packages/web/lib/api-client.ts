@@ -6,6 +6,7 @@ import { withPrivateFiles } from '@/src/shared/lib/private-files';
  */
 
 import { toApiUrl } from './runtime-config';
+import type { UserIdentity } from '@/src/entities/user/types';
 import type {
     KnowledgeDatabase,
     DatabaseContainer,
@@ -233,6 +234,15 @@ export const databaseApi = {
 };
 
 export const authApi = {
+    async uploadAvatar(file: File) {
+        const body = new FormData();
+        body.append('file', file);
+        return apiFetch<UserIdentity>('/api/auth/me/avatar', { method: 'POST', body });
+    },
+
+    async deleteAvatar() {
+        return apiFetch<UserIdentity>('/api/auth/me/avatar', { method: 'DELETE' });
+    },
     /**
      * 회원가입
      */

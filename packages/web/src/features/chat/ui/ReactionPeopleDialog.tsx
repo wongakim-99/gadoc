@@ -7,7 +7,8 @@ import type { Reaction } from '@/src/entities/message/types';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
 import { teamApi, unwrapApiArray } from '@/lib/api-client';
 import { useDialogFocusTrap } from '@/src/shared/ui/useDialogFocusTrap';
-import { getAvatarColor } from '@/src/shared/lib/avatar';
+import { UserAvatar } from '@/src/entities/user/ui/UserAvatar';
+import { useProfileStore } from '@/src/entities/user/model/profile.store';
 import { reactionPeople } from '../model/reactionPeople';
 
 export function ReactionPeopleDialog({
@@ -38,7 +39,11 @@ export function ReactionPeopleDialog({
             .getMembers(teamId)
             .then((result) => {
                 if (!result.success) throw new Error();
-                if (current) setMembers(unwrapApiArray<TeamMemberSummary>(result));
+                if (current) {
+                    const snapshot = unwrapApiArray<TeamMemberSummary>(result);
+                    setMembers(snapshot);
+                    useProfileStore.getState().apply(snapshot.flatMap((member) => member.user ? [member.user] : []));
+                }
             })
             .catch(() => {
                 if (current) {
@@ -142,10 +147,11 @@ export function ReactionPeopleDialog({
                                         <ul className="space-y-2">
                                             {people.map((person) => (
                                                 <li key={person.id} className="flex min-w-0 items-center gap-3 py-1">
-                                                    <ParticipantAvatar
-                                                        id={person.id}
+                                                    <UserAvatar
+                                                        userId={person.id}
                                                         name={person.name}
                                                         url={person.avatarUrl}
+                                                        size={32}
                                                     />
                                                     <span className="min-w-0 break-words text-sm">{person.name}</span>
                                                     {person.id === currentUserId && (
@@ -162,22 +168,5 @@ export function ReactionPeopleDialog({
             </div>
         </div>,
         document.body,
-    );
-}
-
-function ParticipantAvatar({ id, name, url }: { id: string; name: string; url: string | null }) {
-    const [failed, setFailed] = useState<string | null>(null);
-    return (
-        <span
-            aria-hidden="true"
-            className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold text-white"
-            style={{ backgroundColor: getAvatarColor(id) }}
-        >
-            {url && url !== failed ? (
-                <img src={url} alt="" className="h-full w-full object-cover" onError={() => setFailed(url)} />
-            ) : (
-                name.slice(0, 1)
-            )}
-        </span>
     );
 }

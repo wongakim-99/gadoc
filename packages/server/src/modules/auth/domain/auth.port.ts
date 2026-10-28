@@ -17,6 +17,7 @@ export interface IUserRepository {
     findByEmail(email: string): Promise<UserEntity | null>;
     save(user: UserSaveData): Promise<UserEntity>;
     existsByEmail(email: string): Promise<boolean>;
+    replaceAvatar(id: string, expectedUrl: string | null, avatarUrl: string | null): Promise<UserEntity | null>;
 }
 
 export const USER_REPOSITORY = Symbol('IUserRepository');

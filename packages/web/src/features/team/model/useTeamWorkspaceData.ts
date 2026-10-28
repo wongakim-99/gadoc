@@ -7,6 +7,8 @@ import type { Channel } from '@/src/entities/channel/types';
 import { hasTeamWriteAccess, resolveCurrentTeamMember } from '@/src/entities/team/lib/access';
 import type { TeamMemberSummary, TeamSettingsSummary, TeamSummary } from '@/src/entities/team/types';
 import type { User } from '@/src/entities/user/types';
+import { useProfileStore } from '@/src/entities/user/model/profile.store';
+import { retainProfileSync } from '@/src/features/profile/model/profileSync';
 
 const BASE_TTL_MS = 15_000;
 const SETTINGS_TTL_MS = 15_000;
@@ -102,6 +104,10 @@ const useTeamWorkspaceStore = create<TeamWorkspaceStore>((set, get) => ({
                 };
 
                 get().patchEntry(teamId, nextEntry);
+                useProfileStore.getState().apply([
+                    ...(nextEntry.me ? [nextEntry.me] : []),
+                    ...(nextEntry.members ?? []).flatMap((member) => member.user ? [member.user] : []),
+                ]);
             })
             .catch((error: Error) => {
                 get().patchEntry(teamId, {
@@ -188,6 +194,8 @@ export function useTeamWorkspaceData(teamId: string, options: UseTeamWorkspaceDa
     const ensureBase = useTeamWorkspaceStore((state) => state.ensureBase);
     const ensureSettings = useTeamWorkspaceStore((state) => state.ensureSettings);
 
+    useEffect(retainProfileSync, []);
+
     useEffect(() => {
         const refresh = () => {
             void ensureBase(teamId);
@@ -197,14 +205,17 @@ export function useTeamWorkspaceData(teamId: string, options: UseTeamWorkspaceDa
                 void ensureBase(teamId, { force: true });
             }
         };
+        const profilesChanged = () => { void ensureBase(teamId, { force: true }); };
         refresh();
         window.addEventListener('online', refresh);
         window.addEventListener('focus', refresh);
         window.addEventListener('gadoc:channels-changed', channelsChanged);
+        window.addEventListener('gadoc:profiles-refresh', profilesChanged);
         return () => {
             window.removeEventListener('online', refresh);
             window.removeEventListener('focus', refresh);
             window.removeEventListener('gadoc:channels-changed', channelsChanged);
+            window.removeEventListener('gadoc:profiles-refresh', profilesChanged);
         };
     }, [ensureBase, teamId]);
 

@@ -23,6 +23,7 @@ import { DocumentModule } from './modules/document/document.module';
 import { DiscordModule } from './modules/discord/discord.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { HealthController } from './shared/http/health.controller';
+import { ProfileModule } from './modules/profile/profile.module';
 
 /**
  * Slacord 앱 루트 모듈
@@ -52,6 +53,7 @@ import { HealthController } from './shared/http/health.controller';
         }),
         DiscordModule,
         AuthModule,
+        ProfileModule,
         TeamModule,
         BridgeModule,
         ChannelModule,

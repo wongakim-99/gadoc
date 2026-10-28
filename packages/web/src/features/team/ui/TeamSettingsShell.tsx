@@ -12,6 +12,8 @@ import { TeamInviteSettingsPanel } from './TeamInviteSettingsPanel';
 import { McpSettingsPanel } from './McpSettingsPanel';
 import { activeSettingsSection } from '../model/settingsSections';
 import './settings.css';
+import { UserAvatar } from '@/src/entities/user/ui/UserAvatar';
+import { ProfileAvatarEditor } from '@/src/features/profile/ui/ProfileAvatarEditor';
 
 export function TeamSettingsShell({ teamId }: { teamId: string }) {
     const params = useSearchParams();
@@ -26,7 +28,8 @@ export function TeamSettingsShell({ teamId }: { teamId: string }) {
             <div className="settings-content">
                 {active.key === 'account' && <section className="settings-account">
                     <div className="settings-account-cover" />
-                    <div className="px-6 pb-6"><span className="settings-account-avatar">{workspace.currentUsername.slice(0, 1) || '?'}</span><h2 className="mt-3 text-xl font-bold text-text-primary">{workspace.currentUsername || '사용자'}</h2>
+                    <div className="px-6 pb-6"><UserAvatar userId={workspace.currentUserId} name={workspace.currentUsername} size={68} className="settings-account-avatar" /><h2 className="mt-3 text-xl font-bold text-text-primary">{workspace.currentUsername || '사용자'}</h2>
+                        <ProfileAvatarEditor key={workspace.currentUserId} userId={workspace.currentUserId} username={workspace.currentUsername} />
                         <dl className="mt-6 divide-y divide-border-primary rounded-lg bg-bg-primary px-4"><div className="flex flex-wrap justify-between gap-2 py-4"><dt className="text-sm text-text-secondary">표시 이름</dt><dd className="break-all text-sm text-text-primary">{workspace.currentUsername}</dd></div><div className="flex flex-wrap justify-between gap-2 py-4"><dt className="text-sm text-text-secondary">워크스페이스</dt><dd className="text-sm text-text-primary">{workspace.team?.name}</dd></div><div className="flex justify-between gap-2 py-4"><dt className="text-sm text-text-secondary">역할</dt><dd className="text-sm text-text-primary">{role}</dd></div></dl>
                         <div className="mx-0 mt-4 rounded-lg border border-border-primary bg-bg-primary p-4"><p className="text-xs text-text-secondary">로그인 이메일</p><p className="mt-1 break-all text-sm text-text-primary" aria-label="로그인 이메일">{workspace.me?.email || '계정 확인 중'}</p><p className="mt-2 text-xs text-text-tertiary">본인에게만 표시되며, 다른 멤버에게 공개되는 프로필 정보와 구분됩니다.</p></div>
                     </div>

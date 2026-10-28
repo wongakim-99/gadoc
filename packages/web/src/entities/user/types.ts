@@ -1,6 +1,13 @@
 export type PresenceStatus = 'online' | 'away' | 'offline';
 
-export interface User {
+export interface UserIdentity {
+    id: string;
+    username: string;
+    avatarUrl?: string | null;
+    profileUpdatedAt?: string;
+}
+
+export interface User extends UserIdentity {
     id: string;
     email: string;
     username: string;

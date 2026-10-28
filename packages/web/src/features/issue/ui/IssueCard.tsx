@@ -1,7 +1,7 @@
 import { Draggable } from '@hello-pangea/dnd';
 import type { Issue, IssuePriority } from '@/src/entities/issue/types';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
-import { getAvatarColor } from '@/src/shared/lib/avatar';
+import { UserAvatar } from '@/src/entities/user/ui/UserAvatar';
 import { WorkspaceReferenceActions } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
 
 const PRIORITY_COLORS: Record<IssuePriority, string> = {
@@ -104,14 +104,7 @@ function IssueCardBody({
                         {assignees.slice(0, 3).map((member) => {
                             const name = member.user?.username ?? member.userId.slice(-4);
                             return (
-                                <div
-                                    key={member.userId}
-                                    title={name}
-                                    className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-bg-secondary text-[9px] font-bold text-white"
-                                    style={{ backgroundColor: getAvatarColor(member.userId) }}
-                                >
-                                    {name.slice(0, 1).toUpperCase()}
-                                </div>
+                                <UserAvatar userId={member.userId} name={name} size={24} key={member.userId} label={name} className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-bg-secondary text-[9px] font-bold text-white" />
                             );
                         })}
                         {assignees.length > 3 ? (

@@ -2,7 +2,7 @@
 
 import { NotificationPermissionButton } from './NotificationPermissionButton';
 import { forwardRef, useId, useRef, useState, type RefObject } from 'react';
-import { getAvatarColor } from '@/src/shared/lib/avatar';
+import { UserAvatar } from '@/src/entities/user/ui/UserAvatar';
 import { formatShortDateTime } from '@/src/shared/lib/datetime';
 import type { AppNotification } from '@/src/entities/notification/types';
 import { buildNotificationCopy } from '@/src/entities/notification/lib/buildNotificationCopy';
@@ -121,12 +121,7 @@ export const NotificationPanel = forwardRef<HTMLElement, Props>(function Notific
                             className={`min-w-0 flex-1 flex gap-3 px-4 py-3 text-left hover:bg-bg-hover ${n.isRead ? 'opacity-60' : ''}`}
                         >
                             {!n.isRead && <div className="w-2 h-2 rounded-full bg-blue-400 shrink-0 mt-2" />}
-                            <div
-                                className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
-                                style={{ backgroundColor: getAvatarColor(n.actorId) }}
-                            >
-                                {copy.actorName.slice(0, 1).toUpperCase()}
-                            </div>
+                            <UserAvatar userId={n.actorId} name={copy.actorName} size={32} className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" />
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-baseline gap-2">
                                     <span className="text-[13px] font-semibold text-white">{copy.actorName}</span>

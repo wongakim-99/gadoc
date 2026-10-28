@@ -3,7 +3,7 @@
 import type { IssueStatus } from '@/src/entities/issue/types';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
 import { CircleDot, RotateCcw, Search, UsersRound } from 'lucide-react';
-import { getAvatarColor } from '@/src/shared/lib/avatar';
+import { UserAvatar } from '@/src/entities/user/ui/UserAvatar';
 import { IssueFilterSelect } from './IssueFilterSelect';
 
 interface Props {
@@ -51,12 +51,7 @@ export function IssueBoardFilters(props: Props) {
                                 value: member.userId,
                                 label: name,
                                 marker: (
-                                    <span
-                                        className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold text-white"
-                                        style={{ backgroundColor: getAvatarColor(member.userId) }}
-                                    >
-                                        {name.slice(0, 1)}
-                                    </span>
+                                    <UserAvatar userId={member.userId} name={name} size={24} className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold text-white" />
                                 ),
                             };
                         }),

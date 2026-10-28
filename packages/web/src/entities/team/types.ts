@@ -110,6 +110,7 @@ export interface TeamMemberSummary {
         email: string;
         username: string;
         avatarUrl: string | null;
+        profileUpdatedAt?: string;
         createdAt: string;
     } | null;
 }

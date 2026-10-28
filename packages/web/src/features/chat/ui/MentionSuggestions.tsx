@@ -1,6 +1,6 @@
 'use client';
 
-import { getAvatarColor } from '@/src/shared/lib/avatar';
+import { UserAvatar } from '@/src/entities/user/ui/UserAvatar';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
 
 interface Props {
@@ -23,12 +23,7 @@ export function MentionSuggestions({ activeIndex, members, onSelect }: Props) {
                         }}
                         className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors ${index === activeIndex ? 'bg-white/8 text-white' : 'text-text-secondary hover:bg-white/5'}`}
                     >
-                        <div
-                            className="h-6 w-6 shrink-0 rounded-full text-[10px] font-bold text-white flex items-center justify-center"
-                            style={{ backgroundColor: getAvatarColor(member.userId) }}
-                        >
-                            {name.slice(0, 1).toUpperCase()}
-                        </div>
+                        <UserAvatar userId={member.userId} name={name} size={24} className="h-6 w-6 shrink-0 rounded-full text-[10px] font-bold text-white flex items-center justify-center" />
                         <span className="font-medium">{name}</span>
                         <span className="ml-auto text-[11px] text-text-tertiary">{member.role}</span>
                     </button>

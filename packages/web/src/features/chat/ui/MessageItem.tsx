@@ -7,7 +7,8 @@ import { MessageAuthorMeta } from './MessageAuthorMeta';
 import { MessageActionToggle } from './MessageActionToggle';
 import { MessageBodyContent } from './MessageBodyContent';
 import { SystemMessageItem } from './SystemMessageItem';
-import { getAvatarColor } from '@/src/shared/lib/avatar';
+import { useUserIdentity } from '@/src/entities/user/model/profile.store';
+import { UserAvatar } from '@/src/entities/user/ui/UserAvatar';
 import type { Message } from '@/src/entities/message/types';
 import { useMessageActionMenu } from '../model/useMessageActionMenu';
 import { useMessageItemEditor } from '../model/useMessageItemEditor';
@@ -47,7 +48,7 @@ export function MessageItem({
             setActionError(error instanceof Error ? error.message : '변경하지 못했습니다. 다시 시도해 주세요.');
         }
     };
-    const authorLabel = message.authorName || message.authorId.slice(-6);
+    const authorLabel = useUserIdentity(message.authorId, message.authorName || message.authorId.slice(-6)).username;
     const { cancelEdit, editContent, editRef, editing, setEditContent, setEditing, startEdit } = useMessageItemEditor(
         message.content,
     );
@@ -90,12 +91,7 @@ export function MessageItem({
             onMouseLeave={supportsHover ? closeMenu : undefined}
             className={`relative flex items-start gap-3 px-5 py-1.5 transition-colors ${highlighted ? "bg-brand-500/5 before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-brand-400/40 before:content-['']" : editing ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]'}`}
         >
-            <div
-                className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[13px] font-semibold shrink-0 select-none"
-                style={{ backgroundColor: getAvatarColor(message.authorId) }}
-            >
-                {authorLabel.slice(0, 1).toUpperCase()}
-            </div>
+            <UserAvatar userId={message.authorId} name={authorLabel} size={36} className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[13px] font-semibold shrink-0 select-none" />
 
             <div className="min-w-0 flex-1 pt-[1px]">
                 <MessageAuthorMeta

@@ -1,6 +1,7 @@
 'use client';
 
-import { getAvatarColor } from '@/src/shared/lib/avatar';
+import { useUserIdentity } from '@/src/entities/user/model/profile.store';
+import { UserAvatar } from '@/src/entities/user/ui/UserAvatar';
 import type { Message } from '@/src/entities/message/types';
 import { MessageActionToggle } from './MessageActionToggle';
 import { MessageAttachments } from './MessageAttachments';
@@ -14,17 +15,12 @@ interface Props {
 }
 
 export function ThreadMessageItem({ canDelete, message, onDelete, showDeleteButton, onToggleDelete }: Props) {
-    const authorLabel = message.authorName || message.authorId.slice(-6);
+    const authorLabel = useUserIdentity(message.authorId, message.authorName || message.authorId.slice(-6)).username;
     const time = new Date(message.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 
     return (
         <div className="group relative flex gap-2.5 px-4 py-2 hover:bg-white/[0.03]">
-            <div
-                className="h-8 w-8 shrink-0 rounded-full text-[11px] font-bold text-white flex items-center justify-center"
-                style={{ backgroundColor: getAvatarColor(message.authorId) }}
-            >
-                {authorLabel.slice(0, 1).toUpperCase()}
-            </div>
+            <UserAvatar userId={message.authorId} name={authorLabel} size={32} className="h-8 w-8 shrink-0 rounded-full text-[11px] font-bold text-white flex items-center justify-center" />
             <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
                     <span className="text-[13px] font-bold text-white">{authorLabel}</span>

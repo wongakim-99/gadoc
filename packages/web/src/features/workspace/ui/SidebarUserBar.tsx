@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { UserAvatar } from '@/src/entities/user/ui/UserAvatar';
 import { useState } from 'react';
 import { LogOut, Settings, UserRound, Palette, ChevronRight } from 'lucide-react';
 import { PopoverMenu } from '@/src/shared/ui/PopoverMenu';
@@ -18,14 +19,14 @@ export function SidebarUserBar({ username, teamId, collapsed, onLogout }: Props)
             <PopoverMenu label="사용자 메뉴" width={292} placement="top" showHeader={false} open={open} onOpenChange={setOpen}
                 triggerClassName="flex w-full min-w-0 items-center gap-2.5 rounded-lg p-1.5 text-left hover:bg-bg-hover"
                 icon={<>
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-selection text-sm font-bold text-action-text">{username.slice(0, 1) || '?'}</span>
+                    <UserAvatar userId={me?.id ?? ""} name={username} size={36} />
                     <span className={`min-w-0 flex-1 ${collapsed ? 'lg:hidden' : ''}`}>
                         <span className="block truncate text-sm font-bold text-text-primary">{username || '사용자'}</span>
                         <span className="block text-[11px] text-text-tertiary">내 계정</span>
                     </span>
                 </>}>
                 <div className="flex items-center gap-3 border-b border-border-primary px-2 pb-3 pt-1">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-selection text-lg font-bold text-action-text">{username.slice(0, 1) || '?'}</span>
+                    <UserAvatar userId={me?.id ?? ""} name={username} size={44} />
                     <div className="min-w-0"><p className="truncate font-bold text-text-primary">{username}</p><p className="mt-0.5 break-all text-xs text-text-tertiary" aria-label="내 계정 이메일">{me?.email || '계정 확인 중'}</p></div>
                 </div>
                 <div>
