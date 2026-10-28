@@ -46,7 +46,8 @@ export function useIssueBoardActions({ teamId, createStatus, issues, selectedIss
         },
 
         handleDelete: async (issueId: string) => {
-            await issueApi.deleteIssue(teamId, issueId);
+            const response = await issueApi.deleteIssue(teamId, issueId);
+            if (!response.success) throw new Error('이슈를 삭제하지 못했습니다. 다시 시도해 주세요.');
             removeIssue(issueId);
             window.dispatchEvent(new CustomEvent('slacord:issues-refresh'));
             if (selectedIssue?.id === issueId) setSelectedIssueId(null);

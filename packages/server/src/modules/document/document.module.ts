@@ -1,6 +1,7 @@
 import { ContentChangeInterceptor } from '../../shared/interceptors/content-change.interceptor';
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { DatabaseRow, DatabaseRowSchema } from '../knowledge-database/database.schema';
 import { Doc, DocumentSchema } from './infrastructure/persistence/document.schema';
 import { DocComment, DocumentCommentSchema } from './infrastructure/persistence/document-comment.schema';
 import { DocVersion, DocumentVersionSchema } from './infrastructure/persistence/document-version.schema';
@@ -37,6 +38,7 @@ import { DocumentGateway } from './collaboration/document.gateway';
 @Module({
     imports: [
         MongooseModule.forFeature([
+            { name: DatabaseRow.name, schema: DatabaseRowSchema },
             { name: Doc.name, schema: DocumentSchema },
             { name: DocComment.name, schema: DocumentCommentSchema },
             { name: DocVersion.name, schema: DocumentVersionSchema },

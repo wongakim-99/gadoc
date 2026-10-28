@@ -1,6 +1,7 @@
 import { NotificationEntity, NotificationType, NotificationResourceType } from './notification.entity';
 
 export interface INotificationRepository {
+    deleteOwned(teamId: string, recipientId: string, id?: string): Promise<number>;
     findByRecipient(teamId: string, recipientId: string, limit: number): Promise<NotificationEntity[]>;
     countUnread(teamId: string, recipientId: string): Promise<number>;
     save(data: {

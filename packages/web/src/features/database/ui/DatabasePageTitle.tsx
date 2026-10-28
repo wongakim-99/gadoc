@@ -72,7 +72,7 @@ export function DatabasePageTitle({
                     value={draft}
                     disabled={saving || disabled}
                     maxLength={maxLength}
-                    className="min-w-0 flex-1 rounded-control bg-transparent p-1 text-sm outline-none focus:ring-1 focus:ring-action"
+                    className="min-w-0 flex-1 rounded-control bg-transparent px-0 py-1 text-sm outline-none focus:ring-1 focus:ring-action"
                     onChange={(event) => {
                         if (!dirty.current) draftRevision.current = revision;
                         dirty.current = true;

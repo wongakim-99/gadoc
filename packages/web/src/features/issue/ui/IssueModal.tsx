@@ -14,6 +14,7 @@ import {
 } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
 import { useWorkspaceLeaveGuard } from '@/src/features/workspace/model/useWorkspaceConnection';
 import { useProjects } from '@/src/features/project/model/useProjects';
+import { ConfirmationDialog } from '@/src/shared/ui/ConfirmationDialog';
 
 interface CreateProps {
     initialProjectId?: string;
@@ -35,6 +36,7 @@ interface CreateProps {
 }
 
 interface EditProps {
+    onDelete: (issueId: string) => Promise<void>;
     mode: 'edit';
     issue: Issue;
     readOnly?: boolean;
@@ -65,6 +67,7 @@ export function IssueModal(props: Props) {
     const members = props.members ?? [];
     const readOnly = props.readOnly ?? false;
     const [saving, setSaving] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);
     const [saveError, setSaveError] = useState('');
     const formSnapshot = JSON.stringify({ title, description, priority, status, assigneeIds, labels, projectId });
     const baseline = useRef(formSnapshot);
@@ -97,7 +100,7 @@ export function IssueModal(props: Props) {
         if (mayClose()) props.onClose();
     };
     const surface = useRef<HTMLFormElement>(null);
-    useDialogFocusTrap({ open: !pane, surfaceRef: surface, onEscape: close });
+    useDialogFocusTrap({ open: !pane && !confirmDelete, surfaceRef: surface, onEscape: close });
 
     const toggleAssignee = (userId: string) => {
         setAssigneeIds((prev) => (prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]));
@@ -309,6 +312,12 @@ export function IssueModal(props: Props) {
                 ) : null}
 
                 <div className="flex gap-3 mt-2">
+                    {props.mode === 'edit' && !readOnly && (
+                        <button type="button" disabled={saving} onClick={() => setConfirmDelete(true)}
+                            className="rounded-lg px-3 py-2 text-sm text-error hover:bg-bg-hover disabled:opacity-50">
+                            삭제
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={close}
@@ -328,6 +337,23 @@ export function IssueModal(props: Props) {
                     ) : null}
                 </div>
             </form>
+            <div onClick={(event) => event.stopPropagation()}>
+                <ConfirmationDialog open={confirmDelete} busy={saving} tone="danger"
+                    title="이슈를 삭제할까요?" confirmLabel="삭제"
+                    description="이슈가 목록과 연결된 데이터베이스에서 제거됩니다. 이 작업은 되돌릴 수 없습니다."
+                    onClose={() => setConfirmDelete(false)}
+                    onConfirm={async () => {
+                        if (props.mode !== 'edit' || readOnly || saving) return;
+                        setSaving(true); setSaveError('');
+                        try {
+                            await props.onDelete(props.issue.id);
+                            props.onClose();
+                        } catch (error) {
+                            setConfirmDelete(false);
+                            setSaveError(error instanceof Error ? error.message : '삭제하지 못했습니다. 다시 시도해 주세요.');
+                        } finally { setSaving(false); }
+                    }} />
+            </div>
         </div>
     );
 }

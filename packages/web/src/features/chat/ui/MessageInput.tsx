@@ -102,7 +102,7 @@ function ScopedMessageInput({
                 }}
             >
                 <div
-                    className={`relative min-w-0 rounded-xl border bg-bg-secondary transition-colors ${
+                    className={`relative min-w-0 rounded-xl border bg-bg-secondary ${
                         composer.isDraggingFiles
                             ? 'border-action-text bg-selection'
                             : 'border-border-primary'

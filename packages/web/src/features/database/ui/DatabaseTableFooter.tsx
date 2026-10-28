@@ -13,18 +13,20 @@ export function DatabaseTableFooter({
     calculations,
     onChange,
     rowLabel = '페이지',
+    hasActionColumn = false,
 }: {
     rows: DatabaseRow[];
     properties: DatabaseProperty[];
     calculations: Record<string, Aggregation>;
     onChange: (next: Record<string, Aggregation>) => void;
     rowLabel?: string;
+    hasActionColumn?: boolean;
 }) {
     return (
         <tfoot className="border-t border-border-primary text-xs text-text-secondary">
             <tr>
                 {properties.map((property) => {
-                    if (property.id === 'title') return <td key="title" className="bg-bg-primary px-3 py-2">{rows.length} {rowLabel}</td>;
+                    if (property.id === 'title') return <td key="title" className="border-l first:border-l-0 border-border-primary bg-bg-primary px-3 py-2">{rows.length} {rowLabel}</td>;
                     const selected = calculations[property.id];
                     const valid = selected && Object.hasOwn(AGGREGATION_LABELS, selected);
                     const value = valid
@@ -39,7 +41,7 @@ export function DatabaseTableFooter({
                           ? `${Math.round(value * 10000) / 100}%`
                           : String(value ?? '—');
                     return (
-                        <td key={property.id} className="group/calculation border-l border-border-primary p-2 align-top">
+                        <td key={property.id} className="group/calculation border-l first:border-l-0 border-border-primary px-3 py-2 align-top">
                             <select
                                 aria-label={`${property.name} 열 계산`}
                                 className={`max-w-full bg-transparent ${valid ? '' : 'opacity-0 group-hover/calculation:opacity-100 focus:opacity-100'}`}
@@ -78,6 +80,7 @@ export function DatabaseTableFooter({
                         </td>
                     );
                 })}
+                {hasActionColumn && <td className="border-l border-border-primary" />}
             </tr>
         </tfoot>
     );

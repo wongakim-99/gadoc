@@ -19,6 +19,14 @@ function makeNode(id: string, parentId: string | null = null): DocumentNode {
 }
 
 describe('buildDocumentTree', () => {
+    it('keeps database records and their descendants out of navigation without removing ordinary pages', () => {
+        const documents = [makeNode('page'), { ...makeNode('row', 'page'), isDatabasePage: true },
+            makeNode('row-child', 'row'), makeNode('ordinary-child', 'page')];
+        const result = buildDocumentTree(documents);
+        expect(result.map((node) => node.id)).toEqual(['page']);
+        expect(result[0].children.map((node) => node.id)).toEqual(['ordinary-child']);
+        expect(documents).toHaveLength(4);
+    });
     it('부모-자식 구조로 트리를 만듦', () => {
         const result = buildDocumentTree([
             makeNode('parent'),

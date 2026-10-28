@@ -35,6 +35,10 @@ export class NotificationRepository implements INotificationRepository {
         return this.model.countDocuments({ teamId, recipientId, isRead: false }).exec();
     }
 
+    async deleteOwned(teamId: string, recipientId: string, id?: string): Promise<number> {
+        return (await this.model.deleteMany({ teamId, recipientId, ...(id ? { _id: id } : {}) })).deletedCount;
+    }
+
     async save(data: {
         teamId: string; recipientId: string; type: NotificationType; actorId: string; actorName: string;
         content: string; resourceType: NotificationResourceType; resourceId: string; channelId: string | null;

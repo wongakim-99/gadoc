@@ -1,4 +1,5 @@
-import { Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Inject, NotFoundException, Param, Patch, UseGuards } from '@nestjs/common';
+import { NOTIFICATION_REPOSITORY, type INotificationRepository } from '../../domain/notification.port';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../../shared/decorators/current-user.decorator';
@@ -19,12 +20,26 @@ export class NotificationController {
         private readonly getUnreadCountUseCase: GetUnreadNotificationCountUseCase,
         private readonly markAsReadUseCase: MarkNotificationAsReadUseCase,
         private readonly markAllAsReadUseCase: MarkAllNotificationsAsReadUseCase,
+        @Inject(NOTIFICATION_REPOSITORY) private readonly notifications: INotificationRepository,
     ) {}
 
     @Get()
     @ApiOperation({ summary: '내 알림 목록 (최근 50개)' })
     async getNotifications(@Param('teamId') teamId: string, @CurrentUser() user: { userId: string }) {
         return this.getNotificationsUseCase.execute(teamId, user.userId);
+    }
+
+    @Delete()
+    async deleteAll(@Param('teamId') teamId: string, @CurrentUser() user: { userId: string }) {
+        return { deletedCount: await this.notifications.deleteOwned(teamId, user.userId) };
+    }
+
+    @Delete(':id')
+    async deleteOne(@Param('teamId') teamId: string, @Param('id') id: string, @CurrentUser() user: { userId: string }) {
+        if (!/^[a-f\d]{24}$/i.test(id)) throw new NotFoundException('알림을 찾을 수 없습니다.');
+        const deletedCount = await this.notifications.deleteOwned(teamId, user.userId, id);
+        if (!deletedCount) throw new NotFoundException('알림을 찾을 수 없습니다.');
+        return { deletedCount };
     }
 
     @Get('unread-count')

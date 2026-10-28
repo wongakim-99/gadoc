@@ -1,4 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { TeamAccess, type TeamAccessContext } from '../../../../shared/decorators/team-access.decorator';
+import { ManageAnnouncementUseCase } from '../../application/use-cases/manage-announcement.use-case';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../../shared/decorators/current-user.decorator';
@@ -21,6 +23,7 @@ export class AnnouncementController {
         private readonly getUseCase: GetAnnouncementsUseCase,
         private readonly pinUseCase: PinAnnouncementUseCase,
         private readonly bridgeEnqueueService: BridgeEnqueueService,
+        private readonly manageUseCase: ManageAnnouncementUseCase,
     ) {}
 
     @Get()
@@ -47,9 +50,26 @@ export class AnnouncementController {
     @TeamRole('writable')
     @ApiOperation({ summary: '공지사항 핀 고정/해제 (멤버만)' })
     async pinAnnouncement(
+        @Param('teamId') teamId: string,
         @Param('announcementId') announcementId: string,
         @Body() dto: PinAnnouncementDto,
     ) {
+        await this.manageUseCase.requireInTeam(teamId, announcementId);
         return this.pinUseCase.execute(announcementId, dto.isPinned);
+    }
+
+    @Patch(':announcementId')
+    @TeamRole('writable')
+    async updateAnnouncement(@Param('teamId') teamId: string, @Param('announcementId') id: string,
+        @CurrentUser() user: { userId: string }, @TeamAccess() access: TeamAccessContext,
+        @Body() dto: CreateAnnouncementDto) {
+        return this.manageUseCase.update(teamId, id, user.userId, access.role, dto);
+    }
+
+    @Delete(':announcementId')
+    @TeamRole('writable')
+    async deleteAnnouncement(@Param('teamId') teamId: string, @Param('announcementId') id: string,
+        @CurrentUser() user: { userId: string }, @TeamAccess() access: TeamAccessContext) {
+        return this.manageUseCase.delete(teamId, id, user.userId, access.role);
     }
 }

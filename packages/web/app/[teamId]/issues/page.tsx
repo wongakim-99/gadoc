@@ -98,6 +98,7 @@ export default function IssuesPage({ params }: Props) {
                     readOnly={!board.canWrite}
                     members={board.members}
                     onSubmit={board.handleUpdate}
+                    onDelete={board.handleDelete}
                     onClose={() => {
                         board.setSelectedIssue(null);
                         const next = new URLSearchParams(searchParams.toString());

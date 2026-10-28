@@ -1,6 +1,8 @@
 import { ChannelEntity, ChannelType } from './channel.entity';
 
 export interface IChannelRepository {
+    updateDetails(channelId: string, teamId: string, name: string, description: string | null): Promise<ChannelEntity | null>;
+    deleteInTeam(channelId: string, teamId: string): Promise<boolean>;
     setArchived(channelId: string, isArchived: boolean): Promise<ChannelEntity | null>;
     findById(id: string): Promise<ChannelEntity | null>;
     findByTeam(teamId: string): Promise<ChannelEntity[]>;
