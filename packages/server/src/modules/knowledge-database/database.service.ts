@@ -1,3 +1,4 @@
+import { resolveStatusGroups } from '@slacord/document-core';
 import { identitiesFor, isOptionProperty, optionDisplayValue, optionStoredValue, reconcileOptionIdentities } from './option-identities';
 import { IssueSourceService, ISSUE_PROPERTIES } from './issue-source.service';
 import { createHash } from 'node:crypto';
@@ -64,7 +65,7 @@ export class DatabaseService {
         const db = await this.databases.findOne({ _id: id, teamId }).lean();
         if (!db) throw new NotFoundException('데이터베이스를 찾을 수 없습니다.');
         db.properties = db.properties.map((property) => isOptionProperty(property)
-            ? { ...property, optionIdentities: identitiesFor(property) } : property);
+            ? { ...property, optionIdentities: identitiesFor(property), ...(property.type === 'status' ? { statusOptionGroups: resolveStatusGroups(identitiesFor(property), property.statusOptionGroups) } : {}) } : property);
         if (db.parentDocumentId) await this.assertPage(teamId, userId, db.parentDocumentId, write);
         return db;
     }
@@ -214,6 +215,8 @@ export class DatabaseService {
             await this.completeProperties(teamId, userId, id),
             dto,
         );
+        if (isOptionProperty(property)) property.optionIdentities = identitiesFor(property);
+        this.applyStatusGroups(property, dto);
         const result = await this.databases.updateOne(
             { _id: id, teamId, revision: dto.revision },
             { $push: { properties: property }, $inc: { revision: 1 } },
@@ -222,6 +225,14 @@ export class DatabaseService {
         if (property.type === 'unique_id') await this.ensureRowNumbers(teamId, id);
         if (isOptionProperty(property)) property.optionIdentities = identitiesFor(property);
         return property;
+    }
+    private applyStatusGroups(property: DatabaseProperty, dto: AddPropertyDto, previous?: DatabaseProperty) {
+        if (dto.statusGroups && property.type !== 'status')
+            throw new BadRequestException('상태 그룹은 상태 속성에만 설정할 수 있습니다.');
+        if (property.type !== 'status') return;
+        try {
+            property.statusOptionGroups = resolveStatusGroups(identitiesFor(property), previous?.statusOptionGroups, dto.statusGroups);
+        } catch (error) { throw new BadRequestException((error as Error).message); }
     }
     private async buildProperty(
         teamId: string,
@@ -331,6 +342,7 @@ export class DatabaseService {
             id: propertyId,
         };
         if (isOptionProperty(updated)) updated.optionIdentities = reconcileOptionIdentities(current, updated.options ?? [], dto.optionRenames);
+        this.applyStatusGroups(updated, dto, current);
         if (current.type === 'relation' && current.targetDatabaseId !== updated.targetDatabaseId)
             throw new BadRequestException('기존 관계의 데이터 소스는 변경할 수 없습니다. 새 관계 속성을 추가하세요.');
         if (current.inverse && updated.inverse) updated.inverse.id = current.inverse.id;

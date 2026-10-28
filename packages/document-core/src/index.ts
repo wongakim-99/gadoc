@@ -227,3 +227,5 @@ export * from './query';
 export * from './aggregate';
 
 export * from './option-identity';
+
+export * from './status-groups';

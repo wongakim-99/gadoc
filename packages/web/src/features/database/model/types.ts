@@ -1,4 +1,4 @@
-import type { OptionIdentity, OptionColorSetting } from '@slacord/document-core';
+import type { StatusOptionGroup, OptionIdentity, OptionColorSetting } from '@slacord/document-core';
 import type { NumberFormat } from '@slacord/document-core';
 import type { FilterGroup, SortRule, Aggregation } from '@slacord/document-core';
 export type PropertyType =
@@ -32,6 +32,7 @@ export interface DatabaseProperty {
     options?: string[];
     optionColors?: OptionColorSetting[];
     optionIdentities?: OptionIdentity[];
+    statusOptionGroups?: StatusOptionGroup[];
     formula?: string;
     formulaReferences?: Array<{ name: string; id: string }>;
     targetDatabaseId?: string;
@@ -77,6 +78,7 @@ export interface DatabaseView {
     endProperty?: string;
     dataSourceId?: string;
     groupProperty?: string;
+    statusGrouping?: 'option' | 'group';
     hiddenProperties?: string[];
     propertyOrder?: string[];
     columnWidths?: Record<string, number>;

@@ -1,4 +1,5 @@
 'use client';
+import { resolveStatusGroups, STATUS_GROUP_KEYS, STATUS_GROUP_LABELS, type StatusGroupAssignment, type StatusGroupKey } from '@slacord/document-core';
 import { OPTION_COLORS, type OptionColor, NUMBER_FORMATS, type NumberFormat } from '@slacord/document-core';
 import { AGGREGATION_LABELS, NUMERIC_AGGREGATIONS, DATE_AGGREGATIONS } from '@slacord/document-core';
 import { useLayoutEffect, useRef, useState } from 'react';
@@ -43,7 +44,7 @@ export function PropertyEditor({
     error: string;
     onClose: () => void;
     onArchive?: () => void;
-    onSave: (property: Omit<DatabaseProperty, 'id'> & { optionRenames?: Array<{ id: string; name: string }> }) => void;
+    onSave: (property: Omit<DatabaseProperty, 'id'> & { optionRenames?: Array<{ id: string; name: string }>; statusGroups?: StatusGroupAssignment[] }) => void;
     anchorRect?: { left: number; right: number; top: number; bottom: number };
     allowedTypes?: PropertyType[];
 }) {
@@ -59,6 +60,11 @@ export function PropertyEditor({
     const [optionColors, setOptionColors] = useState(editing?.optionColors ?? []);
     const [optionRenames, setOptionRenames] = useState<Array<{ id: string; name: string }>>([]);
     const [optionError, setOptionError] = useState('');
+    const [statusAssignments, setStatusAssignments] = useState<StatusGroupAssignment[]>(() => {
+        const identities = editing?.optionIdentities ?? (editing?.options ?? []).map(name => ({ id: name, name }));
+        const groups = resolveStatusGroups(identities, editing?.statusOptionGroups);
+        return identities.map(option => ({ name: option.name, group: groups.find(item => item.optionId === option.id)!.group }));
+    });
     const [newOption, setNewOption] = useState('');
     const [formula, setFormula] = useState(editing?.formula ?? '');
     const [cardinality, setCardinality] = useState<'one' | 'many'>(editing?.cardinality ?? 'many');
@@ -115,6 +121,7 @@ export function PropertyEditor({
         if (identity) setOptionRenames((items) => [...items.filter((item) => item.id !== identity.id), { id: identity.id, name: next }]);
         setOptions((items) => items.map((item) => item === oldName ? next : item));
         setOptionColors((items) => items.map((item) => item.name === oldName ? { ...item, name: next } : item));
+        setStatusAssignments((items) => items.map(item => item.name === oldName ? { ...item, name: next } : item));
         setOptionError('');
         return true;
     };
@@ -165,6 +172,7 @@ export function PropertyEditor({
                             ? {
                                   options: [...new Set([...options, newOption.trim()].filter(Boolean))],
                                   optionRenames,
+                                  ...(type === 'status' ? { statusGroups: [...new Set([...options, newOption.trim()].filter(Boolean))].map(name => ({ name, group: statusAssignments.find(item => item.name === name)?.group ?? 'todo' as StatusGroupKey })) } : {}),
                                   optionColors: optionColors.filter((item) => [...options, newOption.trim()].includes(item.name)),
                               }
                             : {}),
@@ -279,6 +287,12 @@ export function PropertyEditor({
                                     className="min-w-0 flex-1 rounded-control bg-transparent px-1 py-1 text-xs text-text-primary outline-none"
                                     onBlur={(event) => { if (!renameOption(option, event.target.value)) event.target.value = option; }}
                                     onKeyDown={(event) => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.blur(); } }} />
+                                {type === 'status' && <select aria-label={`${option} 상태 그룹`} disabled={busy}
+                                    value={statusAssignments.find(item => item.name === option)?.group ?? 'todo'}
+                                    className="max-w-20 rounded bg-bg-primary py-1 text-xs text-text-secondary"
+                                    onChange={(event) => setStatusAssignments(items => [...items.filter(item => item.name !== option), { name: option, group: event.target.value as StatusGroupKey }])}>
+                                    {STATUS_GROUP_KEYS.map(group => <option key={group} value={group}>{STATUS_GROUP_LABELS[group]}</option>)}
+                                </select>}
                                 <select aria-label={`${option} 색상`} disabled={busy} value={optionColors.find((item) => item.name === option)?.color ?? 'default'}
                                     className="max-w-16 rounded bg-bg-primary py-1 text-xs text-text-secondary"
                                     onChange={(event) => setOptionColors((current) => [...current.filter((item) => item.name !== option), { name: option, color: event.target.value as OptionColor }])}>
