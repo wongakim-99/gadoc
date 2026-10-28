@@ -543,6 +543,19 @@ for (const native of [false, true])
   }) => {
     test.setTimeout(90_000);
     const f = await createWorkspaceFixture();
+    const joined = { chat: false, inbox: false };
+    page.on("websocket", (socket) =>
+      socket.on("framereceived", ({ payload }) => {
+        const frame = String(payload);
+        if (frame.includes('"joined_channel"') && frame.includes(f.channelId))
+          joined.chat = true;
+        if (
+          frame.includes('"joined_team_notifications"') &&
+          frame.includes(f.teamId)
+        )
+          joined.inbox = true;
+      }),
+    );
     await instrumentDelivery(page, native);
     await loginWithSession(page, f.owner);
     await save(f.teamId, f.owner, { kinds: { mention: false } });
@@ -550,6 +563,9 @@ for (const native of [false, true])
     await expect(
       page.getByRole("button", { name: "이 채팅방 알림 설정", exact: true }),
     ).toBeVisible();
+    // A rendered header does not guarantee either asynchronous room subscription
+    // has completed; sending before the acknowledgements can miss both streams.
+    await expect.poll(() => joined).toEqual({ chat: true, inbox: true });
     const deniedClaim = page.waitForResponse(
       (response) =>
         response.url().includes("/notification/delivery-claim") &&

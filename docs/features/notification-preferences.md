@@ -113,4 +113,6 @@ pnpm exec playwright test tests/e2e/notification-preferences.e2e.spec.ts tests/e
 
 새 테스트는 6종 분류, 기본값/예외/상속/초기화, 최초·후속 동시 쓰기, 사용자·팀·방 격리, 재로그인, 401/403/404/400, 비공개 권한 철회 후 metadata 비노출과 보관 유지, 실제 설정 UI, 오류/충돌 복구, 모바일에서 늦게 도착한 응답 격리, 브라우저·데스크톱 브리지의 수신 차단을 검증합니다. DB fixture를 직접 쓰는 검증은 loopback API 18096과 정확히 `gadoc_notification_verify`만 허용합니다. 브라우저/브리지 호출 검증은 실제 OS 토스트 수동 확인과 구분합니다.
 
+전달 경로 E2E는 채널 헤더가 보이는 시점과 소켓 구독 완료를 구분합니다. 채팅의 `joined_channel`과 알림센터의 `joined_team_notifications` 응답을 모두 받은 뒤 메시지를 보내 실제 두 경로를 검증합니다.
+
 기능 PR의 대상은 `dev`입니다. 채팅 PR의 알림 삭제·멘션·참여자 변경을 보존해 통합하며, main 병합과 실제 운영 배포는 별도로 조율합니다.
