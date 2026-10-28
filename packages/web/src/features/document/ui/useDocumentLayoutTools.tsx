@@ -29,7 +29,7 @@ export function useDocumentLayoutTools(editor: DocumentBlockEditor, teamId: stri
         {
             title: '문서 링크',
             subtext: '기존 문서를 찾아 현재 위치에 연결',
-            aliases: ['문서', '링크', 'page', 'document', 'link'],
+            aliases: ['링크', 'link', '연결', '문서 연결'],
             group: '페이지 구성',
             icon: <FileText size={17} />,
             onItemClick: () => {
