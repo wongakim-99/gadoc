@@ -36,6 +36,8 @@ export function readInlineDatabaseViews(value: string): InlineDatabaseViews {
             views: parsed.views.map((view) => ({
                 ...view,
                 statusGrouping: view.statusGrouping === 'group' ? 'group' : 'option',
+                hideEmptyGroups: view.hideEmptyGroups === true,
+                cardSize: view.cardSize === 'small' || view.cardSize === 'large' ? view.cardSize : 'medium',
                 propertyOrder: Array.isArray(view.propertyOrder) ? [...new Set(view.propertyOrder.filter(id=>typeof id==='string'))].slice(0,500) : [],
                 columnWidths: view.columnWidths && typeof view.columnWidths === 'object' && !Array.isArray(view.columnWidths)
                     ? Object.fromEntries(Object.entries(view.columnWidths).filter(([,width])=>Number.isInteger(width)&&width>=120&&width<=800).slice(0,501)) : {},

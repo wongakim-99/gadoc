@@ -81,6 +81,8 @@ export interface DatabaseView {
     dataSourceId?: string;
     groupProperty?: string;
     statusGrouping?: 'option' | 'group';
+    hideEmptyGroups?: boolean;
+    cardSize?: 'small' | 'medium' | 'large';
     hiddenProperties?: string[];
     propertyOrder?: string[];
     columnWidths?: Record<string, number>;

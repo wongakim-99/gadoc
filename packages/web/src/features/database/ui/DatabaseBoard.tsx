@@ -19,6 +19,8 @@ export function DatabaseBoard({
     saveCell,
     groupProperty,
     statusGrouping = 'option',
+    hideEmptyGroups = false,
+    cardSize = 'medium',
     onStatusGroupingChange,
     onGroupPropertyChange,
 }: {
@@ -31,6 +33,8 @@ export function DatabaseBoard({
     saveCell: (row: DatabaseRow, propertyId: string, value: PropertyValue) => Promise<boolean>;
     groupProperty: string;
     statusGrouping?: 'option' | 'group';
+    hideEmptyGroups?: boolean;
+    cardSize?: 'small' | 'medium' | 'large';
     onStatusGroupingChange?: (mode: 'option' | 'group') => void;
     onGroupPropertyChange: (id: string) => void;
 }) {
@@ -107,12 +111,12 @@ export function DatabaseBoard({
                     const grouped = rows.filter((row) =>
                         key === '' ? keys(row).length === 0 : keys(row).includes(key),
                     );
-                    if (key === '' && grouped.length === 0) return null;
+                    if ((key === '' || hideEmptyGroups) && grouped.length === 0) return null;
                     return (
                         <section
                             key={key}
                             aria-label={`${label} 그룹`}
-                            className={`w-72 shrink-0 rounded-panel border p-3 ${over === key ? 'border-action bg-bg-secondary' : 'border-border-primary bg-bg-secondary'}`}
+                            className={`${cardSize === 'small' ? 'w-56' : cardSize === 'large' ? 'w-96' : 'w-72'} shrink-0 rounded-panel border p-3 ${over === key ? 'border-action bg-bg-secondary' : 'border-border-primary bg-bg-secondary'}`}
                             onDragOver={(e) => {
                                 if (e.dataTransfer.types.includes(dragType) && !busy && (!groupedStatus || !key || statusOptions(key).length)) {
                                     e.preventDefault();

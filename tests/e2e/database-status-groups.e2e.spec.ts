@@ -52,4 +52,23 @@ test('status membership persists across rename and board grouping preserves cano
     await expect(card.getByText('검토일', { exact: true })).toHaveCount(0);
     await expect(card.getByText('단계', { exact: true })).toBeVisible();
     await page.screenshot({ path: test.info().outputPath('status-group-board.png') });
+    await page.getByRole('button', { name: '보기 옵션', exact: true }).click();
+    await page.getByLabel('빈 그룹 숨기기', { exact: true }).check();
+    await page.getByLabel('카드 크기', { exact: true }).selectOption('small');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('region', { name: '완료 그룹', exact: true })).toHaveCount(0);
+    await expect.poll(async () => {
+        const updated = (await call<DatabaseDetail>(''))!.data!;
+        const saved = updated.views.find(view => view.name === '범주별');
+        return { hidden: saved?.hideEmptyGroups, size: saved?.cardSize };
+    }).toEqual({ hidden: true, size: 'small' });
+    await page.reload();
+    await expect(page.getByRole('region', { name: '완료 그룹', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('region', { name: '할 일 그룹', exact: true })).toHaveCSS('width', '224px');
+    await page.getByRole('button', { name: '보기 옵션', exact: true }).click();
+    await page.getByLabel('빈 그룹 숨기기', { exact: true }).uncheck();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('region', { name: '완료 그룹', exact: true })).toBeVisible();
+    expect((await call<DatabaseDetail>(''))!.data!.rows[0].values[prop.id]).toBe('준비');
+
 });
