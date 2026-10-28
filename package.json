@@ -1,7 +1,8 @@
 {
   "name": "slacord",
   "version": "1.1.1",
-  "description": "팀 올인원 협업 툴 모노레포",
+  "description": "가독 GaDoc - 문서, 대화, 할 일을 연결하는 Colding / kscold 협업 도구",
+  "license": "UNLICENSED",
   "private": true,
   "scripts": {
     "brand:build": "node scripts/build-brand-assets.mjs",
@@ -25,6 +26,7 @@
     "test:document-core": "pnpm --filter @slacord/document-core test",
     "test:web": "pnpm --filter @slacord/web test",
     "test:desktop": "pnpm --filter @slacord/desktop test",
+    "test:metadata": "node --test scripts/test/project-metadata.test.mjs",
     "test:e2e:web": "playwright test",
     "test:e2e:web:prepare": "playwright install chromium",
     "verify:web:mobile": "node scripts/verify-slacord-web-mobile.mjs",
