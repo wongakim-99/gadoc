@@ -1,11 +1,12 @@
 import path from 'path';
 import { app } from 'electron';
 
-const PROD_URL = 'https://slacord.cloud/auth/login';
-const productionOrigins = ['https://slacord.cloud', 'https://www.slacord.cloud'];
+const PROD_URL = 'https://gadoc.kr/auth/login';
+// 기존 설치본과 초대 링크가 전환되는 동안 구 도메인도 명시적으로 허용한다.
+const productionOrigins = ['https://gadoc.kr', 'https://www.gadoc.kr', 'https://slacord.cloud', 'https://www.slacord.cloud'];
 
 export function getStartUrl() {
-    return process.env.SLACORD_DESKTOP_START_URL || process.env.SLACORD_APP_URL || PROD_URL;
+    return process.env.GADOC_DESKTOP_START_URL || process.env.SLACORD_DESKTOP_START_URL || process.env.SLACORD_APP_URL || PROD_URL;
 }
 
 export function getAppOrigin() {

@@ -34,7 +34,7 @@ export function McpSettingsPanel({ teamId, canWrite }: { teamId: string; canWrit
     const [notice, setNotice] = useState('');
     const [revoking, setRevoking] = useState<Token | null>(null);
     const endpoint =
-        typeof window === 'undefined' ? 'https://slacord.cloud/api/mcp' : `${window.location.origin}/api/mcp`;
+        typeof window === 'undefined' ? 'https://gadoc.kr/api/mcp' : `${window.location.origin}/api/mcp`;
     const base = `/api/team/${teamId}/integrations`;
 
     useEffect(() => {
