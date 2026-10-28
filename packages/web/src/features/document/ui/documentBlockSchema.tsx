@@ -6,6 +6,7 @@ import { createReactBlockSpec } from '@blocknote/react';
 import { DatabaseWorkspace } from '@/src/features/database/ui/DatabaseWorkspace';
 import { databaseApi, databaseContainerApi } from '@/lib/api-client';
 import type { KnowledgeDatabase } from '@/src/features/database/model/types';
+import { createDocumentMermaidSpec } from './DocumentMermaidBlock';
 import { createDocumentLayoutSpecs } from './DocumentLayoutBlocks';
 
 function DatabaseSetup({
@@ -182,7 +183,7 @@ export function createDocumentSchema(teamId: string, documentId?: string) {
             ),
         },
     );
-    return BlockNoteSchema.create({ blockSpecs: { ...defaultBlockSpecs, ...createDocumentLayoutSpecs(), database: database() } });
+    return BlockNoteSchema.create({ blockSpecs: { ...defaultBlockSpecs, ...createDocumentLayoutSpecs(), mermaid: createDocumentMermaidSpec(), database: database() } });
 }
 
 export type DocumentBlockEditor = ReturnType<typeof createDocumentSchema>['BlockNoteEditor'];

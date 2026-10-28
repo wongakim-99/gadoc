@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { sha256, verifyPlatformEvidence } from "./lib/desktop-verification.mjs";
 
 const [directory, tag] = process.argv.slice(2);
 if (!directory || !/^v\d+\.\d+\.\d+$/.test(tag ?? ""))
@@ -45,6 +46,49 @@ for (const name of ["latest-mac.yml", "latest.yml"]) {
 const assets = readdirSync(directory)
   .filter((file) => /\.(dmg|zip|exe|blockmap|yml)$/.test(file))
   .sort();
+const installers = assets
+  .filter((file) => /\.(dmg|zip|exe)$/.test(file))
+  .map((name) => ({ name, sha256: sha256(path.join(directory, name)) }));
+const evidence = {};
+for (const platform of ["mac", "windows"]) {
+  const selected = installers.filter((asset) =>
+    platform === "mac"
+      ? /\.(dmg|zip)$/.test(asset.name)
+      : /\.exe$/.test(asset.name),
+  );
+  evidence[platform] = verifyPlatformEvidence(
+    JSON.parse(
+      readFileSync(
+        path.join(directory, `verification-${platform}.json`),
+        "utf8",
+      ),
+    ),
+    platform,
+    version,
+    selected,
+  );
+}
+if (process.argv.includes("--require-mac-notarized") && !evidence.mac.notarized)
+  throw new Error("A notarized macOS release is required");
+writeFileSync(
+  path.join(directory, "desktop-verification.json"),
+  JSON.stringify(
+    {
+      schemaVersion: 1,
+      version,
+      mac: evidence.mac,
+      windows: evidence.windows,
+      assets: installers,
+    },
+    null,
+    2,
+  ) + "\n",
+);
+assets.push(
+  "desktop-verification.json",
+  "verification-mac.json",
+  "verification-windows.json",
+);
 const checksums = assets
   .map(
     (file) =>
@@ -54,8 +98,8 @@ const checksums = assets
   )
   .join("\n");
 writeFileSync(path.join(directory, "SHA256SUMS.txt"), checksums + "\n");
-const mac = process.env.GADOC_MAC_SIGNED === "1",
-  win = process.env.GADOC_WINDOWS_SIGNED === "1";
+const mac = evidence.mac.notarized,
+  win = evidence.windows.codeSigned;
 writeFileSync(
   path.join(directory, "RELEASE_NOTES.md"),
   `# GaDoc ${tag}\n\n가독 GaDoc. 기본 서비스 주소는 https://gadoc.kr입니다. 구 slacord.cloud 연결은 기존 설치본의 전환 검증이 끝날 때까지만 유지합니다.\n\n${changes}\n\n## 설치 전 확인\n\nmacOS: ${mac ? "코드 서명 및 공증 적용" : "코드 서명·공증 없음. Gatekeeper 경고 또는 설치 차단이 발생할 수 있습니다."}\nWindows: ${win ? "코드 서명 적용" : "코드 서명 없음. SmartScreen 경고가 발생할 수 있습니다."}\n\n공식 릴리즈에서 받은 파일의 SHA256을 SHA256SUMS.txt와 비교하세요. 시스템 보안 설정을 일괄 해제하지 마세요. 설치가 차단되면 웹 버전을 이용할 수 있습니다. macOS는 최신 DMG를 통한 수동 설치를 사용합니다.\n\n기존 설치의 로그인/환경 설정 및 업데이트 식별자는 호환성을 유지합니다. 새 설치의 앱 이름과 기본 설치 폴더는 GaDoc입니다.\n`,

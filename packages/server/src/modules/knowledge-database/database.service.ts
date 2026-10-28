@@ -237,6 +237,9 @@ export class DatabaseService {
                 throw new BadRequestException('선택 항목을 입력하세요.');
             property.options = [...new Set(options.map((option) => option.trim()))];
         }
+        if (dto.numberFormat && !['number', 'formula', 'rollup'].includes(dto.type))
+            throw new BadRequestException('숫자 표시 형식은 숫자·수식·롤업 속성에만 사용할 수 있습니다.');
+        if (['number', 'formula', 'rollup'].includes(dto.type)) property.numberFormat = dto.numberFormat ?? 'number';
         if (dto.type === 'unique_id') property.prefix = dto.prefix?.trim() ?? 'ID';
         if (dto.type === 'formula') {
             try {

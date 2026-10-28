@@ -251,8 +251,28 @@ test.describe("workspace project scopes", () => {
     await expect(
       group.getByRole("link", { name: "# Bigzami3", exact: true }),
     ).toHaveCount(0);
-    await group.getByRole("link", { name: "이슈·일정", exact: true }).click();
+    const scope = page.getByRole("combobox", { name: "탐색 그룹", exact: true });
+    await expect(scope).toHaveValue(gadoc.id);
+    const toggle = group.getByRole("button", { name: "GaDoc", exact: true });
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(group.getByRole("link", { name: `# ${f.channelName}`, exact: true })).toHaveCount(0);
+    await toggle.click();
+    await scope.selectOption("");
+    await expect(page.getByRole("region", { name: "Bigzami3 업무", exact: true })).toBeVisible();
+    await scope.selectOption(gadoc.id);
+    await expect(page.getByRole("region", { name: "Bigzami3 업무", exact: true })).toHaveCount(0);
+    await page.getByRole("navigation", { name: "워크스페이스 영역" }).getByRole("link", { name: "문서", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/docs/${f.documentId}`));
+    await page.getByRole("navigation", { name: "워크스페이스 영역" }).getByRole("link", { name: "이슈", exact: true }).click();
+
     await expect(page).toHaveURL(new RegExp(`project=${gadoc.id}`));
+    await scope.selectOption("");
+    await expect(page).toHaveURL(new RegExp(`/${f.teamId}/issues$`));
+    await expect(page.getByRole("button", { name: /Bigzami3 scoped task/ }).first()).toBeVisible();
+    await scope.selectOption(gadoc.id);
+    await expect(page).toHaveURL(new RegExp(`project=${gadoc.id}`));
+
     await expect(
       page.getByRole("button", { name: /GaDoc scoped task/ }).first(),
     ).toBeVisible();
@@ -293,7 +313,7 @@ test.describe("workspace project scopes", () => {
     await page
       .getByRole("combobox", { name: "업무 범위", exact: true })
       .click();
-    await page.getByRole("option", { name: "Bigzami3", exact: true }).click();
+    await page.getByRole("listbox", { name: "업무 범위", exact: true }).getByRole("option", { name: "Bigzami3", exact: true }).click();
     await expect(
       page.getByRole("textbox", {
         name: "Bigzami3 scoped task 페이지 이름",

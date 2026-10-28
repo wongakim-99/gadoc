@@ -41,7 +41,7 @@ export function DocumentTreeBranch({ depth, expandedIds, node, onToggle, teamId,
                         aria-label={`${node.title} 하위 페이지 ${expanded ? '접기' : '펼치기'}`}
                         aria-expanded={expanded}
                         onClick={() => onToggle(node.id)}
-                        className="shrink-0 rounded p-1 text-text-tertiary transition hover:bg-bg-hover hover:text-white"
+                        className="flex h-8 w-6 shrink-0 items-center justify-center rounded-control text-text-tertiary hover:bg-bg-hover hover:text-text-primary"
                     >
                         <svg
                             className={`h-3.5 w-3.5 transition-transform ${expanded ? 'rotate-90' : ''}`}
@@ -53,12 +53,12 @@ export function DocumentTreeBranch({ depth, expandedIds, node, onToggle, teamId,
                         </svg>
                     </button>
                 ) : (
-                    <span className="w-5" />
+                    <span aria-hidden="true" className="h-8 w-6 shrink-0" />
                 )}
                 <Link
                     href={href}
                     {...dragSource}
-                    title="페이지 열기 · 오른쪽 가장자리로 끌면 옆에 열기"
+                    title="페이지 열기 · 메인 영역의 왼쪽 또는 오른쪽으로 끌어 분할하기"
                     aria-current={active ? 'page' : undefined}
                     onKeyDown={(event) => {
                         if (event.key === 'ArrowRight' && hasChildren && !expanded) {
@@ -70,7 +70,7 @@ export function DocumentTreeBranch({ depth, expandedIds, node, onToggle, teamId,
                             onToggle(node.id);
                         }
                     }}
-                    className={`document-tree-row flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors hover:bg-bg-hover ${active ? 'bg-bg-hover text-white' : 'text-text-secondary'}`}
+                    className={`document-tree-row flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors hover:bg-bg-hover ${active ? 'bg-selection text-action-text' : 'text-text-secondary'}`}
                 >
                     {node.databaseId ? (
                         <Database size={15} className="shrink-0 text-text-tertiary" />
@@ -81,17 +81,17 @@ export function DocumentTreeBranch({ depth, expandedIds, node, onToggle, teamId,
                         <p className="truncate font-medium">{node.title}</p>
                     </div>
                 </Link>
-                <WorkspaceOpenButton reference={reference} />
                 {canCreate && !node.databaseId && (
                     <Link
                         href={`/${teamId}/docs?create=1&parentId=${encodeURIComponent(node.id)}`}
                         aria-label={`${node.title} 아래 페이지 추가`}
                         title="하위 페이지 추가"
-                        className="shrink-0 rounded p-1 text-text-tertiary transition-opacity hover:bg-bg-hover hover:text-white focus-visible:opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-text-tertiary hover:bg-bg-hover hover:text-white focus-visible:opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
                     >
-                        <Plus size={15} />
+                        <Plus size={16} />
                     </Link>
                 )}
+                <WorkspaceOpenButton reference={reference} />
             </div>
             <AnimatePresence initial={false}>
                 {hasChildren && expanded ? (
@@ -106,7 +106,7 @@ export function DocumentTreeBranch({ depth, expandedIds, node, onToggle, teamId,
                         <span
                             aria-hidden="true"
                             className="pointer-events-none absolute bottom-3 top-0 border-l border-border-primary"
-                            style={{ left: `${Math.min(depth, 8) * 12 + 10}px` }}
+                            style={{ left: `${Math.min(depth, 8) * 12 + 12}px` }}
                         />
                         {node.children.map((child) => (
                             <DocumentTreeBranch

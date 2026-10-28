@@ -1,4 +1,5 @@
 'use client';
+import { NUMBER_FORMATS, type NumberFormat } from '@slacord/document-core';
 import { AGGREGATION_LABELS, NUMERIC_AGGREGATIONS, DATE_AGGREGATIONS } from '@slacord/document-core';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { AlignLeft, Hash, Users, CircleDot, CalendarDays, SquareCheck, Link, ListFilter, ListChecks, ArrowUpRight, Sigma, Mail, Phone, Clock, User, FunctionSquare, Fingerprint, Search, Plus, X, type LucideIcon } from 'lucide-react';
@@ -47,6 +48,7 @@ export function PropertyEditor({
 }) {
     const [bidirectional, setBidirectional] = useState(!!editing?.inverse);
     const [inverseName, setInverseName] = useState(editing?.inverse?.name ?? '연결된 항목');
+    const [numberFormat, setNumberFormat] = useState<NumberFormat>(editing?.numberFormat ?? 'number');
     const [prefix, setPrefix] = useState(editing?.prefix ?? 'ID');
     const [name, setName] = useState(editing?.name ?? '');
     const [typeSearch, setTypeSearch] = useState('');
@@ -133,6 +135,7 @@ export function PropertyEditor({
                     onSave({
                         name: name.trim() || nextPropertyName(database, type),
                         type,
+                        ...(['number', 'formula', 'rollup'].includes(type) ? { numberFormat } : {}),
                         ...(type === 'unique_id' ? { prefix } : {}),
                         ...(['select', 'multi_select', 'status'].includes(type)
                             ? {
@@ -165,6 +168,16 @@ export function PropertyEditor({
                         className={inputClass}
                     />
                 </label>
+                {['number', 'formula', 'rollup'].includes(type) && !choosingType && (
+                    <label className="block text-xs">숫자 표시 형식
+                        <select aria-label="숫자 표시 형식" value={numberFormat} disabled={busy}
+                            onChange={(event) => setNumberFormat(event.target.value as NumberFormat)} className={inputClass}>
+                            {NUMBER_FORMATS.map((format) => <option key={format} value={format}>
+                                {{ number: '숫자', comma: '천 단위 구분', percent: '퍼센트', KRW: '원 (₩)', USD: '달러 ($)', EUR: '유로 (€)', JPY: '엔 (¥)', GBP: '파운드 (£)', CNY: '위안 (CN¥)' }[format]}
+                            </option>)}
+                        </select>
+                    </label>
+                )}
                 {type === 'unique_id' && (
                     <label className="block text-xs">
                         ID 접두사

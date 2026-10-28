@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
+import { Plus } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { channelApi, unwrapApiData } from '@/lib/api-client';
@@ -89,8 +90,8 @@ export function DirectRoomLauncher({ teamId, members }: Props) {
 
     return (
         <>
-            <button onClick={() => setOpen(true)} className="w-full rounded-lg border border-border-primary px-3 py-2 text-left text-sm text-text-secondary transition-colors hover:border-slack-green/40 hover:text-white">
-                + DM / 소그룹 열기
+            <button type="button" onClick={() => setOpen(true)} aria-label="DM / 소그룹 열기" title="DM / 소그룹 열기" className="flex h-8 w-8 items-center justify-center rounded-control text-text-tertiary hover:bg-bg-hover hover:text-text-primary">
+                <Plus size={16} />
             </button>
             {mounted && createPortal(modal, document.body)}
         </>

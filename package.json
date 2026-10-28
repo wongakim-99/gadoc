@@ -1,6 +1,6 @@
 {
   "name": "slacord",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "가독 GaDoc - 문서, 대화, 할 일을 연결하는 Colding / kscold 협업 도구",
   "license": "UNLICENSED",
   "private": true,
