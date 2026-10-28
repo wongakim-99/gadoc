@@ -1,7 +1,7 @@
 export const siteConfig = {
     name: 'GaDoc',
     koreanName: '가독',
-    url: 'https://slacord.cloud',
+    url: 'https://gadoc.kr',
     badge: '대화, 문서, 할 일을 한곳에서.',
     headline: '문서의 가닥이\n잡히는 곳.',
     tagline: '문서의 가닥이 잡히는 곳.',

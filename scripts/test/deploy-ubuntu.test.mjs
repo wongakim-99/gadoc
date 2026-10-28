@@ -8,6 +8,7 @@ import test from "node:test";
 import {
   activateRelease,
   readServerOverrides,
+  readPublicOrigin,
   releaseApps,
   runtimeEnvironment,
   snapshotApps,
@@ -53,6 +54,24 @@ function fixture(t) {
     origin: "https://slacord.cloud",
   };
 }
+
+test("공개 주소는 gadoc.kr을 기본으로 쓰고 비공개 설정만 허용함", (t) => {
+  const { state } = fixture(t);
+  assert.equal(readPublicOrigin(state), "https://gadoc.kr");
+  fs.mkdirSync(path.join(state, "private"));
+  const file = path.join(state, "private", "public.env");
+  fs.writeFileSync(file, "GADOC_PUBLIC_ORIGIN=https://team.example.test\n", { mode: 0o600 });
+  assert.equal(readPublicOrigin(state), "https://team.example.test");
+  for (const origin of ["http://gadoc.kr", "https://gadoc.kr/path", "https://user@gadoc.kr", "https://gadoc.kr?x=1"]) {
+    fs.writeFileSync(file, `GADOC_PUBLIC_ORIGIN=${origin}\n`);
+    assert.throws(() => readPublicOrigin(state));
+  }
+  fs.writeFileSync(file, "UNEXPECTED=value\n");
+  assert.throws(() => readPublicOrigin(state), /Unsupported/);
+  fs.writeFileSync(file, "GADOC_PUBLIC_ORIGIN=https://gadoc.kr\n");
+  fs.chmodSync(file, 0o644);
+  assert.throws(() => readPublicOrigin(state), /0600/);
+});
 
 test("new release retains the existing database, credentials, and object storage", (t) => {
   const input = fixture(t);
