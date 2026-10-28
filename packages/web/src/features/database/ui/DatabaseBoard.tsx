@@ -1,7 +1,7 @@
 ﻿'use client';
 import { resolveStatusGroups, STATUS_GROUP_KEYS, STATUS_GROUP_LABELS } from '@slacord/document-core';
 import { databaseRowHref } from '../model/databaseRowHref';
-import { useState } from 'react';
+import { useState, type DragEvent } from 'react';
 import type { DatabaseDetail, DatabaseRow, PropertyValue } from '../model/types';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
 import { ResourceNavigation } from '@/src/features/workspace/ui/ResourceNavigation';
@@ -106,6 +106,23 @@ export function DatabaseBoard({
             value = target ? [...new Set([...keys(row).filter((k) => k !== source), target])] : [];
         await saveCell(row, prop.id, value);
     };
+    const acceptCard = (event: DragEvent, key: string) => {
+        if (!event.dataTransfer.types.includes(dragType) || busy || (groupedStatus && key && !statusOptions(key).length)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        setOver(key);
+    };
+    const dropCard = (event: DragEvent, key: string) => {
+        const raw = event.dataTransfer.getData(dragType);
+        if (!raw) return;
+        event.preventDefault(); event.stopPropagation(); setOver(null);
+        try {
+            const data = JSON.parse(raw);
+            if (data.databaseId !== database.id || typeof data.source !== 'string') return;
+            const row = rows.find(item => item.documentId === data.documentId);
+            if (row) void move(row, data.source, key);
+        } catch { /* Ignore foreign drag data. */ }
+    };
     return (
         <div className="space-y-3">
             <label className="text-sm text-text-secondary">
@@ -137,7 +154,12 @@ export function DatabaseBoard({
             {ordered.some(([key]) => hiddenBoardGroups.includes(groupId(key))) && <details className="text-xs text-text-secondary">
                 <summary className="cursor-pointer py-2">숨긴 그룹</summary>
                 <div className="flex flex-wrap gap-2">{ordered.filter(([key]) => hiddenBoardGroups.includes(groupId(key))).map(([key, label]) =>
-                    <button key={key} type="button" disabled={busy} aria-label={`${label} 그룹 다시 표시`} className="rounded border border-border-primary px-3 py-2 hover:bg-bg-hover" onClick={() => onHiddenBoardGroupsChange?.(hiddenBoardGroups.filter(id => id !== groupId(key)))}>{label} · 다시 표시</button>
+                    <div key={key} aria-label={`${label} 숨긴 그룹에 카드 이동`} onDragOver={event => acceptCard(event, key)}
+                        onDragLeave={() => setOver(null)} onDrop={event => dropCard(event, key)}
+                        className={`flex items-center gap-2 rounded border px-3 py-2 ${over === key ? 'border-action bg-bg-hover' : 'border-border-primary'}`}>
+                        <span>{label} <span className="text-text-tertiary">{groupedRows.get(key)?.length ?? 0}</span></span>
+                        <button type="button" disabled={busy} aria-label={`${label} 그룹 다시 표시`} className="rounded px-1 hover:bg-bg-hover" onClick={() => onHiddenBoardGroupsChange?.(hiddenBoardGroups.filter(id => id !== groupId(key)))}>다시 표시</button>
+                    </div>
                 )}</div>
             </details>}
             <div className="flex gap-3 overflow-x-auto pb-3" aria-label="데이터베이스 보드">
@@ -150,11 +172,7 @@ export function DatabaseBoard({
                             className={`${cardSize === 'small' ? 'w-56' : cardSize === 'large' ? 'w-96' : 'w-72'} shrink-0 rounded-panel border p-3 ${over === key ? 'border-action bg-bg-secondary' : 'border-border-primary bg-bg-secondary'}`}
                             onDragOver={(e) => {
                                 if (e.dataTransfer.types.includes(columnDragType)) { e.preventDefault(); return; }
-                                if (e.dataTransfer.types.includes(dragType) && !busy && (!groupedStatus || !key || statusOptions(key).length)) {
-                                    e.preventDefault();
-                                    e.dataTransfer.dropEffect = 'move';
-                                    setOver(key);
-                                }
+                                acceptCard(e, key);
                             }}
                             onDragLeave={(e) => {
                                 if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(null);
@@ -162,19 +180,7 @@ export function DatabaseBoard({
                             onDrop={(e) => {
                                 const column = e.dataTransfer.getData(columnDragType);
                                 if (column) { e.preventDefault(); e.stopPropagation(); try { const data = JSON.parse(column); if (data.databaseId === database.id) reorder(data.id, groupId(key)); } catch {} return; }
-                                const raw = e.dataTransfer.getData(dragType);
-                                if (!raw) return;
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setOver(null);
-                                try {
-                                    const data = JSON.parse(raw);
-                                    if (data.databaseId !== database.id) return;
-                                    const row = rows.find((r) => r.documentId === data.documentId);
-                                    if (row) void move(row, data.source, key);
-                                } catch {
-                                    /* Ignore foreign drag data. */
-                                }
+                                dropCard(e, key);
                             }}
                         >
                             <h3 className="mb-3 flex items-center gap-2 text-sm font-medium" draggable={!busy && !!onBoardGroupOrderChange}
