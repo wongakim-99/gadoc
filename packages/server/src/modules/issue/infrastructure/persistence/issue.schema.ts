@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document, Types, Schema as MongoSchema } from 'mongoose';
+import type { PropertyValue } from '../../../knowledge-database/database.schema';
 import type { IssueLink } from '../../domain/issue-link';
 
 export type IssueDocument = Issue & Document;
@@ -7,6 +8,8 @@ export type IssueDocument = Issue & Document;
 /** 이슈 트래커 MongoDB 스키마 */
 @Schema({ timestamps: true, collection: 'issues' })
 export class Issue {
+    @Prop({ type: MongoSchema.Types.Mixed, default: {} }) databaseValues: Record<string, PropertyValue>;
+    @Prop() databaseUpdatedBy?: string;
     @Prop({ default: 0 }) revision: number;
     @Prop() sourceCreationId?: string;
     @Prop() sourceCreationHash?: string;

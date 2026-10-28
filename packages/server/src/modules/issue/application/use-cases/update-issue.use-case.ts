@@ -5,6 +5,7 @@ import { ISSUE_REPOSITORY } from '../../domain/issue.port';
 import { IssueEntity, IssueStatus, IssuePriority } from '../../domain/issue.entity';
 
 export interface UpdateIssueInput {
+    actorId?: string;
     revision?: number;
     id: string;
     title?: string;
@@ -29,7 +30,7 @@ export class UpdateIssueUseCase {
     ) {}
 
     async execute(input: UpdateIssueInput): Promise<UpdateIssueResult> {
-        const { id, revision, ...data } = input;
+        const { id, revision, actorId, ...data } = input;
         const before = await this.issueRepo.findById(id);
         if (!before) throw new BadRequestException('존재하지 않는 이슈입니다.');
         if (data.assigneeIds?.length) {
@@ -39,7 +40,7 @@ export class UpdateIssueUseCase {
         }
 
         const previousAssigneeIds = before.assigneeIds ?? [];
-        const updated = await this.issueRepo.update(id, data, revision);
+        const updated = await this.issueRepo.update(id, { ...data, ...(actorId ? { databaseUpdatedBy: actorId } : {}) }, revision);
         if (!updated && revision !== undefined)
             throw new ConflictException('다른 화면에서 이슈가 변경되었습니다. 다시 열어 최신 내용을 확인하세요. 작성 내용은 유지됩니다.');
         if (!updated) throw new BadRequestException('존재하지 않는 이슈입니다.');

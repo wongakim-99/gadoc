@@ -1,4 +1,4 @@
-import { IssueSourceService } from './issue-source.service';
+import { IssueSourceService, ISSUE_PROPERTIES } from './issue-source.service';
 import { createHash } from 'node:crypto';
 import { CreateDocumentUseCase } from '../document/application/use-cases/create-document.use-case';
 import {
@@ -47,7 +47,14 @@ export class DatabaseService {
     }
     private assertDocumentSource(db: KnowledgeDatabase) {
         if (db.sourceKind === 'issues')
-            throw new ForbiddenException('Issue sources have a fixed schema and do not support document operations.');
+            throw new ForbiddenException('이슈 소스에서는 문서 전용 작업을 사용할 수 없습니다.');
+    }
+    private assertEditableProperty(db: KnowledgeDatabase, propertyId?: string, type?: string) {
+        if (db.sourceKind !== 'issues') return;
+        if (propertyId && ISSUE_PROPERTIES.some((property) => property.id === propertyId))
+            throw new ForbiddenException('이슈 기본 속성은 유지해야 합니다. 보기에서 숨길 수 있습니다.');
+        if (type && ['relation', 'rollup', 'unique_id'].includes(type))
+            throw new BadRequestException('이슈 소스에서 아직 지원하지 않는 속성 유형입니다.');
     }
     async database(teamId: string, id: string, userId: string, write = false) {
         if (write) await this.access.requireWritableMember(teamId, userId);
@@ -192,7 +199,7 @@ export class DatabaseService {
     async addProperty(teamId: string, userId: string, id: string, dto: AddPropertyDto) {
         await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
-        this.assertDocumentSource(db);
+        this.assertEditableProperty(db, undefined, dto.type);
         if (db.locked) throw new ForbiddenException('데이터베이스 잠금을 해제한 후 구조를 변경하세요.');
         if (!dto.name.trim() || db.properties.length >= 500)
             throw new BadRequestException('속성 이름과 개수(최대 500개)를 확인하세요.');
@@ -223,9 +230,10 @@ export class DatabaseService {
             type: dto.type,
         };
         if (['select', 'multi_select', 'status'].includes(dto.type)) {
-            if (!dto.options?.length || dto.options.some((item) => !item.trim()))
+            const options = dto.options ?? (dto.type === 'status' ? ['할 일', '진행 중', '완료'] : []);
+            if (options.some((item) => !item.trim()) || (dto.type === 'status' && !options.length))
                 throw new BadRequestException('선택 항목을 입력하세요.');
-            property.options = [...new Set(dto.options.map((option) => option.trim()))];
+            property.options = [...new Set(options.map((option) => option.trim()))];
         }
         if (dto.type === 'unique_id') property.prefix = dto.prefix?.trim() ?? 'ID';
         if (dto.type === 'formula') {
@@ -284,7 +292,7 @@ export class DatabaseService {
     async configureProperty(teamId: string, userId: string, id: string, propertyId: string, dto: AddPropertyDto) {
         await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
-        this.assertDocumentSource(db);
+        this.assertEditableProperty(db, propertyId, dto.type);
         if (db.locked) throw new ForbiddenException('데이터베이스 잠금을 해제한 후 구조를 변경하세요.');
         const current = db.properties.find((prop) => prop.id === propertyId && !prop.archived);
         if (!current) throw new NotFoundException('속성을 찾을 수 없습니다.');
@@ -303,7 +311,9 @@ export class DatabaseService {
         if (current.type === 'relation' && current.targetDatabaseId !== updated.targetDatabaseId)
             throw new BadRequestException('기존 관계의 데이터 소스는 변경할 수 없습니다. 새 관계 속성을 추가하세요.');
         if (current.inverse && updated.inverse) updated.inverse.id = current.inverse.id;
-        const rows = await this.rows.find({ teamId, databaseId: id }).select('values').lean();
+        const rows = db.sourceKind === 'issues'
+            ? (await this.issueSource.read(teamId, userId, db)).rows
+            : await this.rows.find({ teamId, databaseId: id }).select('values').lean();
         if (updated.options) {
             const allowed = new Set(updated.options);
             if (
@@ -1031,7 +1041,7 @@ export class DatabaseService {
     async renameProperty(teamId: string, userId: string, id: string, propertyId: string, dto: RenamePropertyDto) {
         await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
-        this.assertDocumentSource(db);
+        this.assertEditableProperty(db, propertyId);
         if (db.locked) throw new ForbiddenException('데이터베이스 잠금을 해제한 후 구조를 변경하세요.');
         if (!dto.name.trim() || !db.properties.some((prop) => prop.id === propertyId))
             throw new BadRequestException('속성을 확인하세요.');
@@ -1051,7 +1061,7 @@ export class DatabaseService {
     ) {
         await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
-        this.assertDocumentSource(db);
+        this.assertEditableProperty(db, propertyId);
         if (db.locked) throw new ForbiddenException('데이터베이스 잠금을 해제한 후 구조를 변경하세요.');
         if (!db.properties.some((prop) => prop.id === propertyId))
             throw new NotFoundException('속성을 찾을 수 없습니다.');
@@ -1064,7 +1074,7 @@ export class DatabaseService {
     }
     async setLock(teamId: string, userId: string, id: string, locked: boolean, revision: number) {
         await this.access.requireWritableMember(teamId, userId);
-        this.assertDocumentSource(await this.database(teamId, id, userId, true));
+        await this.database(teamId, id, userId, true);
         const result = await this.databases.updateOne(
             { _id: id, teamId, revision },
             { $set: { locked }, $inc: { revision: 1 } },

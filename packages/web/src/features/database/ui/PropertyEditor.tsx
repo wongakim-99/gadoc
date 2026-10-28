@@ -1,9 +1,26 @@
 'use client';
 import { AGGREGATION_LABELS, NUMERIC_AGGREGATIONS, DATE_AGGREGATIONS } from '@slacord/document-core';
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { AlignLeft, Hash, Users, CircleDot, CalendarDays, SquareCheck, Link, ListFilter, ListChecks, ArrowUpRight, Sigma, Mail, Phone, Clock, User, FunctionSquare, Fingerprint, Search, Plus, X, type LucideIcon } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useDialogFocusTrap } from '@/src/shared/ui/useDialogFocusTrap';
 import { PROPERTY_LABELS, type DatabaseProperty, type KnowledgeDatabase, type PropertyType } from '../model/types';
+
+const PROPERTY_ICONS: Record<PropertyType, LucideIcon> = {
+    text: AlignLeft, number: Hash, person: Users, status: CircleDot, date: CalendarDays,
+    checkbox: SquareCheck, url: Link, select: ListFilter, multi_select: ListChecks,
+    relation: ArrowUpRight, rollup: Sigma, email: Mail, phone: Phone,
+    created_time: Clock, created_by: User, last_edited_time: Clock, last_edited_by: User,
+    formula: FunctionSquare, unique_id: Fingerprint,
+};
+
+function nextPropertyName(database: KnowledgeDatabase, type: PropertyType) {
+    const base = PROPERTY_LABELS[type];
+    const names = new Set(database.properties.map((property) => property.name));
+    let name = base;
+    for (let suffix = 2; names.has(name); suffix += 1) name = `${base} ${suffix}`;
+    return name;
+}
 
 export function PropertyEditor({
     database,
@@ -14,6 +31,8 @@ export function PropertyEditor({
     onClose,
     onArchive,
     onSave,
+    anchorRect,
+    allowedTypes,
 }: {
     database: KnowledgeDatabase;
     editing?: DatabaseProperty;
@@ -23,13 +42,18 @@ export function PropertyEditor({
     onClose: () => void;
     onArchive?: () => void;
     onSave: (property: Omit<DatabaseProperty, 'id'>) => void;
+    anchorRect?: { left: number; right: number; top: number; bottom: number };
+    allowedTypes?: PropertyType[];
 }) {
     const [bidirectional, setBidirectional] = useState(!!editing?.inverse);
     const [inverseName, setInverseName] = useState(editing?.inverse?.name ?? '연결된 항목');
     const [prefix, setPrefix] = useState(editing?.prefix ?? 'ID');
     const [name, setName] = useState(editing?.name ?? '');
+    const [typeSearch, setTypeSearch] = useState('');
+    const [choosingType, setChoosingType] = useState(!editing);
     const [type, setType] = useState<PropertyType>(editing?.type ?? 'text');
-    const [options, setOptions] = useState(editing?.options?.join(', ') ?? '');
+    const [options, setOptions] = useState<string[]>(editing?.options ?? []);
+    const [newOption, setNewOption] = useState('');
     const [formula, setFormula] = useState(editing?.formula ?? '');
     const [cardinality, setCardinality] = useState<'one' | 'many'>(editing?.cardinality ?? 'many');
     const [target, setTarget] = useState(editing?.targetDatabaseId ?? '');
@@ -37,6 +61,28 @@ export function PropertyEditor({
     const [aggregation, setAggregation] = useState<DatabaseProperty['aggregation']>(editing?.aggregation ?? 'count');
     const [targetProperty, setTargetProperty] = useState(editing?.targetPropertyId ?? '');
     const surface = useRef<HTMLFormElement>(null);
+    const [position, setPosition] = useState({ left: 8, top: 8 });
+    useLayoutEffect(() => {
+        const place = () => {
+            const element = surface.current;
+            if (!element) return;
+            const bounds = element.getBoundingClientRect();
+            const left = anchorRect?.left ?? (window.innerWidth - bounds.width) / 2;
+            let top = anchorRect ? anchorRect.bottom + 6 : Math.min(120, window.innerHeight / 5);
+            if (anchorRect && top + bounds.height > window.innerHeight - 8 && anchorRect.top - bounds.height - 6 >= 8) {
+                top = anchorRect.top - bounds.height - 6;
+            }
+            setPosition({
+                left: Math.max(8, Math.min(left, window.innerWidth - bounds.width - 8)),
+                top: Math.max(8, Math.min(top, window.innerHeight - bounds.height - 8)),
+            });
+        };
+        place();
+        const observer = new ResizeObserver(place);
+        if (surface.current) observer.observe(surface.current);
+        window.addEventListener('resize', place);
+        return () => { observer.disconnect(); window.removeEventListener('resize', place); };
+    }, [anchorRect]);
     useDialogFocusTrap({
         open: true,
         surfaceRef: surface,
@@ -47,26 +93,50 @@ export function PropertyEditor({
     const relationProperty = database.properties.find((prop) => prop.id === relation);
     const targetDb = databases.find((db) => db.id === relationProperty?.targetDatabaseId);
     const inputClass = 'mt-1 w-full rounded-control border border-border-primary bg-bg-primary p-2 text-sm';
+    const visibleTypes = Object.entries(PROPERTY_LABELS).filter(([value, label]) =>
+        (!allowedTypes || allowedTypes.includes(value as PropertyType)) &&
+        `${label} ${value}`.toLowerCase().includes(typeSearch.trim().toLowerCase()),
+    );
+    const addOption = () => {
+        const value = newOption.trim();
+        if (value) setOptions((current) => current.includes(value) ? current : [...current, value]);
+        setNewOption('');
+    };
+    const saveType = (nextType: PropertyType) => {
+        setType(nextType);
+        setChoosingType(false);
+        setTypeSearch('');
+        if (nextType === 'status') setOptions(['할 일', '진행 중', '완료']);
+        if (['relation', 'rollup', 'formula'].includes(nextType)) return;
+        onSave({
+            name: name.trim() || nextPropertyName(database, nextType),
+            type: nextType,
+            ...(nextType === 'unique_id' ? { prefix } : {}),
+            ...(nextType === 'status' ? { options: ['할 일', '진행 중', '완료'] } : {}),
+            ...(['select', 'multi_select'].includes(nextType) ? { options: [] } : {}),
+        });
+    };
     return createPortal(
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-overlay p-4">
+        <div className="fixed inset-0 z-[80]" onPointerDown={(event) => {
+            if (event.target === event.currentTarget && !busy) onClose();
+        }}>
             <form
                 ref={surface}
                 role="dialog"
                 aria-modal="true"
                 aria-label={editing ? '속성 설정' : '속성 추가'}
-                className="w-full max-w-md space-y-4 rounded-panel border border-border-primary bg-bg-secondary p-5"
+                style={position}
+                className="fixed max-h-[calc(100dvh-16px)] w-[320px] max-w-[calc(100vw-16px)] space-y-3 overflow-y-auto rounded-panel border border-border-primary bg-bg-secondary p-3 shadow-xl"
                 onSubmit={(event) => {
                     event.preventDefault();
+                    if (busy) return;
                     onSave({
-                        name,
+                        name: name.trim() || nextPropertyName(database, type),
                         type,
                         ...(type === 'unique_id' ? { prefix } : {}),
                         ...(['select', 'multi_select', 'status'].includes(type)
                             ? {
-                                  options: options
-                                      .split(',')
-                                      .map((value) => value.trim())
-                                      .filter(Boolean),
+                                  options: [...new Set([...options, newOption.trim()].filter(Boolean))],
                               }
                             : {}),
                         ...(type === 'formula' ? { formula } : {}),
@@ -83,13 +153,14 @@ export function PropertyEditor({
                     });
                 }}
             >
-                <h3 className="font-semibold">{editing ? '속성 설정' : '속성 추가'}</h3>
+                <h3 className="text-sm font-medium">{editing ? '속성 설정' : '속성 추가'}</h3>
                 <label className="block text-xs">
                     속성 이름
                     <input
-                        required
                         maxLength={80}
                         value={name}
+                        placeholder={nextPropertyName(database, type)}
+                        disabled={busy}
                         onChange={(e) => setName(e.target.value)}
                         className={inputClass}
                     />
@@ -106,22 +177,37 @@ export function PropertyEditor({
                         />
                     </label>
                 )}
-                <label className="block text-xs">
-                    유형
-                    <select
-                        aria-label="유형"
-                        disabled={!!editing}
-                        value={type}
-                        onChange={(e) => setType(e.target.value as PropertyType)}
-                        className={inputClass}
-                    >
-                        {Object.entries(PROPERTY_LABELS).map(([value, label]) => (
-                            <option key={value} value={value}>
-                                {label}
-                            </option>
-                        ))}
-                    </select>
-                </label>
+                {choosingType ? (
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 rounded-control border border-border-primary px-2">
+                            <Search size={14} aria-hidden="true" className="shrink-0 text-text-secondary" />
+                            <input aria-label="속성 유형 검색" placeholder="유형 검색…" value={typeSearch}
+                                disabled={busy} onChange={(event) => setTypeSearch(event.target.value)}
+                                className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none" />
+                        </div>
+                        <div aria-label="속성 유형" className="max-h-72 overflow-y-auto">
+                            {visibleTypes.map(([value, label]) => {
+                                const Icon = PROPERTY_ICONS[value as PropertyType];
+                                return <button key={value} type="button" disabled={busy}
+                                    onClick={() => saveType(value as PropertyType)}
+                                    className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm hover:bg-bg-hover focus-visible:bg-bg-hover">
+                                    <Icon size={16} aria-hidden="true" className="shrink-0 text-text-secondary" />{label}
+                                </button>;
+                            })}
+                            {visibleTypes.length === 0 && (
+                                <p className="px-2 py-3 text-xs text-text-secondary">일치하는 유형이 없습니다.</p>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-between text-xs">
+                        <span className="text-text-secondary">유형</span>
+                        <button type="button" aria-label="유형" disabled={!!editing || busy}
+                            onClick={() => setChoosingType(true)} className="rounded-control px-2 py-1 text-sm hover:bg-bg-hover disabled:cursor-default">
+                            {PROPERTY_LABELS[type]}
+                        </button>
+                    </div>
+                )}
                 {type === 'formula' && (
                     <label className="block text-xs">
                         수식
@@ -140,15 +226,25 @@ export function PropertyEditor({
                     </label>
                 )}
                 {['select', 'multi_select', 'status'].includes(type) && (
-                    <label className="block text-xs">
-                        선택 항목 (쉼표로 구분)
-                        <input
-                            required
-                            value={options}
-                            onChange={(e) => setOptions(e.target.value)}
-                            className={inputClass}
-                        />
-                    </label>
+                    <div className="space-y-2 text-xs">
+                        <span className="text-text-secondary">선택 항목</span>
+                        <ul className="space-y-1">
+                            {options.map((option) => <li key={option} className="flex items-center gap-2 rounded-control bg-bg-primary px-2 py-1">
+                                <span className="min-w-0 flex-1 break-words">{option}</span>
+                                <button type="button" disabled={busy} aria-label={`${option} 삭제`}
+                                    onClick={() => setOptions((current) => current.filter((value) => value !== option))}
+                                    className="rounded-control p-1 text-text-secondary hover:bg-bg-hover"><X size={14} aria-hidden="true" /></button>
+                            </li>)}
+                        </ul>
+                        <div className="flex items-center gap-1">
+                            <input aria-label="선택 항목 추가" placeholder="새 옵션" maxLength={80} value={newOption} disabled={busy}
+                                onChange={(event) => setNewOption(event.target.value)}
+                                onKeyDown={(event) => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); addOption(); } }}
+                                className="min-w-0 flex-1 rounded-control border border-border-primary bg-bg-primary p-2 text-sm" />
+                            <button type="button" aria-label="옵션 추가" disabled={busy || !newOption.trim()} onClick={addOption}
+                                className="rounded-control p-2 hover:bg-bg-hover disabled:opacity-40"><Plus size={16} aria-hidden="true" /></button>
+                        </div>
+                    </div>
                 )}
                 {type === 'relation' && (
                     <label className="block text-xs">
@@ -284,7 +380,7 @@ export function PropertyEditor({
                         {error}
                     </p>
                 )}
-                <div className="flex justify-end gap-2">
+                <div className="flex flex-wrap justify-end gap-2 border-t border-border-primary pt-3">
                     {editing && onArchive && (
                         <button
                             type="button"
@@ -303,9 +399,9 @@ export function PropertyEditor({
                     >
                         취소
                     </button>
-                    <button disabled={busy} className="rounded-control bg-action px-3 py-2 text-sm text-white">
+                    {!choosingType && <button disabled={busy} className="rounded-control bg-action px-3 py-2 text-sm text-white">
                         {editing ? '변경 적용' : '속성 만들기'}
-                    </button>
+                    </button>}
                 </div>
             </form>
         </div>,

@@ -1,5 +1,5 @@
 import { test, expect } from 'playwright/test';
-import { createWorkspaceFixture, sendSocketMessage, jsonFetch } from './support/slacord-api';
+import { createWorkspaceFixture, createGuestSessionForTeam, sendSocketMessage, jsonFetch } from './support/slacord-api';
 import { loginWithSession } from './support/slacord-session';
 import type { DatabaseDetail } from '../../packages/web/src/features/database/model/types';
 
@@ -79,4 +79,105 @@ test('chat issues and database views edit the same records and retain their sour
     await page.reload();
     await expect(page.locator('[data-inline-database]').getByLabel('DB에서 수정한 작업 · 상태', { exact: true })).toHaveValue('리뷰 중');
     await page.screenshot({ path: testInfo.outputPath('inline-issue-database.png') });
+});
+
+test('issue database custom properties create immediately, persist on the issue and restore their values', async ({ page }) => {
+    test.setTimeout(90000);
+    const f = await createWorkspaceFixture();
+    const team = `/team/${f.teamId}`;
+    const issue = (await jsonFetch<{ id: string }>(`${team}/issue`, {
+        token: f.owner.token, method: 'POST', body: { title: '확장 속성 검증' },
+    }))!.data!;
+    const provision = async () => (await jsonFetch<{ id: string }>(`${team}/database/issue-source`, {
+        token: f.owner.token, method: 'POST',
+    }))!.data!;
+    const source = await provision();
+    const read = async () => (await jsonFetch<DatabaseDetail>(`${team}/database/${source.id}`, { token: f.owner.token }))!.data!;
+    await loginWithSession(page, f.owner);
+    await page.goto(`/${f.teamId}/docs?database=${source.id}`);
+
+    // Default names and one type click must be sufficient; no setup/submit step.
+    const add = page.getByRole('button', { name: '속성 추가', exact: true });
+    const picker = page.getByRole('dialog', { name: '속성 추가', exact: true });
+    await add.click();
+    await picker.getByRole('textbox', { name: '속성 유형 검색', exact: true }).fill('숫자');
+    await picker.getByRole('button', { name: '숫자', exact: true }).click();
+    await expect(picker).toHaveCount(0);
+    const number = page.getByRole('spinbutton', { name: '확장 속성 검증 · 숫자', exact: true });
+    await number.fill('13.5');
+    await number.press('Tab');
+    await expect.poll(async () => {
+        const db = await read();
+        const property = db.properties.find((item) => item.name === '숫자')!;
+        return db.rows.find((item) => item.documentId === issue.id)?.values[property.id];
+    }).toBe(13.5);
+
+    await add.click();
+    await picker.getByRole('button', { name: '날짜', exact: true }).click();
+    await expect(picker).toHaveCount(0);
+    const date = page.getByLabel('확장 속성 검증 · 날짜', { exact: true });
+    await date.fill('2026-11-20');
+    await page.getByRole('heading', { name: '워크스페이스 이슈', exact: true }).click();
+    await expect(date).not.toBeFocused();
+    await expect.poll(async () => {
+        const db = await read();
+        const property = db.properties.find((item) => item.name === '날짜')!;
+        return db.rows.find((item) => item.documentId === issue.id)?.values[property.id];
+    }).toBe('2026-11-20');
+
+    await add.click();
+    await picker.getByRole('button', { name: '다중 선택', exact: true }).click();
+    await expect(picker).toHaveCount(0);
+    const multiSelect = page.getByRole('button', { name: '확장 속성 검증 · 다중 선택', exact: true });
+    await multiSelect.click();
+    await page.getByRole('textbox', { name: '다중 선택 검색', exact: true }).fill('출시 준비');
+    await page.getByRole('button', { name: '“출시 준비” 만들기', exact: true }).click();
+    await expect.poll(async () => {
+        const db = await read();
+        const property = db.properties.find((item) => item.name === '다중 선택')!;
+        return { options: property.options, value: db.rows.find((item) => item.documentId === issue.id)?.values[property.id] };
+    }).toEqual({ options: ['출시 준비'], value: ['출시 준비'] });
+    await page.keyboard.press('Escape');
+
+    const before = await read();
+    const numberProperty = before.properties.find((item) => item.name === '숫자')!;
+    const dateProperty = before.properties.find((item) => item.name === '날짜')!;
+    expect((await provision()).id).toBe(source.id);
+    await jsonFetch(`${team}/issue/${issue.id}`, { token: f.owner.token, method: 'PATCH', body: { status: 'in_progress' } });
+    await page.reload();
+    await expect(number).toHaveValue('13.5');
+    await expect(date).toHaveValue('2026-11-20');
+    await expect(multiSelect).toHaveText('출시 준비');
+    await expect(page.getByLabel('확장 속성 검증 · 상태', { exact: true })).toHaveValue('진행 중');
+
+    await page.getByRole('button', { name: '숫자 속성 편집', exact: true }).click();
+    await page.getByRole('dialog', { name: '속성 설정', exact: true })
+        .getByRole('button', { name: '속성 삭제', exact: true }).click();
+    await expect(number).toHaveCount(0);
+    let archived = await read();
+    expect(archived.properties.some((item) => item.id === numberProperty.id)).toBe(false);
+    expect(archived.archivedProperties?.map((item) => item.id)).toContain(numberProperty.id);
+    expect(archived.rows.find((item) => item.documentId === issue.id)?.values[numberProperty.id]).toBeUndefined();
+    await page.reload();
+    await page.getByText('삭제된 속성 (1)', { exact: true }).click();
+    await page.getByRole('button', { name: '숫자 속성 복원', exact: true }).click();
+    await expect(number).toHaveValue('13.5');
+    await page.reload();
+    await expect(number).toHaveValue('13.5');
+    await expect(date).toHaveValue('2026-11-20');
+    archived = await read();
+    expect(archived.properties.find((item) => item.id === numberProperty.id)?.type).toBe('number');
+    expect(archived.properties.find((item) => item.id === dateProperty.id)?.type).toBe('date');
+    expect(archived.archivedProperties).toHaveLength(0);
+    expect(archived.rows.map((item) => item.documentId)).toEqual([issue.id]);
+
+    // Canonical issue fields remain protected, and guests cannot extend the schema.
+    await expect(jsonFetch(`${team}/database/${source.id}/property/status`, {
+        token: f.owner.token, method: 'PATCH', body: { name: '변경 차단', revision: archived.revision },
+    })).rejects.toThrow('403');
+    const guest = await createGuestSessionForTeam({ ownerToken: f.owner.token, teamId: f.teamId });
+    await expect(jsonFetch(`${team}/database/${source.id}/property`, {
+        token: guest.token, method: 'POST', body: { name: '게스트 추가 차단', type: 'text', revision: archived.revision },
+    })).rejects.toThrow('403');
+    expect((await read()).revision).toBe(archived.revision);
 });

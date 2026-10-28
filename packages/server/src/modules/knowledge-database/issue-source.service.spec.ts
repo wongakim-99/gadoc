@@ -60,7 +60,13 @@ describe('canonical issue database source', () => {
             updateOne: jest.fn(async (filter, update) => {
                 const expected = filter.$or ? 0 : filter.revision;
                 if ((canonical.revision ?? 0) !== expected) return { modifiedCount: 0 };
-                Object.assign(canonical, update.$set, { revision: expected + 1 });
+                for (const [key, value] of Object.entries(update.$set)) {
+                    if (key.startsWith('databaseValues.')) {
+                        canonical.databaseValues ??= {};
+                        canonical.databaseValues[key.slice('databaseValues.'.length)] = value;
+                    } else canonical[key] = value;
+                }
+                canonical.revision = expected + 1;
                 return { modifiedCount: 1 };
             }),
         };
@@ -124,7 +130,7 @@ describe('canonical issue database source', () => {
         const detail = await database.read(teamId, userId, sourceId);
         expect(detail).toMatchObject({
             sourceKind: 'issues',
-            canEditSchema: false,
+            canEditSchema: true,
             rows: [
                 {
                     documentId: issueId,
@@ -239,7 +245,75 @@ describe('canonical issue database source', () => {
         );
     });
 
-    it('supports standard query pagination and writable saved views despite fixed schema', async () => {
+    it('preserves custom values through canonical writes and archive/restore, with computed values', async () => {
+        source.properties = [
+            ...ISSUE_PROPERTIES,
+            { id: 'effort', name: 'Effort', type: 'number' },
+            { id: 'due', name: 'Due', type: 'date' },
+            { id: 'reviewer', name: 'Reviewer', type: 'person' },
+            { id: 'editor', name: 'Editor', type: 'last_edited_by' },
+            {
+                id: 'double',
+                name: 'Double',
+                type: 'formula',
+                formula: 'prop("Effort") * 2',
+                formulaReferences: [{ name: 'Effort', id: 'effort' }],
+            },
+        ];
+        source.locked = true;
+        await service.update(teamId, userId, issueId, { effort: 3, due: '2026-11-01', reviewer: ['member'] }, 0);
+        await service.update(teamId, userId, issueId, { status: '완료' }, 1);
+        let result = await service.read(teamId, userId, source);
+        expect(result).toMatchObject({
+            locked: true,
+            canEditSchema: true,
+            rows: [{ values: { effort: 3, due: '2026-11-01', reviewer: ['member'], editor: [userId], double: 6 } }],
+        });
+        source.properties.find((p: any) => p.id === 'effort').archived = true;
+        result = await service.read(teamId, userId, source);
+        expect(result.rows[0].values.effort).toBeUndefined();
+        expect(result.rows[0].formulaErrors.double).toBeTruthy();
+        expect(result.archivedProperties).toEqual([expect.objectContaining({ id: 'effort' })]);
+        await expect(service.update(teamId, userId, issueId, { effort: 5 }, 2)).rejects.toBeInstanceOf(
+            BadRequestException,
+        );
+        source.properties.find((p: any) => p.id === 'effort').archived = false;
+        expect((await service.read(teamId, userId, source)).rows[0].values.double).toBe(6);
+        await expect(service.update(teamId, userId, issueId, { effort: 'wrong' }, 2)).rejects.toBeInstanceOf(
+            BadRequestException,
+        );
+        await expect(service.update(teamId, userId, issueId, { due: '2026-02-30' }, 2)).rejects.toBeInstanceOf(
+            BadRequestException,
+        );
+        await expect(service.update(teamId, userId, issueId, { reviewer: ['outsider'] }, 2)).rejects.toBeInstanceOf(
+            BadRequestException,
+        );
+        await expect(service.update(teamId, userId, issueId, { double: 8 }, 2)).rejects.toBeInstanceOf(
+            BadRequestException,
+        );
+        await expect(service.update(teamId, userId, issueId, { effort: 4 }, 1)).rejects.toBeInstanceOf(
+            ConflictException,
+        );
+    });
+
+    it('creates custom values in the issue document once and rejects unsupported relation writes', async () => {
+        source.properties = [
+            ...ISSUE_PROPERTIES,
+            { id: 'effort', name: 'Effort', type: 'number' },
+            { id: 'relation', name: 'Related', type: 'relation' },
+        ];
+        await service.create(teamId, userId, 'Custom', issueId, { effort: 2 });
+        expect(canonical.databaseValues).toEqual({ effort: 2 });
+        expect(canonical['databaseValues.effort']).toBeUndefined();
+        issues.findById.mockImplementation(() => query(canonical));
+        await service.create(teamId, userId, 'Custom', issueId, { effort: 2 });
+        expect(issues.create).toHaveBeenCalledTimes(1);
+        await expect(service.update(teamId, userId, issueId, { relation: [] }, 0)).rejects.toBeInstanceOf(
+            BadRequestException,
+        );
+    });
+
+    it('supports standard query pagination and writable saved views', async () => {
         expect(await database.query(teamId, userId, sourceId, { search: '없는 제목' })).toMatchObject({
             total: 0,
             rows: [],
@@ -281,16 +355,10 @@ describe('canonical issue database source', () => {
     });
 
     it.each([
-        'addProperty',
-        'configureProperty',
         'addRow',
         'mention',
-        'renameProperty',
-        'archiveProperty',
-        'setLock',
         'createTemplate',
         'applyTemplate',
-        'renameDatabase',
         'duplicateRow',
         'setDefaultTemplate',
         'removeTemplate',

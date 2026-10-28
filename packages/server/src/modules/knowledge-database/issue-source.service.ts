@@ -11,6 +11,7 @@ import { TEAM_REPOSITORY, type ITeamRepository } from '../team/domain/team.port'
 import { CONTENT_CHANGED } from '../../shared/interceptors/content-change.interceptor';
 import { NOTIFICATION_EVENTS } from '../../shared/events/notification-events';
 import { KnowledgeDatabase, type DatabaseProperty, type PropertyValue } from './database.schema';
+import { parseFormula, evaluateFormula, type FormulaValue } from './formula';
 
 export const ISSUE_PROPERTIES: DatabaseProperty[] = [
     { id: 'status', name: '상태', type: 'status', options: Object.values(ISSUE_STATUS_LABELS) },
@@ -80,14 +81,16 @@ export class IssueSourceService {
             id,
             name: db.name,
             sourceKind: 'issues' as const,
-            locked: false,
-            canEditSchema: false,
-            properties: ISSUE_PROPERTIES.map((p) =>
-                p.id === 'labels'
-                    ? { ...p, options: [...new Set(issues.flatMap((issue) => issue.labels ?? []))].sort() }
-                    : p,
-            ),
-            archivedProperties: [] as DatabaseProperty[],
+            locked: db.locked ?? false,
+            canEditSchema: role !== 'guest',
+            properties: db.properties
+                .filter((p) => !p.archived)
+                .map((p) =>
+                    p.id === 'labels'
+                        ? { ...p, options: [...new Set(issues.flatMap((issue) => issue.labels ?? []))].sort() }
+                        : p,
+                ),
+            archivedProperties: db.properties.filter((p) => p.archived),
             defaultTemplateId: undefined,
             templates: [] as Array<{ id: string; name: string; documentId: string }>,
             views: db.views?.length
@@ -112,26 +115,77 @@ export class IssueSourceService {
                 availablePersonIds,
                 resourceKind: 'issue' as const,
                 revision: issue.revision ?? 0,
-                values: {
-                    status: ISSUE_STATUS_LABELS[issue.status as keyof typeof ISSUE_STATUS_LABELS],
-                    owner: issue.assigneeIds ?? [],
-                    priority: ISSUE_PRIORITY_LABELS[issue.priority as keyof typeof ISSUE_PRIORITY_LABELS],
-                    labels: issue.labels ?? [],
-                    description: issue.description ?? '',
-                    created_time: issue.createdAt?.toISOString() ?? null,
-                    last_edited_time: issue.updatedAt?.toISOString() ?? null,
-                } as Record<string, PropertyValue>,
+                ...this.rowValues(db.properties, issue),
                 relations: {} as Record<string, Array<{ id: string; title: string }>>,
-                formulaErrors: {} as Record<string, string>,
                 relationRevisions: {} as Record<string, string>,
             })),
         };
+    }
+
+    private rowValues(properties: DatabaseProperty[], issue: Issue) {
+        const active = properties.filter((p) => !p.archived);
+        const values: Record<string, PropertyValue> = {
+            ...Object.fromEntries(active.map((p) => [p.id, issue.databaseValues?.[p.id] ?? null])),
+            status: ISSUE_STATUS_LABELS[issue.status as keyof typeof ISSUE_STATUS_LABELS],
+            owner: issue.assigneeIds ?? [],
+            priority: ISSUE_PRIORITY_LABELS[issue.priority as keyof typeof ISSUE_PRIORITY_LABELS],
+            labels: issue.labels ?? [],
+            description: issue.description ?? '',
+            created_time: issue.createdAt?.toISOString() ?? null,
+            last_edited_time: issue.updatedAt?.toISOString() ?? null,
+        };
+        for (const prop of active) {
+            if (prop.type === 'created_time') values[prop.id] = issue.createdAt?.toISOString() ?? null;
+            if (prop.type === 'last_edited_time') values[prop.id] = issue.updatedAt?.toISOString() ?? null;
+            if (prop.type === 'created_by') values[prop.id] = [issue.createdBy];
+            if (prop.type === 'last_edited_by')
+                values[prop.id] = issue.databaseUpdatedBy ? [issue.databaseUpdatedBy] : null;
+        }
+        const formulaErrors: Record<string, string> = {};
+        const calculated = new Map<string, FormulaValue>();
+        const visiting = new Set<string>();
+        const resolve = (id: string): FormulaValue => {
+            if (id === 'title') return issue.title;
+            if (calculated.has(id)) return calculated.get(id)!;
+            const prop = active.find((p) => p.id === id);
+            if (!prop) throw new Error('참조한 속성이 삭제되었습니다.');
+            if (prop.type !== 'formula') return values[id] ?? null;
+            if (visiting.has(id) || visiting.size >= 15) throw new Error('수식 순환 참조 또는 참조 깊이 초과입니다.');
+            visiting.add(id);
+            try {
+                const result = evaluateFormula(parseFormula(prop.formula ?? '').node, (name) => {
+                    const target = prop.formulaReferences?.find((ref) => ref.name === name)?.id;
+                    if (!target) throw new Error(`참조한 속성을 찾을 수 없습니다: ${name}`);
+                    return resolve(target);
+                });
+                calculated.set(id, result);
+                return result;
+            } finally {
+                visiting.delete(id);
+            }
+        };
+        for (const prop of active.filter((p) => p.type === 'formula')) {
+            try {
+                const result = resolve(prop.id);
+                values[prop.id] = Array.isArray(result)
+                    ? result.map((v) => (Array.isArray(v) ? JSON.stringify(v) : v))
+                    : result;
+            } catch (error) {
+                values[prop.id] = null;
+                formulaErrors[prop.id] = (error as Error).message;
+            }
+        }
+        return { values, formulaErrors };
     }
 
     private async patch(teamId: string, values: Record<string, PropertyValue>) {
         if (!values || typeof values !== 'object' || Array.isArray(values) || Object.keys(values).length > 50)
             throw new BadRequestException('올바른 이슈 속성을 지정하세요.');
         const patch: Record<string, unknown> = {};
+        const source = await this.databases
+            .findOne({ _id: issueSourceId(teamId), teamId, sourceKind: 'issues' })
+            .lean();
+        if (!source) throw new NotFoundException('이슈 데이터 소스를 찾을 수 없습니다.');
         for (const [key, value] of Object.entries(values)) {
             if (key === 'status' || key === 'priority') {
                 const options = key === 'status' ? ISSUE_STATUS_LABELS : ISSUE_PRIORITY_LABELS;
@@ -155,9 +209,73 @@ export class IssueSourceService {
                 if (typeof value !== 'string' || (key === 'title' && !value.trim()) || value.length > 100000)
                     throw new BadRequestException('올바른 텍스트를 지정하세요.');
                 patch[key] = key === 'title' ? value.trim() : value;
-            } else throw new BadRequestException('이슈 소스의 읽기 전용 또는 알 수 없는 속성입니다.');
+            } else {
+                const prop = source.properties.find((p) => p.id === key && !p.archived);
+                if (!prop || !/^[a-zA-Z0-9_-]+$/.test(key)) throw new BadRequestException('편집할 수 없는 속성입니다.');
+                await this.validateCustomValue(teamId, prop, value);
+                patch[`databaseValues.${key}`] = value;
+            }
         }
         return patch;
+    }
+
+    private async validateCustomValue(teamId: string, prop: DatabaseProperty, value: PropertyValue) {
+        const type = prop.type;
+        if (
+            ![
+                'text',
+                'number',
+                'date',
+                'checkbox',
+                'url',
+                'email',
+                'phone',
+                'select',
+                'multi_select',
+                'person',
+                'status',
+            ].includes(type)
+        )
+            throw new BadRequestException('읽기 전용 또는 지원하지 않는 속성입니다.');
+        if (value === null) return;
+        if (
+            ['text', 'url', 'email', 'phone', 'date', 'select', 'status'].includes(type) &&
+            (typeof value !== 'string' || value.length > 10000)
+        )
+            throw new BadRequestException('문자열 값을 입력하세요.');
+        if (type === 'number' && (typeof value !== 'number' || !Number.isFinite(value)))
+            throw new BadRequestException('올바른 숫자를 입력하세요.');
+        if (type === 'checkbox' && typeof value !== 'boolean')
+            throw new BadRequestException('체크박스 값을 확인하세요.');
+        if (type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value)))
+            throw new BadRequestException('이메일 주소를 확인하세요.');
+        if (type === 'url' && !/^https?:\/\/\S+$/i.test(String(value)))
+            throw new BadRequestException('http 또는 https 주소를 입력하세요.');
+        if (
+            type === 'date' &&
+            (!/^\d{4}-\d{2}-\d{2}$/.test(String(value)) ||
+                !Number.isFinite(Date.parse(String(value))) ||
+                new Date(String(value)).toISOString().slice(0, 10) !== value)
+        )
+            throw new BadRequestException('날짜를 확인하세요.');
+        if (['select', 'status'].includes(type) && !prop.options?.includes(value as string))
+            throw new BadRequestException('선택 항목을 확인하세요.');
+        if (['person', 'multi_select'].includes(type)) {
+            if (
+                !Array.isArray(value) ||
+                value.length > 100 ||
+                value.some((v) => typeof v !== 'string') ||
+                new Set(value).size !== value.length
+            )
+                throw new BadRequestException('선택 목록을 확인하세요.');
+            if (type === 'multi_select' && value.some((v) => !prop.options?.includes(String(v))))
+                throw new BadRequestException('선택 항목을 확인하세요.');
+            if (type === 'person') {
+                const team = await this.teams.findById(teamId);
+                if (value.some((id) => !team?.getMember(String(id))))
+                    throw new BadRequestException('워크스페이스 멤버를 지정하세요.');
+            }
+        }
     }
 
     private changed(teamId: string) {
@@ -192,7 +310,7 @@ export class IssueSourceService {
         const version = revision === 0 ? { $or: [{ revision: 0 }, { revision: { $exists: false } }] } : { revision };
         const result = await this.issues.updateOne(
             { _id: issueId, teamId, ...version },
-            { $set: patch, $inc: { revision: 1 } },
+            { $set: { ...patch, databaseUpdatedBy: userId }, $inc: { revision: 1 } },
         );
         if (!result.modifiedCount)
             throw new ConflictException('다른 사용자가 수정했습니다. 새로고침 후 다시 시도하세요.');
@@ -234,13 +352,23 @@ export class IssueSourceService {
             return { documentId: creationId };
         }
         try {
+            const databaseValues = Object.fromEntries(
+                Object.entries(patch)
+                    .filter(([key]) => key.startsWith('databaseValues.'))
+                    .map(([key, value]) => [key.slice('databaseValues.'.length), value as PropertyValue]),
+            );
+            const fields = Object.fromEntries(
+                Object.entries(patch).filter(([key]) => !key.startsWith('databaseValues.')),
+            );
             await this.issues.create({
                 _id: creationId,
                 teamId,
                 createdBy: userId,
                 sourceCreationId: creationId,
                 sourceCreationHash: creationHash,
-                ...patch,
+                ...fields,
+                databaseValues,
+                databaseUpdatedBy: userId,
             });
         } catch (error) {
             if ((error as { code?: number }).code === 11000)

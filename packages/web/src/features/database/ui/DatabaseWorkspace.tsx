@@ -97,6 +97,7 @@ export function DatabaseWorkspace({
     const pageCreation = useRef<{ key: string; id: string } | null>(null);
     const [editingProperty, setEditingProperty] = useState<DatabaseProperty | undefined>();
     const [propertyOpen, setPropertyOpen] = useState(false);
+    const [propertyAnchor, setPropertyAnchor] = useState<DOMRect>();
     const [documents, setDocuments] = useState<Array<{ id: string; title: string }> | null>(null);
     const [query, setQuery] = useState(inline ? initialView.current.query : '');
     const [status, setStatus] = useState(inline ? initialView.current.status : '');
@@ -798,8 +799,8 @@ export function DatabaseWorkspace({
                                                     <option value="board">보드</option>
                                                     <option value="list">목록</option>
                                                     <option value="gallery">갤러리</option>
-                                                    <option value="calendar" disabled={isIssueSource}>달력</option>
-                                                    <option value="timeline" disabled={isIssueSource}>타임라인</option>
+                                                    <option value="calendar">달력</option>
+                                                    <option value="timeline">타임라인</option>
                                                     <option value="chart">차트</option>
                                                 </select>
                                             </label>
@@ -962,8 +963,8 @@ export function DatabaseWorkspace({
                                             <option value="board">보드</option>
                                             <option value="list">목록</option>
                                             <option value="gallery">갤러리</option>
-                                            <option value="calendar" disabled={isIssueSource}>달력</option>
-                                            <option value="timeline" disabled={isIssueSource}>타임라인</option>
+                                            <option value="calendar">달력</option>
+                                            <option value="timeline">타임라인</option>
                                             <option value="chart">차트</option>
                                         </select>{' '}
                                     </label>
@@ -1230,7 +1231,7 @@ export function DatabaseWorkspace({
                                         />
                                     )}
 
-                                    {canManageDatabase && (
+                                    {canManageDatabase && !isIssueSource && (
                                         <DatabaseCsvImport
                                             key={database.id}
                                             teamId={teamId}
@@ -1301,7 +1302,7 @@ export function DatabaseWorkspace({
                                             현재 보기 CSV 내보내기
                                         </button>
                                     </details>
-                                    {canManageDatabase && (
+                                    {canManageDatabase && !isIssueSource && (
                                         <button
                                             type="button"
                                             className={buttonClass}
@@ -1384,9 +1385,11 @@ export function DatabaseWorkspace({
                                                         className="flex w-full items-center gap-1.5 text-left hover:text-text-primary"
                                                         aria-label={`${prop.name} 속성 편집`}
                                                         disabled={
-                                                            !canManageDatabase || database.locked || !!prop.reverseOf
+                                                            !canManageDatabase || database.locked || !!prop.reverseOf ||
+                                                            (isIssueSource && ['status', 'owner', 'priority', 'labels', 'description', 'created_time', 'last_edited_time'].includes(prop.id))
                                                         }
-                                                        onClick={() => {
+                                                        onClick={(event) => {
+                                                            setPropertyAnchor(event.currentTarget.getBoundingClientRect());
                                                             setEditingProperty(prop);
                                                             setError('');
                                                             setPropertyOpen(true);
@@ -1403,7 +1406,8 @@ export function DatabaseWorkspace({
                                                         type="button"
                                                         className="inline-flex items-center gap-1 whitespace-nowrap text-xs hover:text-text-primary"
                                                         disabled={busy || database.locked}
-                                                        onClick={() => {
+                                                        onClick={(event) => {
+                                                            setPropertyAnchor(event.currentTarget.getBoundingClientRect());
                                                             setError('');
                                                             setEditingProperty(undefined);
                                                             setPropertyOpen(true);
@@ -1514,6 +1518,8 @@ export function DatabaseWorkspace({
                                                             members={workspace.members}
                                                             disabled={busy || !row.canEdit}
                                                             readOnly={!row.canEdit}
+                                                            canEditOptions={canManageDatabase && !database.locked}
+                                                            onOptionsChanged={async () => { notifyDatabaseUpdated(); await load(); }}
                                                             onSave={(value, revision) =>
                                                                 saveCell(
                                                                     { ...row, revision: revision ?? row.revision },
@@ -1628,6 +1634,8 @@ export function DatabaseWorkspace({
                         )}
                         {propertyOpen && (
                             <PropertyEditor
+                                anchorRect={propertyAnchor}
+                                allowedTypes={isIssueSource ? (Object.keys(PROPERTY_LABELS) as DatabaseProperty['type'][]).filter(type => !['relation', 'rollup', 'unique_id'].includes(type)) : undefined}
                                 database={database}
                                 editing={editingProperty}
                                 onArchive={

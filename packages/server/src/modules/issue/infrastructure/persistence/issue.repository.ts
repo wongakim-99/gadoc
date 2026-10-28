@@ -92,6 +92,7 @@ export class IssueRepository implements IIssueRepository {
     async update(
         id: string,
         data: Partial<{
+            databaseUpdatedBy: string;
             title: string;
             description: string;
             status: IssueStatus;

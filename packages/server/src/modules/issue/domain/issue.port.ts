@@ -26,6 +26,7 @@ export interface IIssueRepository {
     update(
         id: string,
         data: Partial<{
+            databaseUpdatedBy: string;
             title: string;
             description: string;
             status: IssueStatus;
