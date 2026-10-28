@@ -16,6 +16,7 @@ import {
     Search,
     Trash2,
     Menu,
+    ArrowLeft,
 } from 'lucide-react';
 import { NotificationBell } from '@/src/features/notification/ui/NotificationBell';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
@@ -52,10 +53,14 @@ export function WorkspaceSidebarShell({
     isDesktopMac: boolean;
 }) {
     const routePathname = usePathname();
-    const pathname = useWorkspaceConnection()?.activePath ?? routePathname;
-    const { collapsed, setCollapsed } = useSidebarCollapse(teamId);
+    const connection = useWorkspaceConnection();
+    const pathname = connection?.activePath ?? routePathname;
+    const settings = area === 'settings';
+    const { collapsed: savedCollapsed, setCollapsed } = useSidebarCollapse(teamId, !settings);
+    const collapsed = !settings && savedCollapsed;
     const [mobileOpen, setMobileOpen] = useState(false);
-    useEffect(() => setMobileOpen(false), [pathname]);
+    const activeHref = connection?.activeHref ?? pathname;
+    useEffect(() => setMobileOpen(false), [activeHref]);
     const sections = [
         { area: 'home', href: `/${teamId}`, icon: Home },
         {
@@ -88,18 +93,20 @@ export function WorkspaceSidebarShell({
                 <div className={'min-w-0 flex-1 ' + hideCollapsed}>
                     <WorkspaceSwitcher teamId={teamId} teamName={teamName} />
                 </div>
-                <button
-                    type="button"
-                    aria-label={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
-                    aria-expanded={!collapsed}
-                    aria-controls="workspace-context-navigation"
-                    aria-keyshortcuts="Control+Shift+\\ Meta+Shift+\\"
-                    title={`${collapsed ? '사이드바 펼치기' : '사이드바 접기'} (${isDesktopMac ? '⌘' : 'Ctrl'}+Shift+\\)`}
-                    onClick={() => setCollapsed(!collapsed)}
-                    className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-control text-text-secondary hover:bg-bg-hover lg:inline-flex"
-                >
-                    {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-                </button>
+                {!settings && (
+                    <button
+                        type="button"
+                        aria-label={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
+                        aria-expanded={!collapsed}
+                        aria-controls="workspace-context-navigation"
+                        aria-keyshortcuts="Control+Shift+\\ Meta+Shift+\\"
+                        title={`${collapsed ? '사이드바 펼치기' : '사이드바 접기'} (${isDesktopMac ? '⌘' : 'Ctrl'}+Shift+\\)`}
+                        onClick={() => setCollapsed(!collapsed)}
+                        className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-control text-text-secondary hover:bg-bg-hover lg:inline-flex"
+                    >
+                        {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+                    </button>
+                )}
                 <button
                     type="button"
                     aria-label="워크스페이스 탐색"
@@ -139,27 +146,37 @@ export function WorkspaceSidebarShell({
                     aria-label="워크스페이스 영역"
                     className={`flex shrink-0 flex-col gap-0.5 border-b border-border-primary px-3 pb-4 pt-2 ${collapsed ? 'lg:px-2' : ''}`}
                 >
-                    {sections.map(({ area: target, href, icon: Icon }) => (
-                        <AreaLink
-                            key={target}
-                            href={href}
-                            kind={target === 'home' ? undefined : target}
-                            label={workspaceAreaLabels[target]}
-                            collapsed={collapsed}
-                            onClick={() => setCollapsed(false)}
-                            title={workspaceAreaLabels[target]}
-                            aria-label={workspaceAreaLabels[target]}
-                            aria-current={area === target ? 'location' : undefined}
-                            className={`workspace-sidebar-row flex items-center transition-colors hover:bg-bg-hover ${collapsed ? 'lg:justify-center' : ''} ${area === target ? 'font-medium text-text-primary' : 'text-text-secondary'}`}
+                    {settings ? (
+                        <Link
+                            href={`/${teamId}`}
+                            className="workspace-sidebar-row flex items-center gap-2 text-text-secondary hover:bg-bg-hover"
                         >
-                            <Icon size={16} className="shrink-0" />
-                            <span className={hideCollapsed}>{workspaceAreaLabels[target]}</span>
-                        </AreaLink>
-                    ))}
+                            <ArrowLeft size={16} />
+                            워크스페이스로 돌아가기
+                        </Link>
+                    ) : (
+                        sections.map(({ area: target, href, icon: Icon }) => (
+                            <AreaLink
+                                key={target}
+                                href={href}
+                                kind={target === 'home' ? undefined : target}
+                                label={workspaceAreaLabels[target]}
+                                collapsed={collapsed}
+                                onClick={() => setCollapsed(false)}
+                                title={workspaceAreaLabels[target]}
+                                aria-label={workspaceAreaLabels[target]}
+                                aria-current={area === target ? 'location' : undefined}
+                                className={`workspace-sidebar-row flex items-center transition-colors hover:bg-bg-hover ${collapsed ? 'lg:justify-center' : ''} ${area === target ? 'font-medium text-text-primary' : 'text-text-secondary'}`}
+                            >
+                                <Icon size={16} className="shrink-0" />
+                                <span className={hideCollapsed}>{workspaceAreaLabels[target]}</span>
+                            </AreaLink>
+                        ))
+                    )}
                 </nav>
                 <nav
                     id="workspace-context-navigation"
-                    aria-label={`${workspaceAreaLabels[area]} 탐색`}
+                    aria-label={settings ? '설정 섹션' : `${workspaceAreaLabels[area]} 탐색`}
                     className={`min-h-0 flex-1 overflow-y-auto px-3 py-4 ${hideCollapsed}`}
                 >
                     {context}
