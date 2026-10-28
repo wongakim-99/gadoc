@@ -1,3 +1,4 @@
+import type { NumberFormat } from '@slacord/document-core';
 import type { FilterGroup, SortRule, Aggregation } from '@slacord/document-core';
 export type PropertyType =
     | 'text'
@@ -25,6 +26,7 @@ export interface DatabaseProperty {
     name: string;
     archived?: boolean;
     prefix?: string;
+    numberFormat?: NumberFormat;
     type: PropertyType;
     options?: string[];
     formula?: string;

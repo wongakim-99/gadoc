@@ -1,0 +1,37 @@
+import { test, expect } from 'playwright/test';
+import { createWorkspaceFixture, jsonFetch } from './support/slacord-api';
+import { loginWithSession } from './support/slacord-session';
+import type { DatabaseDetail, DatabaseProperty } from '../../packages/web/src/features/database/model/types';
+
+test('number formats persist without changing numeric values or formula results', async ({ page }) => {
+    const f = await createWorkspaceFixture();
+    const root = `/team/${f.teamId}/database`;
+    const db = (await jsonFetch<{ id: string }>(root, { method: 'POST', token: f.owner.token, body: { name: '숫자 표시' } }))!.data!;
+    const call = <T>(path: string, body?: unknown, method = body ? 'POST' : 'GET') => jsonFetch<T>(`${root}/${db.id}${path}`, { token: f.owner.token, body, method });
+    const prop = (await call<DatabaseProperty>('/property', { name: '금액', type: 'number', numberFormat: 'KRW', revision: 0 }))!.data!;
+    const formula = (await call<DatabaseProperty>('/property', { name: '두 배', type: 'formula', formula: 'prop("금액") * 2', numberFormat: 'comma', revision: 1 }))!.data!;
+    await call('/row', { documentId: f.documentId });
+    await call(`/row/${f.documentId}/${prop.id}`, { value: 1234.5, revision: 0 }, 'PATCH');
+    await expect(call('/property', { name: '잘못된 형식', type: 'number', numberFormat: 'invalid', revision: 2 })).rejects.toThrow('400');
+    await loginWithSession(page, f.owner);
+    await page.goto(`/${f.teamId}/docs?database=${db.id}`);
+    const cell = page.getByLabel(/ · 금액$/);
+    await expect(cell).toHaveValue('₩1,234.5');
+    await cell.focus();
+    await expect(cell).toHaveValue('1234.5');
+    await cell.fill('2500');
+    await cell.press('Tab');
+    await expect(cell).toHaveValue('₩2,500');
+    await expect(page.getByRole('table').getByText('5,000', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '금액 속성 편집', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: '속성 설정' });
+    await dialog.getByLabel('숫자 표시 형식', { exact: true }).selectOption('percent');
+    await dialog.getByRole('button', { name: '변경 적용' }).click();
+    await expect(cell).toHaveValue('250,000%');
+    await page.reload();
+    await expect(cell).toHaveValue('250,000%');
+    const read = (await call<DatabaseDetail>(''))!.data!;
+    expect(read.rows[0].values[prop.id]).toBe(2500);
+    expect(read.rows[0].values[formula.id]).toBe(5000);
+    expect(read.properties.find(p => p.id === prop.id)?.numberFormat).toBe('percent');
+});
