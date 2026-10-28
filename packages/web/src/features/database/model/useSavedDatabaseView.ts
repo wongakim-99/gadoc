@@ -15,6 +15,7 @@ export function viewFingerprint(view: DatabaseView): string {
         dateProperty: view.dateProperty ?? '',
         endProperty: view.endProperty ?? '',
         groupProperty: view.groupProperty ?? 'status',
+        statusGrouping: view.statusGrouping ?? 'option',
         hiddenProperties: view.hiddenProperties ?? [],
         propertyOrder: view.propertyOrder ?? [],
         columnWidths: view.columnWidths ?? {},

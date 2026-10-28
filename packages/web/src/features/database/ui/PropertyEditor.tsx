@@ -1,4 +1,5 @@
 'use client';
+import { resolveStatusGroups, STATUS_GROUP_KEYS, STATUS_GROUP_LABELS, type StatusGroupAssignment, type StatusGroupKey } from '@slacord/document-core';
 import { OPTION_COLORS, type OptionColor, NUMBER_FORMATS, type NumberFormat, type NumberPresentation } from '@slacord/document-core';
 import { AGGREGATION_LABELS, NUMERIC_AGGREGATIONS, DATE_AGGREGATIONS } from '@slacord/document-core';
 import { useLayoutEffect, useRef, useState } from 'react';
@@ -43,7 +44,7 @@ export function PropertyEditor({
     error: string;
     onClose: () => void;
     onArchive?: () => void;
-    onSave: (property: Omit<DatabaseProperty, 'id'> & { optionRenames?: Array<{ id: string; name: string }> }) => void;
+    onSave: (property: Omit<DatabaseProperty, 'id'> & { optionRenames?: Array<{ id: string; name: string }>; statusGroups?: StatusGroupAssignment[] }) => void;
     anchorRect?: { left: number; right: number; top: number; bottom: number };
     allowedTypes?: PropertyType[];
 }) {
@@ -60,7 +61,14 @@ export function PropertyEditor({
     const [optionColors, setOptionColors] = useState(editing?.optionColors ?? []);
     const [optionRenames, setOptionRenames] = useState<Array<{ id: string; name: string }>>([]);
     const [optionError, setOptionError] = useState('');
+    const [statusAssignments, setStatusAssignments] = useState<StatusGroupAssignment[]>(() => {
+        const identities = editing?.optionIdentities ?? (editing?.options ?? []).map(name => ({ id: name, name }));
+        const groups = resolveStatusGroups(identities, editing?.statusOptionGroups);
+        return identities.map(option => ({ name: option.name, group: groups.find(item => item.optionId === option.id)!.group }));
+    });
     const [newOption, setNewOption] = useState('');
+    const [newOptionGroup, setNewOptionGroup] = useState<StatusGroupKey>('todo');
+    const newOptionInput = useRef<HTMLInputElement>(null);
     const [formula, setFormula] = useState(editing?.formula ?? '');
     const [cardinality, setCardinality] = useState<'one' | 'many'>(editing?.cardinality ?? 'many');
     const [target, setTarget] = useState(editing?.targetDatabaseId ?? '');
@@ -116,12 +124,16 @@ export function PropertyEditor({
         if (identity) setOptionRenames((items) => [...items.filter((item) => item.id !== identity.id), { id: identity.id, name: next }]);
         setOptions((items) => items.map((item) => item === oldName ? next : item));
         setOptionColors((items) => items.map((item) => item.name === oldName ? { ...item, name: next } : item));
+        setStatusAssignments((items) => items.map(item => item.name === oldName ? { ...item, name: next } : item));
         setOptionError('');
         return true;
     };
     const addOption = () => {
         const value = newOption.trim();
-        if (value) setOptions((current) => current.includes(value) ? current : [...current, value]);
+        if (value && !options.includes(value)) {
+            setOptions(current => [...current, value]);
+            if (type === 'status') setStatusAssignments(items => [...items.filter(item => item.name !== value), { name: value, group: newOptionGroup }]);
+        }
         setNewOption('');
     };
     const moveOption = (name: string, target: number) => setOptions((current) => {
@@ -166,6 +178,7 @@ export function PropertyEditor({
                             ? {
                                   options: [...new Set([...options, newOption.trim()].filter(Boolean))],
                                   optionRenames,
+                                  ...(type === 'status' ? { statusGroups: [...new Set([...options, newOption.trim()].filter(Boolean))].map(name => ({ name, group: statusAssignments.find(item => item.name === name)?.group ?? (name === newOption.trim() ? newOptionGroup : 'todo') as StatusGroupKey })) } : {}),
                                   optionColors: optionColors.filter((item) => [...options, newOption.trim()].includes(item.name)),
                               }
                             : {}),
@@ -290,18 +303,39 @@ export function PropertyEditor({
                 {['select', 'multi_select', 'status'].includes(type) && (
                     <div className="space-y-2 text-xs">
                         <span className="text-text-secondary">선택 항목</span>
-                        <ul className="space-y-1">
-                            {options.map((option, index) => <li key={option} className="flex items-center gap-1 rounded-control bg-bg-primary px-1 py-1"
+                        {(type === 'status' ? STATUS_GROUP_KEYS.map(group => ({ group, options: options.filter(option => (statusAssignments.find(item => item.name === option)?.group ?? 'todo') === group) })) : [{ group: null, options }]).map(section => <section key={section.group ?? 'options'}
+                            aria-label={section.group ? `${STATUS_GROUP_LABELS[section.group]} 상태 옵션` : '선택 옵션'}
+                            onDragOver={event => { if (section.group && !busy && event.dataTransfer.types.includes('application/x-gadoc-option')) event.preventDefault(); }}
+                            onDrop={event => {
+                                const name = event.dataTransfer.getData('application/x-gadoc-option');
+                                if (!section.group || !name || busy || !options.includes(name)) return;
+                                event.preventDefault(); event.stopPropagation();
+                                setStatusAssignments(items => [...items.filter(item => item.name !== name), { name, group: section.group! }]);
+                            }}>
+                            {section.group && <div className="mb-1 mt-3 flex items-center justify-between text-text-secondary">
+                                <span>{STATUS_GROUP_LABELS[section.group]}</span>
+                                <button type="button" disabled={busy} aria-label={`${STATUS_GROUP_LABELS[section.group]} 상태 추가`}
+                                    className="flex h-6 w-6 items-center justify-center rounded hover:bg-bg-hover"
+                                    onClick={() => { setNewOptionGroup(section.group!); newOptionInput.current?.focus(); }}><Plus size={14} aria-hidden="true" /></button>
+                            </div>}
+                        <ul className="min-h-2 space-y-1">
+                            {section.options.map((option) => <li key={option} className="flex items-center gap-1 rounded-control bg-bg-primary px-1 py-1"
                                 onDragOver={(event) => { if (!busy && event.dataTransfer.types.includes('application/x-gadoc-option')) event.preventDefault(); }}
-                                onDrop={(event) => { const name = event.dataTransfer.getData('application/x-gadoc-option'); if (!name || busy) return; event.preventDefault(); event.stopPropagation(); moveOption(name, index); }}>
+                                onDrop={(event) => { const name = event.dataTransfer.getData('application/x-gadoc-option'); if (!name || busy) return; event.preventDefault(); event.stopPropagation(); moveOption(name, options.indexOf(option)); if (section.group) setStatusAssignments(items => [...items.filter(item => item.name !== name), { name, group: section.group! }]); }}>
                                 <button type="button" disabled={busy} draggable={!busy} aria-label={`${option} 순서 이동`} title="끌어서 이동 · 위/아래 방향키"
                                     className="shrink-0 cursor-grab rounded p-1 text-text-tertiary hover:bg-bg-hover"
                                     onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('application/x-gadoc-option', option); }}
-                                    onKeyDown={(event) => { if (event.key === 'ArrowUp' || event.key === 'ArrowDown') { event.preventDefault(); moveOption(option, index + (event.key === 'ArrowUp' ? -1 : 1)); } }}><GripVertical size={14} aria-hidden="true" /></button>
+                                    onKeyDown={(event) => { if (event.key === 'ArrowUp' || event.key === 'ArrowDown') { event.preventDefault(); const target = section.options.indexOf(option) + (event.key === 'ArrowUp' ? -1 : 1); if (section.options[target]) moveOption(option, options.indexOf(section.options[target])); } }}><GripVertical size={14} aria-hidden="true" /></button>
                                 <input aria-label={`${option} 이름`} defaultValue={option} maxLength={80} disabled={busy}
                                     className="min-w-0 flex-1 rounded-control bg-transparent px-1 py-1 text-xs text-text-primary outline-none"
                                     onBlur={(event) => { if (!renameOption(option, event.target.value)) event.target.value = option; }}
                                     onKeyDown={(event) => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.blur(); } }} />
+                                {type === 'status' && <select aria-label={`${option} 상태 그룹`} disabled={busy}
+                                    value={statusAssignments.find(item => item.name === option)?.group ?? 'todo'}
+                                    className="max-w-20 rounded bg-bg-primary py-1 text-xs text-text-secondary"
+                                    onChange={(event) => setStatusAssignments(items => [...items.filter(item => item.name !== option), { name: option, group: event.target.value as StatusGroupKey }])}>
+                                    {STATUS_GROUP_KEYS.map(group => <option key={group} value={group}>{STATUS_GROUP_LABELS[group]}</option>)}
+                                </select>}
                                 <select aria-label={`${option} 색상`} disabled={busy} value={optionColors.find((item) => item.name === option)?.color ?? 'default'}
                                     className="max-w-16 rounded bg-bg-primary py-1 text-xs text-text-secondary"
                                     onChange={(event) => setOptionColors((current) => [...current.filter((item) => item.name !== option), { name: option, color: event.target.value as OptionColor }])}>
@@ -312,8 +346,9 @@ export function PropertyEditor({
                                     className="rounded-control p-1 text-text-secondary hover:bg-bg-hover"><X size={14} aria-hidden="true" /></button>
                             </li>)}
                         </ul>
+                        </section>)}
                         <div className="flex items-center gap-1">
-                            <input aria-label="선택 항목 추가" placeholder="새 옵션" maxLength={80} value={newOption} disabled={busy}
+                            <input ref={newOptionInput} aria-label="선택 항목 추가" placeholder={type === 'status' ? `${STATUS_GROUP_LABELS[newOptionGroup]} 상태 추가` : '새 옵션'} maxLength={80} value={newOption} disabled={busy}
                                 onChange={(event) => setNewOption(event.target.value)}
                                 onKeyDown={(event) => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); addOption(); } }}
                                 className="min-w-0 flex-1 rounded-control border border-border-primary bg-bg-primary p-2 text-sm" />

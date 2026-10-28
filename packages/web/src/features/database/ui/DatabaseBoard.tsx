@@ -1,4 +1,5 @@
 ﻿'use client';
+import { resolveStatusGroups, STATUS_GROUP_KEYS, STATUS_GROUP_LABELS } from '@slacord/document-core';
 import { databaseRowHref } from '../model/databaseRowHref';
 import { useState } from 'react';
 import type { DatabaseDetail, DatabaseRow, PropertyValue } from '../model/types';
@@ -17,6 +18,8 @@ export function DatabaseBoard({
     busy,
     saveCell,
     groupProperty,
+    statusGrouping = 'option',
+    onStatusGroupingChange,
     onGroupPropertyChange,
 }: {
     hiddenProperties: string[];
@@ -27,6 +30,8 @@ export function DatabaseBoard({
     busy: boolean;
     saveCell: (row: DatabaseRow, propertyId: string, value: PropertyValue) => Promise<boolean>;
     groupProperty: string;
+    statusGrouping?: 'option' | 'group';
+    onStatusGroupingChange?: (mode: 'option' | 'group') => void;
     onGroupPropertyChange: (id: string) => void;
 }) {
     const [over, setOver] = useState<string | null>(null);
@@ -34,10 +39,16 @@ export function DatabaseBoard({
         ['status', 'select', 'multi_select', 'person', 'checkbox'].includes(p.type),
     );
     const prop = properties.find((p) => p.id === groupProperty) ?? properties[0];
+    const groupedStatus = prop?.type === 'status' && statusGrouping === 'group';
+    const identities = prop?.optionIdentities ?? (prop?.options ?? []).map(name => ({ id: name, name }));
+    const memberships = resolveStatusGroups(identities, prop?.statusOptionGroups);
+    const statusGroup = (name: string) => memberships.find(item => item.optionId === identities.find(option => option.name === name)?.id)?.group ?? 'todo';
+    const statusOptions = (group: string) => (prop?.options ?? []).filter(name => statusGroup(name) === group);
     const keys = (row: DatabaseRow): string[] => {
         if (!prop) return [];
         const value = row.values[prop.id];
         if (prop.type === 'checkbox') return [value ? 'true' : 'false'];
+        if (groupedStatus && typeof value === 'string' && value) return [statusGroup(value)];
         return Array.isArray(value) ? value.map(String) : value == null || value === '' ? [] : [String(value)];
     };
     const labels = new Map<string, string>();
@@ -46,6 +57,8 @@ export function DatabaseBoard({
         labels.delete('');
         labels.set('false', '미완료');
         labels.set('true', '완료');
+    } else if (groupedStatus) {
+        for (const group of STATUS_GROUP_KEYS) labels.set(group, STATUS_GROUP_LABELS[group]);
     } else if (prop?.type === 'person')
         for (const member of members) labels.set(member.userId, member.user?.username ?? '팀 멤버');
     else for (const option of prop?.options ?? []) labels.set(option, option);
@@ -54,7 +67,8 @@ export function DatabaseBoard({
             if (!labels.has(key)) labels.set(key, prop?.type === 'person' ? '워크스페이스에서 나간 사람' : key);
     const move = async (row: DatabaseRow, source: string, target: string) => {
         if (!prop || busy || !row.canEdit || source === target) return;
-        let value: PropertyValue = target || null;
+        if (groupedStatus && target && !statusOptions(target).length) return;
+        let value: PropertyValue = groupedStatus && target ? statusOptions(target)[0] : target || null;
         if (prop.type === 'checkbox') value = target === 'true';
         if (prop.type === 'multi_select' || prop.type === 'person')
             value = target ? [...new Set([...keys(row).filter((k) => k !== source), target])] : [];
@@ -77,6 +91,12 @@ export function DatabaseBoard({
                     ))}
                 </select>
             </label>
+            {prop?.type === 'status' && onStatusGroupingChange && <label className="ml-3 text-sm text-text-secondary">상태 표시{' '}
+                <select aria-label="보드 상태 표시" value={statusGrouping} onChange={event => onStatusGroupingChange(event.target.value as 'option' | 'group')}
+                    className="rounded-control border border-border-primary bg-bg-primary px-2 py-1">
+                    <option value="option">옵션별</option><option value="group">그룹별</option>
+                </select>
+            </label>}
             {!prop && (
                 <p className="text-sm text-text-secondary">
                     선택, 상태, 담당자 또는 체크박스 속성을 추가해 그룹을 나눌 수 있습니다.
@@ -93,7 +113,7 @@ export function DatabaseBoard({
                             aria-label={`${label} 그룹`}
                             className={`w-72 shrink-0 rounded-panel border p-3 ${over === key ? 'border-action bg-bg-secondary' : 'border-border-primary bg-bg-secondary'}`}
                             onDragOver={(e) => {
-                                if (e.dataTransfer.types.includes(dragType) && !busy) {
+                                if (e.dataTransfer.types.includes(dragType) && !busy && (!groupedStatus || !key || statusOptions(key).length)) {
                                     e.preventDefault();
                                     e.dataTransfer.dropEffect = 'move';
                                     setOver(key);
@@ -119,7 +139,7 @@ export function DatabaseBoard({
                             }}
                         >
                             <h3 className="mb-3 text-sm font-medium">
-                                {prop && ['select', 'multi_select', 'status'].includes(prop.type) && key ? <DatabaseOptionTag property={prop} name={key}>{label}</DatabaseOptionTag> : label} <span className="text-text-tertiary">{grouped.length}</span>
+                                {prop && !groupedStatus && ['select', 'multi_select', 'status'].includes(prop.type) && key ? <DatabaseOptionTag property={prop} name={key}>{label}</DatabaseOptionTag> : label} <span className="text-text-tertiary">{grouped.length}</span>
                             </h3>
                             <div className="min-h-16 space-y-3">
                                 {grouped.map((row) => (
@@ -175,7 +195,7 @@ export function DatabaseBoard({
                                                     className="max-w-full rounded bg-bg-secondary p-1 text-text-primary"
                                                 >
                                                     {[...labels].map(([value, name]) => (
-                                                        <option key={value} value={value}>
+                                                        <option key={value} value={value} disabled={!!(groupedStatus && value && !statusOptions(value).length)}>
                                                             {name}
                                                         </option>
                                                     ))}
