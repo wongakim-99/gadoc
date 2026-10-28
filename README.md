@@ -13,12 +13,12 @@
 ## 현재 배포 상태
 
 - 제품 이름과 저장소는 **가독 GaDoc / `kscold/gadoc`**입니다. 새 서비스 주소는 `https://gadoc.kr`이며, `slacord.cloud`는 기존 앱·링크의 전환 검증이 끝날 때까지만 호환을 유지합니다.
-- 현재 공개 데스크톱 버전은 **1.1.1**입니다. 웹의 `main` 배포와 데스크톱 설치 파일 릴리즈는 별개입니다.
+- 현재 공개 데스크톱 버전은 [GitHub Releases](https://github.com/kscold/gadoc/releases/latest)에서 확인합니다. **1.1.2** 배포 코드를 준비했으며 웹의 `main` 배포와 설치 파일 발행은 별개입니다.
 - macOS Apple Silicon에는 DMG, Windows x64에는 NSIS 설치 파일을 제공합니다. Linux 설치 파일은 제공하지 않습니다.
 - 1.1.1은 macOS 서명·공증과 Windows 코드 서명이 없는 릴리즈입니다. macOS는 새 DMG를 수동 설치하며, 서명·공증된 자동 업데이트 기준 버전으로 안내하지 않습니다.
 - 설치 파일은 릴리즈의 `SHA256SUMS.txt`와 비교하세요. 보안 경고가 발생하면 시스템 보호를 일괄 해제하지 말고 웹 서비스를 이용하세요.
 
-세부 변경은 [1.1.1 릴리즈 기록](./docs/releases/v1.1.1.md), 패키징·업데이트 정책은
+세부 변경은 [1.1.2 릴리즈 기록](./docs/releases/v1.1.2.md)과 [1.1.1 릴리즈 기록](./docs/releases/v1.1.1.md), 패키징·업데이트 정책은
 [데스크톱 앱 안내](./docs/desktop-app.md)를 참고하세요.
 
 ## 주요 기능

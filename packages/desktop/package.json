@@ -1,6 +1,6 @@
 {
   "name": "@slacord/desktop",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "GaDoc 데스크톱 앱 (Electron + DMG)",
   "author": "kscold",
   "private": true,
