@@ -126,6 +126,10 @@ export function DatabaseWorkspace({
         initialView.current.hiddenProperties ?? localViews.hiddenProperties,
     );
     const [statusGrouping, setStatusGrouping] = useState<'option' | 'group'>(initialView.current.statusGrouping ?? 'option');
+    const [hideEmptyGroups, setHideEmptyGroups] = useState(initialView.current.hideEmptyGroups ?? false);
+    const [hiddenBoardGroups, setHiddenBoardGroups] = useState<string[]>(initialView.current.hiddenBoardGroups ?? []);
+    const [boardGroupOrder, setBoardGroupOrder] = useState<string[]>(initialView.current.boardGroupOrder ?? []);
+    const [cardSize, setCardSize] = useState<'small' | 'medium' | 'large'>(initialView.current.cardSize ?? 'medium');
     const [groupProperty, setGroupProperty] = useState(initialView.current.groupProperty ?? 'status');
     const [endProperty, setEndProperty] = useState(initialView.current.endProperty ?? '');
     const [restoreViewVersion, setRestoreViewVersion] = useState(0);
@@ -153,6 +157,10 @@ export function DatabaseWorkspace({
                           endProperty,
                           groupProperty,
                           statusGrouping,
+                          hideEmptyGroups,
+                          hiddenBoardGroups,
+                          boardGroupOrder,
+                          cardSize,
                           dataSourceId,
                           hiddenProperties,
                           propertyOrder,
@@ -188,6 +196,10 @@ export function DatabaseWorkspace({
         endProperty,
         groupProperty,
         statusGrouping,
+        hideEmptyGroups,
+        hiddenBoardGroups,
+        boardGroupOrder,
+        cardSize,
         dataSourceId,
         hiddenProperties,
         propertyOrder,
@@ -209,7 +221,7 @@ export function DatabaseWorkspace({
         setSort(saved.sort);
         setDateProperty(saved.dateProperty ?? '');
         setEndProperty(saved.endProperty ?? '');
-        setGroupProperty(saved.groupProperty ?? 'status'); setStatusGrouping(saved.statusGrouping ?? 'option');
+        setGroupProperty(saved.groupProperty ?? 'status'); setStatusGrouping(saved.statusGrouping ?? 'option'); setHideEmptyGroups(saved.hideEmptyGroups ?? false); setHiddenBoardGroups(saved.hiddenBoardGroups ?? []); setBoardGroupOrder(saved.boardGroupOrder ?? []); setCardSize(saved.cardSize ?? 'medium');
         setDataSourceId(saved.dataSourceId || database!.id);
         setHiddenProperties(saved.hiddenProperties ?? []);
         setPropertyOrder(saved.propertyOrder ?? []);
@@ -318,6 +330,10 @@ export function DatabaseWorkspace({
                   endProperty,
                   groupProperty,
                   statusGrouping,
+                  hideEmptyGroups,
+                  hiddenBoardGroups,
+                  boardGroupOrder,
+                  cardSize,
                   dataSourceId,
                   hiddenProperties,
                   propertyOrder,
@@ -682,6 +698,10 @@ export function DatabaseWorkspace({
                                                               endProperty,
                                                               groupProperty,
                                                               statusGrouping,
+                                                              hideEmptyGroups,
+                                                              hiddenBoardGroups,
+                                                              boardGroupOrder,
+                                                              cardSize,
                                                               dataSourceId,
                                                               hiddenProperties,
                                                               propertyOrder,
@@ -701,7 +721,7 @@ export function DatabaseWorkspace({
                                             setSort(item.sort);
                                             setDateProperty(item.dateProperty ?? '');
                                             setEndProperty(item.endProperty ?? '');
-                                            setGroupProperty(item.groupProperty ?? 'status'); setStatusGrouping(item.statusGrouping ?? 'option');
+                                            setGroupProperty(item.groupProperty ?? 'status'); setStatusGrouping(item.statusGrouping ?? 'option'); setHideEmptyGroups(item.hideEmptyGroups ?? false); setHiddenBoardGroups(item.hiddenBoardGroups ?? []); setBoardGroupOrder(item.boardGroupOrder ?? []); setCardSize(item.cardSize ?? 'medium');
                                             setDataSourceId(item.dataSourceId ?? '');
                                             setHiddenProperties(item.hiddenProperties ?? []);
                                             setPropertyOrder(item.propertyOrder ?? []);
@@ -773,6 +793,10 @@ export function DatabaseWorkspace({
                                                                               endProperty,
                                                                               groupProperty,
                                                                               statusGrouping,
+                                                                              hideEmptyGroups,
+                                                                              hiddenBoardGroups,
+                                                                              boardGroupOrder,
+                                                                              cardSize,
                                                                               dataSourceId,
                                                                               hiddenProperties,
                                                                               propertyOrder,
@@ -795,6 +819,10 @@ export function DatabaseWorkspace({
                                                                     endProperty,
                                                                     groupProperty: prepared.groupProperty,
                                                                     statusGrouping,
+                                                                    hideEmptyGroups,
+                                                                    hiddenBoardGroups,
+                                                                    boardGroupOrder,
+                                                                    cardSize,
                                                                     dataSourceId,
                                                                     hiddenProperties,
                                                                     propertyOrder,
@@ -824,6 +852,10 @@ export function DatabaseWorkspace({
                                                         endProperty,
                                                         groupProperty: prepared.groupProperty,
                                                                     statusGrouping,
+                                                                    hideEmptyGroups,
+                                                                    hiddenBoardGroups,
+                                                                    boardGroupOrder,
+                                                                    cardSize,
                                                         dataSourceId,
                                                         hiddenProperties,
                                                         propertyOrder,
@@ -1039,6 +1071,18 @@ export function DatabaseWorkspace({
                                             <option value="chart">차트</option>
                                         </select>{' '}
                                     </label>
+                                    {view === 'board' && <div className="space-y-3 border-t border-border-primary pt-3">
+                                        <label className="flex items-center justify-between gap-3 text-xs">
+                                            빈 그룹 숨기기
+                                            <input type="checkbox" checked={hideEmptyGroups} disabled={busy} onChange={event => setHideEmptyGroups(event.target.checked)} />
+                                        </label>
+                                        <label className="flex items-center justify-between gap-3 text-xs">
+                                            카드 크기
+                                            <select aria-label="카드 크기" className={inputClass} value={cardSize} disabled={busy} onChange={event => setCardSize(event.target.value as 'small' | 'medium' | 'large')}>
+                                                <option value="small">작게</option><option value="medium">보통</option><option value="large">크게</option>
+                                            </select>
+                                        </label>
+                                    </div>}
                                     {inline && (
                                         <details
                                             open={viewMenu}
@@ -1093,6 +1137,10 @@ export function DatabaseWorkspace({
                                                                               endProperty,
                                                                               groupProperty,
                                                                               statusGrouping,
+                                                                              hideEmptyGroups,
+                                                                              hiddenBoardGroups,
+                                                                              boardGroupOrder,
+                                                                              cardSize,
                                                                               dataSourceId,
                                                                               hiddenProperties,
                                                                               propertyOrder,
@@ -1116,6 +1164,10 @@ export function DatabaseWorkspace({
                                                                     endProperty,
                                                                     groupProperty,
                                                                     statusGrouping,
+                                                                    hideEmptyGroups,
+                                                                    hiddenBoardGroups,
+                                                                    boardGroupOrder,
+                                                                    cardSize,
                                                                     dataSourceId,
                                                                     hiddenProperties,
                                                                     propertyOrder,
@@ -1152,7 +1204,7 @@ export function DatabaseWorkspace({
                                                         setSort(next.sort);
                                                         setDateProperty(next.dateProperty ?? '');
                                                         setEndProperty(next.endProperty ?? '');
-                                                        setGroupProperty(next.groupProperty ?? 'status'); setStatusGrouping(next.statusGrouping ?? 'option');
+                                                        setGroupProperty(next.groupProperty ?? 'status'); setStatusGrouping(next.statusGrouping ?? 'option'); setHideEmptyGroups(next.hideEmptyGroups ?? false); setHiddenBoardGroups(next.hiddenBoardGroups ?? []); setBoardGroupOrder(next.boardGroupOrder ?? []); setCardSize(next.cardSize ?? 'medium');
                                                         setDataSourceId(next.dataSourceId ?? '');
                                                         setHiddenProperties(next.hiddenProperties ?? []);
                                                         setPropertyOrder(next.propertyOrder ?? []);
@@ -1685,6 +1737,12 @@ export function DatabaseWorkspace({
                                 saveCell={saveCell}
                                 groupProperty={groupProperty}
                                 statusGrouping={statusGrouping}
+                                hideEmptyGroups={hideEmptyGroups}
+                                hiddenBoardGroups={hiddenBoardGroups}
+                                boardGroupOrder={boardGroupOrder}
+                                onHiddenBoardGroupsChange={setHiddenBoardGroups}
+                                onBoardGroupOrderChange={setBoardGroupOrder}
+                                cardSize={cardSize}
                                 onStatusGroupingChange={setStatusGrouping}
                                 onGroupPropertyChange={setGroupProperty}
                             />

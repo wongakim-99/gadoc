@@ -36,6 +36,10 @@ export function readInlineDatabaseViews(value: string): InlineDatabaseViews {
             views: parsed.views.map((view) => ({
                 ...view,
                 statusGrouping: view.statusGrouping === 'group' ? 'group' : 'option',
+                hideEmptyGroups: view.hideEmptyGroups === true,
+                hiddenBoardGroups: Array.isArray(view.hiddenBoardGroups) ? [...new Set(view.hiddenBoardGroups.filter(key => typeof key === 'string' && key.length <= 500))].slice(0, 500) : [],
+                boardGroupOrder: Array.isArray(view.boardGroupOrder) ? [...new Set(view.boardGroupOrder.filter(key => typeof key === 'string' && key.length <= 500))].slice(0, 500) : [],
+                cardSize: view.cardSize === 'small' || view.cardSize === 'large' ? view.cardSize : 'medium',
                 propertyOrder: Array.isArray(view.propertyOrder) ? [...new Set(view.propertyOrder.filter(id=>typeof id==='string'))].slice(0,500) : [],
                 columnWidths: view.columnWidths && typeof view.columnWidths === 'object' && !Array.isArray(view.columnWidths)
                     ? Object.fromEntries(Object.entries(view.columnWidths).filter(([,width])=>Number.isInteger(width)&&width>=120&&width<=800).slice(0,501)) : {},

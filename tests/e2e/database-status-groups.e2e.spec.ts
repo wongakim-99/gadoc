@@ -52,4 +52,45 @@ test('status membership persists across rename and board grouping preserves cano
     await expect(card.getByText('검토일', { exact: true })).toHaveCount(0);
     await expect(card.getByText('단계', { exact: true })).toBeVisible();
     await page.screenshot({ path: test.info().outputPath('status-group-board.png') });
+    await page.getByRole('button', { name: '보기 옵션', exact: true }).click();
+    await page.getByLabel('빈 그룹 숨기기', { exact: true }).check();
+    await page.getByLabel('카드 크기', { exact: true }).selectOption('small');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('region', { name: '완료 그룹', exact: true })).toHaveCount(0);
+    await expect.poll(async () => {
+        const updated = (await call<DatabaseDetail>(''))!.data!;
+        const saved = updated.views.find(view => view.name === '범주별');
+        return { hidden: saved?.hideEmptyGroups, size: saved?.cardSize };
+    }).toEqual({ hidden: true, size: 'small' });
+    await page.reload();
+    await expect(page.getByRole('region', { name: '완료 그룹', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('region', { name: '할 일 그룹', exact: true })).toHaveCSS('width', '224px');
+    await page.getByRole('button', { name: '보기 옵션', exact: true }).click();
+    await page.getByLabel('빈 그룹 숨기기', { exact: true }).uncheck();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('region', { name: '완료 그룹', exact: true })).toBeVisible();
+    expect((await call<DatabaseDetail>(''))!.data!.rows[0].values[prop.id]).toBe('준비');
+    const todo = page.getByRole('region', { name: '할 일 그룹', exact: true });
+    await todo.getByLabel('할 일 그룹 옵션', { exact: true }).click();
+    await todo.getByRole('button', { name: '오른쪽으로 이동', exact: true }).click();
+    await todo.getByRole('button', { name: '그룹 숨기기', exact: true }).click();
+    await expect(todo).toHaveCount(0);
+    await expect.poll(async () => {
+        const saved = (await call<DatabaseDetail>(''))!.data!.views.find(view => view.name === '범주별');
+        return { hidden: saved?.hiddenBoardGroups?.length, ordered: !!saved?.boardGroupOrder?.length };
+    }).toEqual({ hidden: 1, ordered: true });
+    await page.reload();
+    await expect(todo).toHaveCount(0);
+    await page.getByText('숨긴 그룹', { exact: true }).click();
+    await page.getByRole('button', { name: '할 일 그룹 다시 표시', exact: true }).click();
+    await expect(todo.getByRole('article')).toHaveCount(1);
+    const board = page.getByLabel('데이터베이스 보드', { exact: true });
+    await expect(board.locator(':scope > section').first()).toHaveAttribute('aria-label', '진행 중 그룹');
+    await expect.poll(async () => (await call<DatabaseDetail>(''))!.data!.views.find(view => view.name === '범주별')?.hiddenBoardGroups).toEqual([]);
+    await page.reload();
+    await expect(board.locator(':scope > section').first()).toHaveAttribute('aria-label', '진행 중 그룹');
+    await expect(todo.getByRole('article')).toHaveCount(1);
+
+
+
 });
