@@ -13,8 +13,10 @@ import {
     WorkspaceReferenceActions,
 } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
 import { useWorkspaceLeaveGuard } from '@/src/features/workspace/model/useWorkspaceConnection';
+import { useProjects } from '@/src/features/project/model/useProjects';
 
 interface CreateProps {
+    initialProjectId?: string;
     sourceNotice?: string;
     initialTitle?: string;
     mode: 'create';
@@ -27,6 +29,7 @@ interface CreateProps {
         priority: IssuePriority;
         assigneeIds?: string[];
         labels?: string[];
+        projectId?: string | null;
     }) => void | Promise<void>;
     onClose: () => void;
 }
@@ -44,6 +47,9 @@ type Props = (CreateProps | EditProps) & { presentation?: 'modal' | 'pane' };
 
 export function IssueModal(props: Props) {
     const isEdit = props.mode === 'edit';
+    const { projects, error: projectsError } = useProjects(isEdit ? props.issue.teamId : props.teamId);
+    const initialProject = isEdit ? props.issue.projectId ?? '' : props.initialProjectId ?? (props.sourceNotice ? 'auto' : '');
+    const [projectId, setProjectId] = useState(initialProject);
     const pane = props.presentation === 'pane';
     const [saved, setSaved] = useState(false);
     const revision = useRef(isEdit ? props.issue.revision : undefined);
@@ -60,7 +66,7 @@ export function IssueModal(props: Props) {
     const readOnly = props.readOnly ?? false;
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
-    const formSnapshot = JSON.stringify({ title, description, priority, status, assigneeIds, labels });
+    const formSnapshot = JSON.stringify({ title, description, priority, status, assigneeIds, labels, projectId });
     const baseline = useRef(formSnapshot);
     const currentIssue = props.mode === 'edit' ? props.issue : undefined;
     useEffect(() => {
@@ -68,11 +74,12 @@ export function IssueModal(props: Props) {
         if (!currentIssue || saving || formSnapshot !== baseline.current) return;
         const next = { title: currentIssue.title, description: currentIssue.description ?? '',
             priority: currentIssue.priority, status: currentIssue.status,
-            assigneeIds: currentIssue.assigneeIds ?? [], labels: currentIssue.labels ?? [] };
+            assigneeIds: currentIssue.assigneeIds ?? [], labels: currentIssue.labels ?? [], projectId: currentIssue.projectId ?? '' };
         baseline.current = JSON.stringify(next);
         revision.current = currentIssue.revision;
         setTitle(next.title); setDescription(next.description); setPriority(next.priority);
         setStatus(next.status); setAssigneeIds(next.assigneeIds); setLabels(next.labels);
+        setProjectId(next.projectId);
     }, [currentIssue, saving, formSnapshot]);
     const mayClose = () =>
         !saving &&
@@ -81,6 +88,7 @@ export function IssueModal(props: Props) {
                 description === (isEdit ? (props.issue.description ?? '') : '') &&
                 priority === (isEdit ? props.issue.priority : 'medium') &&
                 status === (isEdit ? props.issue.status : 'todo') &&
+                projectId === initialProject &&
                 JSON.stringify(assigneeIds) === JSON.stringify(isEdit ? (props.issue.assigneeIds ?? []) : []) &&
                 JSON.stringify(labels) === JSON.stringify(isEdit ? (props.issue.labels ?? []) : [])) ||
             window.confirm('저장하지 않은 이슈 변경이 있습니다. 이 화면을 닫을까요?'));
@@ -130,11 +138,12 @@ export function IssueModal(props: Props) {
         setSaved(false);
         try {
             if (isEdit) {
-                await props.onSubmit({ title, description, priority, status, assigneeIds, labels, revision: revision.current });
+                await props.onSubmit({ title, description, priority, status, assigneeIds, labels, projectId: projectId || null, revision: revision.current });
                 if (revision.current !== undefined) revision.current++;
                 baseline.current = formSnapshot;
             } else {
-                await props.onSubmit({ title, description, priority, assigneeIds, labels });
+                await props.onSubmit({ title, description, priority, assigneeIds, labels,
+                    ...(projectId === 'auto' ? {} : { projectId: projectId || null }) });
             }
             if (!pane) props.onClose();
             else setSaved(true);
@@ -225,6 +234,19 @@ export function IssueModal(props: Props) {
                     status={status}
                     title={title}
                 />
+
+                <label className="mb-4 block text-xs font-medium text-text-secondary">업무
+                    <select aria-label="이슈 업무" value={projectId} disabled={readOnly || saving}
+                        onChange={(e) => setProjectId(e.target.value)}
+                        className="mt-1.5 w-full rounded-control border border-border-primary bg-bg-primary px-3 py-2 text-sm text-text-primary">
+                        {!isEdit && props.sourceNotice && <option value="auto">생성 채널의 업무로 자동 분류</option>}
+                        <option value="">미분류</option>
+                        {projectId && projectId !== 'auto' && !projects.some((p) => p.id === projectId) &&
+                            <option value={projectId}>현재 업무</option>}
+                        {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+                    </select>
+                </label>
+                {projectsError && <p role="alert" className="mb-3 text-xs text-error">{projectsError}</p>}
 
                 {/* 라벨 태그 입력 */}
                 <div className="mb-4">

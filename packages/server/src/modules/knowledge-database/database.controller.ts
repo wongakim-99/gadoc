@@ -1,5 +1,5 @@
 import { ContentChangeInterceptor } from '../../shared/interceptors/content-change.interceptor';
-import { Body, Controller, Get, Param, Patch, Post, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards, UseInterceptors } from '@nestjs/common';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import { TeamRole } from '../../shared/decorators/team-role.decorator';
@@ -54,8 +54,9 @@ export class DatabaseController {
     }
     @Get(':databaseId')
     @TeamRole('member')
-    read(@Param('teamId') teamId: string, @Param('databaseId') id: string, @CurrentUser() user: { userId: string }) {
-        return this.service.read(teamId, user.userId, id);
+    read(@Param('teamId') teamId: string, @Param('databaseId') id: string, @CurrentUser() user: { userId: string },
+        @Query('projectId') projectId?: string) {
+        return this.service.read(teamId, user.userId, id, undefined, projectId);
     }
     @Post(':databaseId/query')
     @TeamRole('member')
@@ -95,7 +96,7 @@ export class DatabaseController {
         @CurrentUser() user: { userId: string },
         @Body() dto: CreateRowPageDto,
     ) {
-        return this.service.createRowPage(teamId, user.userId, id, dto.title, dto.creationId, dto.values);
+        return this.service.createRowPage(teamId, user.userId, id, dto.title, dto.creationId, dto.values, dto.projectId);
     }
     @Patch(':databaseId/row/:documentId')
     @TeamRole('writable')

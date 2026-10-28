@@ -55,6 +55,7 @@ export class IssueRepository implements IIssueRepository {
 
     async findByTeam(teamId: string, filters?: IssueSearchFilters): Promise<IssueEntity[]> {
         const query: Record<string, unknown> = { teamId };
+        if (filters?.projectId !== undefined) query.projectId = filters.projectId;
         if (filters?.status) query.status = filters.status;
         if (filters?.assigneeId === 'unassigned') {
             query['assigneeIds.0'] = { $exists: false };
@@ -75,6 +76,8 @@ export class IssueRepository implements IIssueRepository {
     }
 
     async save(data: {
+        projectId?: string | null;
+        status?: IssueStatus;
         teamId: string;
         title: string;
         description: string;
@@ -92,6 +95,7 @@ export class IssueRepository implements IIssueRepository {
     async update(
         id: string,
         data: Partial<{
+            projectId: string | null;
             databaseUpdatedBy: string;
             title: string;
             description: string;
@@ -133,6 +137,7 @@ export class IssueRepository implements IIssueRepository {
             doc.updatedAt,
             doc.links ?? [],
             doc.revision ?? 0,
+            doc.projectId ?? null,
         );
     }
 }

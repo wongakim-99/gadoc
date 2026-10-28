@@ -1,8 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsEnum, IsOptional, IsString, IsInt, Min } from 'class-validator';
+import { IsArray, IsEnum, IsOptional, IsString, IsInt, Min, IsMongoId } from 'class-validator';
 import type { IssuePriority, IssueStatus } from '../../../domain/issue.entity';
 
 export class UpdateIssueDto {
+    @IsOptional() @IsMongoId() projectId?: string | null;
     @IsOptional()
     @IsInt()
     @Min(0)

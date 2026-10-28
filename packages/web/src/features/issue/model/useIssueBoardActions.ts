@@ -23,6 +23,7 @@ export function useIssueBoardActions({ teamId, createStatus, issues, selectedIss
             assigneeIds?: string[];
             labels?: string[];
             sourceMessageId?: string;
+            projectId?: string | null;
         }) => {
             const response = await issueApi.createIssue(teamId, { ...data, status: createStatus });
             const created = unwrapApiData<Issue>(response);

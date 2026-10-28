@@ -22,6 +22,7 @@ interface Props {
 
 export function useIssueBoardData({ teamId, filters }: Props) {
     const searchParams = useSearchParams();
+    const projectId = searchParams.get('project') ?? '';
     const { issues, setIssues, setLoading } = useIssueStore();
     const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
     const workspace = useTeamWorkspaceData(teamId);
@@ -35,12 +36,13 @@ export function useIssueBoardData({ teamId, filters }: Props) {
                 query: filters.query,
                 assigneeId: filters.assigneeId || undefined,
                 status: filters.statusFilter === 'all' ? undefined : filters.statusFilter,
+                projectId: projectId || undefined,
             });
             if (version === requestVersion.current) setIssues(unwrapApiArray<Issue>(response));
         } finally {
             if (version === requestVersion.current) setLoading(false);
         }
-    }, [filters.assigneeId, filters.query, filters.statusFilter, setIssues, setLoading, teamId]);
+    }, [filters.assigneeId, filters.query, filters.statusFilter, projectId, setIssues, setLoading, teamId]);
 
     useEffect(() => {
         const timeout = window.setTimeout(
@@ -82,6 +84,7 @@ export function useIssueBoardData({ teamId, filters }: Props) {
 
     return {
         canWrite: workspace.canWrite,
+        projectId,
         issues,
         issuesByStatus: getIssuesByStatus(issues),
         loadIssues,
