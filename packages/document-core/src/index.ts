@@ -1,3 +1,4 @@
+export * from './option-color';
 export * from './number-format';
 export * from './document-layout';
 
