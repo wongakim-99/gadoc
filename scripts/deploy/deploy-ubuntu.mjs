@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { parseEnv } from "node:util";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 
 const APP_NAMES = ["slacord-backend", "slacord-frontend"];
 const DEFAULT_STATE = "/app/slacord-deploy";
@@ -14,9 +15,33 @@ function run(command, args, options = {}) {
 }
 
 function privateJson(file, value) {
-  fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, {
-    mode: 0o600,
-  });
+  try {
+    const stat = fs.lstatSync(file);
+    if (
+      !stat.isFile() ||
+      stat.nlink !== 1 ||
+      stat.uid !== process.getuid() ||
+      (stat.mode & 0o777) !== 0o600
+    )
+      throw new Error(
+        "Unsafe private deployment file (0600, regular file required).",
+      );
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  const temporary = `${file}.${randomUUID()}.tmp`;
+  try {
+    const fd = fs.openSync(temporary, "wx", 0o600);
+    try {
+      fs.writeFileSync(fd, `${JSON.stringify(value, null, 2)}\n`);
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+    fs.renameSync(temporary, file);
+  } finally {
+    fs.rmSync(temporary, { force: true });
+  }
 }
 
 export function readApps() {
@@ -180,10 +205,39 @@ export function prepareRuntimePaths(release, config) {
 
 export function readServerOverrides(state) {
   const file = path.join(state, "private", "server.env");
-  if (!fs.existsSync(file)) return {};
-  if ((fs.statSync(file).mode & 0o077) !== 0)
-    throw new Error("Server override file must be private (0600).");
-  const values = parseEnv(fs.readFileSync(file, "utf8"));
+  let fd;
+  try {
+    if (fs.lstatSync(file).isSymbolicLink())
+      throw new Error("Server override file must not be a symlink.");
+    fd = fs.openSync(
+      file,
+      fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK,
+    );
+  } catch (error) {
+    if (error.code === "ENOENT") return {};
+    throw error;
+  }
+  let values;
+  try {
+    const stat = fs.fstatSync(fd);
+    if (
+      !stat.isFile() ||
+      stat.nlink !== 1 ||
+      stat.uid !== process.getuid() ||
+      (stat.mode & 0o777) !== 0o600 ||
+      stat.size > 256 * 1024
+    )
+      throw new Error(
+        "Server override file must be private (0600), regular, and at most 256KiB.",
+      );
+    const buffer = Buffer.alloc(256 * 1024 + 1);
+    const length = fs.readSync(fd, buffer, 0, buffer.length, 0);
+    if (length > 256 * 1024)
+      throw new Error("Server override file exceeds 256KiB.");
+    values = parseEnv(buffer.subarray(0, length).toString("utf8"));
+  } finally {
+    fs.closeSync(fd);
+  }
   const allowed = new Set([
     "MINIO_ACCESS_KEY",
     "MINIO_SECRET_KEY",
@@ -207,7 +261,12 @@ export function readPublicOrigin(state) {
     origin = values.GADOC_PUBLIC_ORIGIN ?? origin;
   }
   const url = new URL(origin);
-  if (url.protocol !== "https:" || url.origin !== origin || url.username || url.password)
+  if (
+    url.protocol !== "https:" ||
+    url.origin !== origin ||
+    url.username ||
+    url.password
+  )
     throw new Error("Public origin must be an exact HTTPS origin.");
   return origin;
 }

@@ -58,6 +58,7 @@ async function main() {
     [
       "--test",
       "scripts/test/deploy-ubuntu.test.mjs",
+      "scripts/test/env-management.test.mjs",
       "scripts/test/gadoc-storage-policy.test.mjs",
       "scripts/test/desktop-artifacts.test.mjs",
     ],
