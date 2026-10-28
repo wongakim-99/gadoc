@@ -17,9 +17,15 @@ describe('security configuration', () => {
             'null',
             'http://127.0.0.1:3002',
             'https://slacord.cloud/path',
+            'https://gadoc.kr.evil.example',
+            'https://gadoc.kr/path',
+            'https://gadoc.kr:8443',
+            'http://gadoc.kr',
         ])
             expect(isAllowedOrigin(value, env)).toBe(false);
         expect(isAllowedOrigin('https://slacord.cloud', env)).toBe(true);
+        expect(isAllowedOrigin('https://gadoc.kr', env)).toBe(true);
+        expect(isAllowedOrigin('https://www.gadoc.kr', env)).toBe(true);
         expect(isAllowedOrigin(undefined, env)).toBe(true);
         expect(isAllowedOrigin('http://127.0.0.1:3202', { NODE_ENV: 'test' })).toBe(true);
     });

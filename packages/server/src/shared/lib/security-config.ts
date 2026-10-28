@@ -15,6 +15,8 @@ export function isAllowedOrigin(origin?: string, env: NodeJS.ProcessEnv = proces
         const url = new URL(origin);
         if (url.origin !== origin || !['http:', 'https:'].includes(url.protocol)) return false;
         const allowed = [
+            'https://gadoc.kr',
+            'https://www.gadoc.kr',
             'https://slacord.cloud',
             'https://www.slacord.cloud',
             env.NEXT_PUBLIC_APP_URL,

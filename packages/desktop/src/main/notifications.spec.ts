@@ -91,7 +91,7 @@ describe('native notifications', () => {
             href: '/team/issues',
         });
         h.notifications[0].emit('click');
-        expect(h.win.loadURL).toHaveBeenCalledWith('https://slacord.cloud/team/issues');
+        expect(h.win.loadURL).toHaveBeenCalledWith('https://gadoc.kr/team/issues');
     });
     it('never opens protocol-relative notification links', async () => {
         const h = await harness();

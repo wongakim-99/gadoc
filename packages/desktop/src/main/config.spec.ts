@@ -5,12 +5,28 @@ describe('desktop config', () => {
 
     beforeEach(() => {
         process.env = { ...originalEnv };
+        delete process.env.GADOC_DESKTOP_START_URL;
         delete process.env.SLACORD_DESKTOP_START_URL;
         delete process.env.SLACORD_APP_URL;
     });
 
     afterAll(() => {
         process.env = originalEnv;
+    });
+
+    it('새 설치는 gadoc.kr을 사용하고 구 도메인 호환성을 유지함', () => {
+        expect(getStartUrl()).toBe('https://gadoc.kr/auth/login');
+        expect(getAppOrigin()).toBe('https://gadoc.kr');
+        for (const origin of ['https://gadoc.kr', 'https://www.gadoc.kr', 'https://slacord.cloud'])
+            expect(isAllowedUrl(`${origin}/auth/login`)).toBe(true);
+        for (const origin of ['http://gadoc.kr', 'https://gadoc.kr:8443', 'https://gadoc.kr.evil.example', 'https://user@gadoc.kr'])
+            expect(isAllowedUrl(origin)).toBe(false);
+    });
+
+    it('새 환경변수는 레거시 시작 주소보다 우선함', () => {
+        process.env.GADOC_DESKTOP_START_URL = 'https://gadoc.kr/dashboard';
+        process.env.SLACORD_DESKTOP_START_URL = 'https://slacord.cloud/auth/login';
+        expect(getStartUrl()).toBe('https://gadoc.kr/dashboard');
     });
 
     it('데스크톱 시작 URL 환경변수를 우선 사용함', () => {
