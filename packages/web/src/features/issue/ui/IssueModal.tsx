@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Issue, IssuePriority, IssueStatus } from '@/src/entities/issue/types';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
 import { IssueAssigneePicker } from './IssueAssigneePicker';
@@ -46,6 +46,7 @@ export function IssueModal(props: Props) {
     const isEdit = props.mode === 'edit';
     const pane = props.presentation === 'pane';
     const [saved, setSaved] = useState(false);
+    const revision = useRef(isEdit ? props.issue.revision : undefined);
     const [title, setTitle] = useState(isEdit ? props.issue.title : (props.initialTitle ?? ''));
     const [description, setDescription] = useState(isEdit ? (props.issue.description ?? '') : '');
     const [priority, setPriority] = useState<IssuePriority>(isEdit ? props.issue.priority : 'medium');
@@ -59,6 +60,20 @@ export function IssueModal(props: Props) {
     const readOnly = props.readOnly ?? false;
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
+    const formSnapshot = JSON.stringify({ title, description, priority, status, assigneeIds, labels });
+    const baseline = useRef(formSnapshot);
+    const currentIssue = props.mode === 'edit' ? props.issue : undefined;
+    useEffect(() => {
+        // Follow remote DB changes only while this form has no local edits.
+        if (!currentIssue || saving || formSnapshot !== baseline.current) return;
+        const next = { title: currentIssue.title, description: currentIssue.description ?? '',
+            priority: currentIssue.priority, status: currentIssue.status,
+            assigneeIds: currentIssue.assigneeIds ?? [], labels: currentIssue.labels ?? [] };
+        baseline.current = JSON.stringify(next);
+        revision.current = currentIssue.revision;
+        setTitle(next.title); setDescription(next.description); setPriority(next.priority);
+        setStatus(next.status); setAssigneeIds(next.assigneeIds); setLabels(next.labels);
+    }, [currentIssue, saving, formSnapshot]);
     const mayClose = () =>
         !saving &&
         (readOnly ||
@@ -115,7 +130,9 @@ export function IssueModal(props: Props) {
         setSaved(false);
         try {
             if (isEdit) {
-                await props.onSubmit({ title, description, priority, status, assigneeIds, labels });
+                await props.onSubmit({ title, description, priority, status, assigneeIds, labels, revision: revision.current });
+                if (revision.current !== undefined) revision.current++;
+                baseline.current = formSnapshot;
             } else {
                 await props.onSubmit({ title, description, priority, assigneeIds, labels });
             }

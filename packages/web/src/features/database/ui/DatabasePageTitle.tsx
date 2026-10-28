@@ -13,18 +13,25 @@ export function DatabasePageTitle({
     showOpen = true,
     inputLabel,
     maxLength = 200,
+    rowId,
+    revision,
+    disabled = false,
 }: {
     title: string;
     href: string;
     canEdit: boolean;
-    onSave: (title: string) => Promise<boolean>;
+    onSave: (title: string, revision?: number) => Promise<boolean>;
     showOpen?: boolean;
     inputLabel?: string;
     maxLength?: number;
+    rowId?: string;
+    revision?: number;
+    disabled?: boolean;
 }) {
     const [draft, setDraft] = useState(title);
     const [saving, setSaving] = useState(false);
     const dirty = useRef(false);
+    const draftRevision = useRef(revision);
     const pending = useRef<Promise<boolean> | null>(null);
     const connection = useWorkspaceConnection();
     const router = useRouter();
@@ -40,7 +47,7 @@ export function DatabasePageTitle({
         if (!canEdit || !dirty.current) return Promise.resolve(true);
         setSaving(true);
         const next = draft.trim() || '제목 없음';
-        const task = onSave(next)
+        const task = onSave(next, draftRevision.current)
             .then((ok) => {
                 if (ok) {
                     dirty.current = false;
@@ -60,13 +67,14 @@ export function DatabasePageTitle({
         <div className="group/title flex w-full min-w-0 items-center gap-1">
             {canEdit ? (
                 <input
-                    data-page-name={href.split('/').at(-1)}
+                    data-page-name={rowId ?? href.split('/').at(-1)}
                     aria-label={inputLabel ?? `${title} 페이지 이름`}
                     value={draft}
-                    disabled={saving}
+                    disabled={saving || disabled}
                     maxLength={maxLength}
                     className="min-w-0 flex-1 rounded-control bg-transparent p-1 text-sm outline-none focus:ring-1 focus:ring-action"
                     onChange={(event) => {
+                        if (!dirty.current) draftRevision.current = revision;
                         dirty.current = true;
                         setDraft(event.target.value);
                     }}

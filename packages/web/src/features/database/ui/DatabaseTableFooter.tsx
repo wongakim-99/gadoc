@@ -12,16 +12,18 @@ export function DatabaseTableFooter({
     properties,
     calculations,
     onChange,
+    rowLabel = '페이지',
 }: {
     rows: DatabaseRow[];
     properties: DatabaseProperty[];
     calculations: Record<string, Aggregation>;
     onChange: (next: Record<string, Aggregation>) => void;
+    rowLabel?: string;
 }) {
     return (
         <tfoot className="border-t border-border-primary text-xs text-text-secondary">
             <tr>
-                <td className="sticky left-0 bg-bg-primary px-3 py-2">{rows.length}개 페이지</td>
+                <td className="sticky left-0 bg-bg-primary px-3 py-2">{rows.length}개 {rowLabel}</td>
                 {properties.map((property) => {
                     const selected = calculations[property.id];
                     const valid = selected && Object.hasOwn(AGGREGATION_LABELS, selected);

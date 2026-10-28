@@ -1,8 +1,14 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { CreateIssueUseCase } from './create-issue.use-case';
 import { UpdateIssueUseCase } from './update-issue.use-case';
 
 describe('canonical issue assignment membership', () => {
+    it('rejects a stale issue form without writing its revision as a field', async () => {
+        const repository = { findById: jest.fn(async () => ({ teamId: 'team', assigneeIds: [] })), update: jest.fn(async () => null) };
+        const update = new UpdateIssueUseCase(repository as never, {} as never);
+        await expect(update.execute({ id: 'issue', title: 'Draft', revision: 3 })).rejects.toBeInstanceOf(ConflictException);
+        expect(repository.update).toHaveBeenCalledWith('issue', { title: 'Draft' }, 3);
+    });
     it('rejects foreign assignees on regular issue create and update before writing', async () => {
         const repository = {
             findById: jest.fn(async () => ({ teamId: 'team', assigneeIds: [] })),

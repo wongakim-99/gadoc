@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef } from 'react';
 import { creationRequestId } from '../model/creationRequestId';
-import { databaseContainerApi } from '@/lib/api-client';
+import { databaseApi, databaseContainerApi } from '@/lib/api-client';
 import type { DatabaseContainer, KnowledgeDatabase } from '../model/types';
 export function DatabaseSources({
     teamId,
@@ -51,6 +51,21 @@ export function DatabaseSources({
                 </label>
                 {canWrite && (
                     <>
+                        {!container.sources.some((source) => source.sourceKind === 'issues') && (
+                            <button type="button" className={button} disabled={busy}
+                                onClick={async () => {
+                                    let sourceId = '';
+                                    const success = await mutate(async () => {
+                                        const result = await databaseApi.issueSource(teamId);
+                                        if (!result.data) throw new Error('이슈 소스를 연결하지 못했습니다.');
+                                        sourceId = result.data.id;
+                                        await databaseContainerApi.link(teamId, container.id, sourceId, container.revision);
+                                    }, '워크스페이스 이슈를 연결했습니다.');
+                                    if (success) onSelect(sourceId);
+                                }}>
+                                워크스페이스 이슈 연결
+                            </button>
+                        )}
                         <button
                             type="button"
                             className={button}

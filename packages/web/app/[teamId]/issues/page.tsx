@@ -106,6 +106,7 @@ export default function IssuesPage({ params }: Props) {
     return (
         <div className="issue-workspace h-full min-h-0 min-w-0 flex flex-col">
             <IssueBoardHeader
+                teamId={teamId}
                 canWrite={board.canWrite}
                 onCreate={() => {
                     board.setCreateStatus('todo');

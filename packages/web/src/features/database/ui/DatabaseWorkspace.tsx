@@ -1,4 +1,5 @@
 'use client';
+import { databaseRowHref } from '../model/databaseRowHref';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { SlidersHorizontal, Filter, ArrowDownUp, Search, Table2, Plus, Maximize2 } from 'lucide-react';
@@ -82,7 +83,10 @@ export function DatabaseWorkspace({
     latestScope.current = loadScope;
     const [database, setDatabase] = useState<DatabaseDetail | null>(null);
     const requestedView = inline ? inlineView : (searchParams.get('view') ?? database?.views[0]?.id ?? null);
+    const isIssueSource = database?.sourceKind === 'issues';
     const canManageDatabase = workspace.canWrite && database?.canEditSchema !== false;
+    const canManageViews = workspace.canWrite && (isIssueSource || canManageDatabase);
+    const canCreateRows = canManageViews;
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const pending = useRef(false);
@@ -259,7 +263,11 @@ export function DatabaseWorkspace({
             active = false;
         };
     }, [load]);
-    const notifyDatabaseUpdated = useDatabaseUpdates(teamId, databaseId, load);
+    const notifyDatabaseUpdated = useDatabaseUpdates(teamId, databaseId, async () => {
+        // The mutation refresh must finish before enabling edits with its new revision.
+        // A socket echo must not supersede that awaited request and leave stale rows enabled.
+        if (!pending.current) await load();
+    });
     const mutate = async (action: () => Promise<unknown>, message: string) => {
         if (pending.current) return false;
         pending.current = true;
@@ -311,7 +319,7 @@ export function DatabaseWorkspace({
             !inline &&
             readyView === requestedView &&
             !!selectedSavedView &&
-            canManageDatabase &&
+            canManageViews &&
             !database?.locked &&
             !busy,
         onSaved: async () => {
@@ -399,7 +407,7 @@ export function DatabaseWorkspace({
 
             setRevealedRow(documentId);
             setFocusRow(documentId);
-        }, '페이지를 추가했습니다.');
+        }, isIssueSource ? '이슈를 추가했습니다.' : '페이지를 추가했습니다.');
     const orderedProperties = [...(database?.properties ?? [])].sort((a, b) => {
         const rank = (id: string) => (propertyOrder.includes(id) ? propertyOrder.indexOf(id) : propertyOrder.length);
         return rank(a.id) - rank(b.id);
@@ -646,7 +654,7 @@ export function DatabaseWorkspace({
                                     {item.name}
                                 </button>
                             ))}
-                            {canManageDatabase && (
+                            {canManageViews && (
                                 <>
                                     <DatabaseMenu
                                         label="+ 보기 추가"
@@ -790,8 +798,8 @@ export function DatabaseWorkspace({
                                                     <option value="board">보드</option>
                                                     <option value="list">목록</option>
                                                     <option value="gallery">갤러리</option>
-                                                    <option value="calendar">달력</option>
-                                                    <option value="timeline">타임라인</option>
+                                                    <option value="calendar" disabled={isIssueSource}>달력</option>
+                                                    <option value="timeline" disabled={isIssueSource}>타임라인</option>
                                                     <option value="chart">차트</option>
                                                 </select>
                                             </label>
@@ -954,8 +962,8 @@ export function DatabaseWorkspace({
                                             <option value="board">보드</option>
                                             <option value="list">목록</option>
                                             <option value="gallery">갤러리</option>
-                                            <option value="calendar">달력</option>
-                                            <option value="timeline">타임라인</option>
+                                            <option value="calendar" disabled={isIssueSource}>달력</option>
+                                            <option value="timeline" disabled={isIssueSource}>타임라인</option>
                                             <option value="chart">차트</option>
                                         </select>{' '}
                                     </label>
@@ -1087,7 +1095,7 @@ export function DatabaseWorkspace({
                                             </div>
                                         </details>
                                     )}
-                                    {!inline && selectedSavedView && canManageDatabase && (
+                                    {!inline && selectedSavedView && canManageViews && (
                                         <details className="text-xs" data-manages-draft-navigation="true">
                                             <summary className="cursor-pointer rounded-control border border-border-primary px-3 py-2">
                                                 보기 설정
@@ -1192,7 +1200,7 @@ export function DatabaseWorkspace({
                                             sources={databases}
                                             activeId={database.id}
                                             busy={busy}
-                                            canWrite={canManageDatabase}
+                                            canWrite={canManageViews}
                                             mutate={mutate}
                                             onSelect={(sourceId) => {
                                                 setDataSourceId(sourceId);
@@ -1311,7 +1319,7 @@ export function DatabaseWorkspace({
                                         </button>
                                     )}
                                 </DatabaseMenu>
-                                {canManageDatabase && (
+                                {canCreateRows && (
                                     <div className="ml-2 flex items-center rounded-control bg-action text-white">
                                         <button
                                             type="button"
@@ -1319,9 +1327,9 @@ export function DatabaseWorkspace({
                                             className="rounded-l-control px-3 py-1.5 text-sm font-medium disabled:opacity-50"
                                             onClick={() => void createPage('제목 없음')}
                                         >
-                                            새 페이지
+                                            {isIssueSource ? '새 이슈' : '새 페이지'}
                                         </button>
-                                        <DatabaseTemplates
+                                        {!isIssueSource && <DatabaseTemplates
                                             teamId={teamId}
                                             database={database}
                                             busy={busy}
@@ -1330,7 +1338,7 @@ export function DatabaseWorkspace({
                                                 setRevealedRow(id);
                                                 window.dispatchEvent(new CustomEvent('slacord:documents-refresh'));
                                             }}
-                                        />{' '}
+                                        />}
                                     </div>
                                 )}
                             </div>
@@ -1415,12 +1423,12 @@ export function DatabaseWorkspace({
                                                 className="group/row border-b border-border-primary last:border-0 hover:bg-bg-hover/30"
                                                 onContextMenu={(event) => {
                                                     event.preventDefault();
-                                                    setContextRow(row.documentId);
+                                                    if (!isIssueSource) setContextRow(row.documentId);
                                                 }}
                                             >
                                                 <td className="sticky left-0 z-10 bg-bg-primary px-3 py-1">
                                                     <div className="flex items-center gap-2">
-                                                        <DatabaseRowActions
+                                                        {!isIssueSource && <DatabaseRowActions
                                                             teamId={teamId}
                                                             row={row}
                                                             busy={busy}
@@ -1464,13 +1472,21 @@ export function DatabaseWorkspace({
                                                                     );
                                                                 }, '휴지통으로 이동했습니다. 사이드바 휴지통에서 복원할 수 있습니다.');
                                                             }}
-                                                        />
+                                                        />}
                                                         <DatabasePageTitle
-                                                            href={`/${teamId}/docs/${row.documentId}`}
+                                                            href={databaseRowHref(teamId, row)}
+                                                            rowId={row.documentId}
+                                                            revision={row.revision}
+                                                            disabled={busy}
                                                             title={row.title}
                                                             canEdit={row.canEdit}
-                                                            onSave={(title) =>
+                                                            onSave={(title, revision) =>
                                                                 mutate(async () => {
+                                                                    if (isIssueSource) {
+                                                                        await databaseApi.updateRow(teamId, database.id, row.documentId, { title }, revision ?? row.revision);
+                                                                        window.dispatchEvent(new CustomEvent('slacord:issues-refresh'));
+                                                                        return;
+                                                                    }
                                                                     await documentApi.updateDocument(
                                                                         teamId,
                                                                         row.documentId,
@@ -1511,7 +1527,7 @@ export function DatabaseWorkspace({
                                                 {canManageDatabase && <td className="border-l border-border-primary" />}
                                             </tr>
                                         ))}
-                                        {canManageDatabase && (
+                                        {canCreateRows && (
                                             <tr>
                                                 <td
                                                     colSpan={tableProperties.length + 2}
@@ -1523,13 +1539,14 @@ export function DatabaseWorkspace({
                                                         className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-text-tertiary hover:bg-bg-hover"
                                                         onClick={() => void createPage('제목 없음')}
                                                     >
-                                                        <Plus size={14} />새 페이지 추가
+                                                        <Plus size={14} />{isIssueSource ? '새 이슈 추가' : '새 페이지 추가'}
                                                     </button>
                                                 </td>
                                             </tr>
                                         )}
                                     </tbody>
                                     <DatabaseTableFooter
+                                        rowLabel={isIssueSource ? '이슈' : '페이지'}
                                         rows={filtered}
                                         properties={tableProperties}
                                         calculations={calculations}
@@ -1567,12 +1584,12 @@ export function DatabaseWorkspace({
                         )}
                         {!filtered.length && (
                             <p className="py-6 text-center text-sm text-text-secondary">
-                                표시할 문서가 없습니다. 문서를 추가하거나 필터를 변경하세요.
+                                {isIssueSource ? '표시할 이슈가 없습니다.' : '표시할 문서가 없습니다. 문서를 추가하거나 필터를 변경하세요.'}
                             </p>
                         )}
                         <p className="sr-only">
                             {filtered.length}개 표시
-                            {!inline &&
+                            {!inline && !isIssueSource &&
                                 ' · 입력 후 다른 셀로 이동하면 저장됩니다. 관계와 롤업은 열람 가능한 문서만 표시합니다.'}
                         </p>
                         {canManageDatabase && !!database.archivedProperties?.length && (

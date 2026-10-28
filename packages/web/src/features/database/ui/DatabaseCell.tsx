@@ -133,7 +133,7 @@ export function DatabaseCell({
                 className={`max-w-full cursor-pointer appearance-none rounded px-1.5 py-0.5 text-xs outline-none focus:ring-1 focus:ring-action ${value ? "bg-bg-hover text-text-primary" : "w-full bg-transparent"}`}
                 onChange={(e) => void commit(e.target.value || null)}
             >
-                <option value="">{value ? '비우기' : ' '}</option>
+                <option value="" disabled={row.resourceKind === 'issue' && ['status', 'priority'].includes(property.id)}>{value ? '비우기' : ' '}</option>
                 {property.options?.map((option) => (
                     <option key={option}>{option}</option>
                 ))}
@@ -236,7 +236,7 @@ export function DatabaseCell({
                                                 />
                                                 {option.title}
                                             </label>
-                                            {property.type === 'person' &&
+                                            {property.type === 'person' && row.resourceKind !== 'issue' &&
                                                 row.availablePersonIds.includes(option.id) && (
                                                     <button
                                                         type="button"

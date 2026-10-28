@@ -1,4 +1,5 @@
 ﻿'use client';
+import { databaseRowHref } from '../model/databaseRowHref';
 import { useState } from 'react';
 import type { DatabaseDetail, DatabaseRow, PropertyValue } from '../model/types';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
@@ -159,7 +160,7 @@ export function DatabaseBoard({
                                             </span>
                                         )}
                                         <ResourceNavigation
-                                            href={`/${teamId}/docs/${row.documentId}`}
+                                            href={databaseRowHref(teamId, row)}
                                             title={row.title}
                                         />
                                         {row.canEdit && prop && (

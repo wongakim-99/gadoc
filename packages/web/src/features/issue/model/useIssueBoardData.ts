@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { subscribeDatabaseChanges } from '@/src/features/database/model/databaseSocket';
 import { useSearchParams } from 'next/navigation';
 import { issueApi, unwrapApiArray } from '@/lib/api-client';
 import { useIssueStore } from './issue.store';
@@ -24,8 +25,10 @@ export function useIssueBoardData({ teamId, filters }: Props) {
     const { issues, setIssues, setLoading } = useIssueStore();
     const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
     const workspace = useTeamWorkspaceData(teamId);
+    const requestVersion = useRef(0);
 
     const loadIssues = useCallback(async () => {
+        const version = ++requestVersion.current;
         setLoading(true);
         try {
             const response = await issueApi.getIssues(teamId, {
@@ -33,9 +36,9 @@ export function useIssueBoardData({ teamId, filters }: Props) {
                 assigneeId: filters.assigneeId || undefined,
                 status: filters.statusFilter === 'all' ? undefined : filters.statusFilter,
             });
-            setIssues(unwrapApiArray<Issue>(response));
+            if (version === requestVersion.current) setIssues(unwrapApiArray<Issue>(response));
         } finally {
-            setLoading(false);
+            if (version === requestVersion.current) setLoading(false);
         }
     }, [filters.assigneeId, filters.query, filters.statusFilter, setIssues, setLoading, teamId]);
 
@@ -57,6 +60,15 @@ export function useIssueBoardData({ teamId, filters }: Props) {
         window.addEventListener('slacord:issues-refresh', refresh);
         return () => window.removeEventListener('slacord:issues-refresh', refresh);
     }, [loadIssues]);
+
+    useEffect(() => {
+        let timer: ReturnType<typeof setTimeout>;
+        const unsubscribe = subscribeDatabaseChanges(teamId, () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => { void loadIssues(); }, 150);
+        });
+        return () => { clearTimeout(timer); unsubscribe(); requestVersion.current++; };
+    }, [teamId, loadIssues]);
 
     useEffect(() => {
         const focusIssueId = searchParams.get('issue');

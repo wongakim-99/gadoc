@@ -99,10 +99,14 @@ export class IssueRepository implements IIssueRepository {
             assigneeIds: string[];
             labels: string[];
         }>,
+        revision?: number,
     ): Promise<IssueEntity | null> {
-        const doc = await this.issueModel
-            .findByIdAndUpdate(id, { $set: data, $inc: { revision: 1 } }, { new: true })
-            .lean();
+        const update = { $set: data, $inc: { revision: 1 } };
+        const doc = await (revision === undefined
+            ? this.issueModel.findByIdAndUpdate(id, update, { new: true })
+            : this.issueModel.findOneAndUpdate({ _id: id,
+                ...(revision === 0 ? { $or: [{ revision: 0 }, { revision: { $exists: false } }] } : { revision }),
+            }, update, { new: true })).lean();
         if (doc) this.changed(String(doc.teamId));
         return doc ? this.toEntity(doc as IssueDocument) : null;
     }

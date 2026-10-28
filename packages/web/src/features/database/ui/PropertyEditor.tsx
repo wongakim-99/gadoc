@@ -161,7 +161,7 @@ export function PropertyEditor({
                             className={inputClass}
                         >
                             <option value="">선택하세요</option>
-                            {databases.map((db) => (
+                            {databases.filter((db) => db.sourceKind !== 'issues').map((db) => (
                                 <option key={db.id} value={db.id}>
                                     {db.name}
                                 </option>

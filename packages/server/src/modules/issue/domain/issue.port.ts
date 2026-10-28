@@ -33,6 +33,7 @@ export interface IIssueRepository {
             assigneeIds: string[];
             labels: string[];
         }>,
+        revision?: number,
     ): Promise<IssueEntity | null>;
     deleteById(id: string): Promise<boolean>;
 }
