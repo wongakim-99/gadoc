@@ -5,7 +5,7 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react';
 const changed = 'gadoc:sidebar-collapse';
 const fallback = new Map<string, boolean>();
 
-export function useSidebarCollapse(teamId: string) {
+export function useSidebarCollapse(teamId: string, shortcutsEnabled = true) {
     const key = `gadoc:sidebar-collapsed:${teamId}`;
     const subscribe = useCallback((notify: () => void) => {
         window.addEventListener('storage', notify);
@@ -29,6 +29,7 @@ export function useSidebarCollapse(teamId: string) {
         window.dispatchEvent(new Event(changed));
     }, [key]);
     useEffect(() => {
+        if (!shortcutsEnabled) return;
         const onKey = (event: KeyboardEvent) => {
             if (!(event.metaKey || event.ctrlKey) || !event.shiftKey || event.code !== 'Backslash') return;
             if (!window.matchMedia('(min-width: 1024px)').matches) return;
@@ -37,6 +38,6 @@ export function useSidebarCollapse(teamId: string) {
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [read, setCollapsed]);
+    }, [read, setCollapsed, shortcutsEnabled]);
     return { collapsed, setCollapsed };
 }
