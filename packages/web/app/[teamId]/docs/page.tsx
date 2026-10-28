@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus } from 'lucide-react';
+import { LayoutTemplate, Plus } from 'lucide-react';
 import { DatabaseWorkspace } from '@/src/features/database/ui/DatabaseWorkspace';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { use } from 'react';
@@ -12,7 +12,6 @@ import type { DocumentNode } from '@/src/entities/document/types';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
 import { DocumentTree } from '@/src/widgets/document/ui/DocumentTree';
 import { createDocumentHubTemplate } from '@slacord/document-core';
-import { LayoutTemplate } from 'lucide-react';
 
 interface Props {
     params: Promise<{ teamId: string }>;
@@ -133,14 +132,6 @@ function DocumentIndex({ teamId }: { teamId: string }) {
             </div>
 
             <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6">
-                {canWrite && !loading && <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-primary pb-5">
-                    <div><h3 className="text-sm font-semibold text-text-primary">문서를 연결해 팀의 시작 페이지로</h3>
-                        <p className="mt-1 text-xs text-text-secondary">섹션과 여러 열에 문서·링크·업무를 자유롭게 배치하세요.</p></div>
-                    <button type="button" disabled={saving} onClick={() => void handleCreate('hub')}
-                        className="inline-flex items-center gap-2 rounded-control border border-border-primary px-3 py-2 text-sm hover:bg-bg-hover disabled:opacity-50">
-                        <LayoutTemplate size={16} /> 문서 허브 만들기
-                    </button>
-                </div>}
                 {error && (
                     <p role="alert" className="text-sm text-red-300">
                         {error}
@@ -154,6 +145,7 @@ function DocumentIndex({ teamId }: { teamId: string }) {
                     )
                 )}
                 {canWrite ? (
+                    <div className="flex flex-wrap items-center gap-1">
                     <button
                         disabled={saving || loading}
                         onClick={() => void handleCreate()}
@@ -161,6 +153,15 @@ function DocumentIndex({ teamId }: { teamId: string }) {
                     >
                         <Plus size={16} aria-hidden="true" />{saving ? '생성 중…' : '새 페이지'}
                     </button>
+                    <button
+                        type="button"
+                        disabled={saving || loading}
+                        onClick={() => void handleCreate('hub')}
+                        className="flex min-h-9 items-center gap-2 rounded-control px-2 py-2 text-sm text-text-secondary hover:bg-bg-hover disabled:opacity-50"
+                    >
+                        <LayoutTemplate size={16} aria-hidden="true" /> 문서 허브 만들기
+                    </button>
+                    </div>
                 ) : null}
             </div>
         </div>
