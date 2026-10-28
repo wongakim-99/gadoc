@@ -63,3 +63,9 @@ export function createDocumentHubTemplate() {
     { type: "paragraph" as const, content: "" },
   ];
 }
+
+export const documentMermaidConfig = {
+  type: "mermaid",
+  propSchema: { code: { default: "flowchart LR\n  A[시작] --> B[완료]" } },
+  content: "none",
+} as const;

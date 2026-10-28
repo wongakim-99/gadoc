@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { documentColumnConfig, documentColumnsConfig } from '@slacord/document-core';
+import { documentColumnConfig, documentColumnsConfig, documentMermaidConfig } from '@slacord/document-core';
 
 export function documentStateBytes(value: unknown): Buffer | undefined {
     if (value == null) return undefined;
@@ -30,10 +30,11 @@ export class DocumentCodec {
             { render: () => ({ dom: globalThis.document.createElement('div') }) },
         );
         const layoutRender = { render: () => ({ dom: globalThis.document.createElement('div') }) };
+        const mermaid = core.createBlockSpec(documentMermaidConfig, layoutRender);
         const columns = core.createBlockSpec(documentColumnsConfig, layoutRender);
         const column = core.createBlockSpec(documentColumnConfig, layoutRender);
         const schema = core.BlockNoteSchema.create({ blockSpecs: {
-            ...core.defaultBlockSpecs, database: database(), documentColumns: columns(), documentColumn: column(),
+            ...core.defaultBlockSpecs, mermaid: mermaid(), database: database(), documentColumns: columns(), documentColumn: column(),
         } });
         return { editor: ServerBlockNoteEditor.create({ schema }), Y };
     }
