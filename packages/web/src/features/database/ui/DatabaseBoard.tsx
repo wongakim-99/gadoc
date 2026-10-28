@@ -107,6 +107,7 @@ export function DatabaseBoard({
                     const grouped = rows.filter((row) =>
                         key === '' ? keys(row).length === 0 : keys(row).includes(key),
                     );
+                    if (key === '' && grouped.length === 0) return null;
                     return (
                         <section
                             key={key}
