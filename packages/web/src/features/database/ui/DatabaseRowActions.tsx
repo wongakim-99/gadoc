@@ -1,9 +1,10 @@
 'use client';
 import { MoreHorizontal, Copy, ExternalLink, Link2, Trash2, Pencil } from 'lucide-react';
-import { useState } from 'react';
 import { DatabaseMenu } from './DatabaseMenu';
 import { ResourceNavigation } from '@/src/features/workspace/ui/ResourceNavigation';
 import type { DatabaseRow } from '../model/types';
+import { publicAppUrl } from '@/lib/runtime-config';
+import { CopyButton } from '@/src/shared/ui/CopyButton';
 export function DatabaseRowActions({
     teamId,
     row,
@@ -21,7 +22,6 @@ export function DatabaseRowActions({
     onDuplicate: () => Promise<void>;
     onArchive: () => Promise<void>;
 }) {
-    const [notice, setNotice] = useState('');
     const button =
         'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-bg-hover disabled:opacity-40';
     return (
@@ -37,21 +37,13 @@ export function DatabaseRowActions({
                 <ExternalLink size={14} />
                 전체 페이지로 열기
             </a>
-            <button
-                type="button"
+            <CopyButton
+                value={`${publicAppUrl()}/${teamId}/docs/${row.documentId}`}
                 className={button}
-                onClick={async () => {
-                    try {
-                        await navigator.clipboard.writeText(`${location.origin}/${teamId}/docs/${row.documentId}`);
-                        setNotice('링크를 복사했습니다.');
-                    } catch {
-                        setNotice('링크를 복사하지 못했습니다.');
-                    }
-                }}
             >
                 <Link2 size={14} />
                 링크 복사
-            </button>
+            </CopyButton>
             {row.canEdit && (
                 <>
                     <button
@@ -86,11 +78,6 @@ export function DatabaseRowActions({
                         휴지통으로 이동
                     </button>
                 </>
-            )}
-            {notice && (
-                <p role="status" className="text-xs text-text-secondary">
-                    {notice}
-                </p>
             )}
         </DatabaseMenu>
     );

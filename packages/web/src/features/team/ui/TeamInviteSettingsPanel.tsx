@@ -4,6 +4,7 @@ import { InviteQrCard } from './InviteQrCard';
 import { InviteLinkList } from './InviteLinkList';
 import { InviteMemberAccessList } from './InviteMemberAccessList';
 import { useTeamInviteSettings } from '../model/useTeamInviteSettings';
+import { CopyButton } from '@/src/shared/ui/CopyButton';
 
 interface Props {
     teamId: string;
@@ -37,12 +38,12 @@ export function TeamInviteSettingsPanel({ teamId }: Props) {
                             </div>
                             <div className="mt-4 flex flex-wrap gap-2">
                                 <button disabled={!settings.canManageInvites || settings.creating} onClick={settings.createInvite} className="rounded-full bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-400 disabled:opacity-40">초대 링크 만들기</button>
-                                <button disabled={!settings.activeInvite} onClick={() => settings.activeInvite && navigator.clipboard.writeText(settings.inviteUrl)} className="rounded-full border border-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/6 disabled:opacity-40">활성 링크 복사</button>
+                                <CopyButton disabled={!settings.activeInvite} value={settings.inviteUrl} className="rounded-full border border-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/6 disabled:opacity-40">활성 링크 복사</CopyButton>
                             </div>
                         </div>
                         <InviteQrCard value={settings.inviteUrl} />
                     </div>
-                    <InviteLinkList inviteUrl={settings.inviteUrl} invites={settings.invites} onRevoke={settings.revokeInvite} onDelete={settings.deleteInvite} />
+                    <InviteLinkList invites={settings.invites} onRevoke={settings.revokeInvite} onDelete={settings.deleteInvite} />
                     {settings.canManageMembers ? <InviteMemberAccessList currentUserId={settings.currentUserId} members={settings.members} onUpdate={settings.updateMemberAccess} /> : null}
                 </>
             ) : null}

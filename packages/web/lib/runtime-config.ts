@@ -1,3 +1,5 @@
+import { canonicalShareOrigin } from '../src/shared/lib/publicLinks';
+
 const DEFAULT_API_URL = 'http://localhost:8082';
 const DEFAULT_APP_URL = 'http://localhost:3002';
 
@@ -30,9 +32,9 @@ export function toApiUrl(path: string) {
 
 export function publicAppUrl() {
     if (typeof window !== 'undefined') {
-        return window.location.origin;
+        return canonicalShareOrigin(window.location.origin);
     }
-    return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_API_URL || DEFAULT_APP_URL;
+    return canonicalShareOrigin(process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_API_URL || DEFAULT_APP_URL);
 }
 
 export function socketUrl() {
