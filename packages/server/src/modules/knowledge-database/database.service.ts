@@ -243,6 +243,9 @@ export class DatabaseService {
                 throw new BadRequestException('선택 항목의 색상 설정을 확인하세요.');
             property.optionColors = dto.optionColors.map(({ name, color }) => ({ name, color }));
         }
+        if (dto.numberPresentation && !['number', 'formula', 'rollup'].includes(dto.type))
+            throw new BadRequestException('진행률 표시는 숫자·수식·롤업 속성에만 사용할 수 있습니다.');
+        if (dto.numberPresentation) property.numberPresentation = { ...dto.numberPresentation };
         if (dto.numberFormat && !['number', 'formula', 'rollup'].includes(dto.type))
             throw new BadRequestException('숫자 표시 형식은 숫자·수식·롤업 속성에만 사용할 수 있습니다.');
         if (['number', 'formula', 'rollup'].includes(dto.type)) property.numberFormat = dto.numberFormat ?? 'number';
@@ -314,7 +317,7 @@ export class DatabaseService {
                 teamId,
                 userId,
                 await this.completeProperties(teamId, userId, id),
-                { ...dto, optionColors: dto.optionColors ?? current.optionColors?.filter((item) => (dto.options ?? current.options ?? []).includes(item.name)) },
+                { ...dto, numberFormat: dto.numberFormat ?? current.numberFormat, numberPresentation: dto.numberPresentation ?? current.numberPresentation, optionColors: dto.optionColors ?? current.optionColors?.filter((item) => (dto.options ?? current.options ?? []).includes(item.name)) },
                 current.formulaReferences,
             )),
             id: propertyId,
