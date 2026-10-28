@@ -1,3 +1,4 @@
+import { NUMBER_FORMATS, type NumberFormat } from '@slacord/document-core';
 import { AGGREGATION_LABELS, type Aggregation } from '@slacord/document-core';
 import type { FilterGroup, SortRule } from '@slacord/document-core';
 import {
@@ -25,6 +26,7 @@ export class RenameDatabaseDto extends CreateDatabaseDto {
     @IsInt() @Min(0) revision!: number;
 }
 export class AddPropertyDto {
+    @IsOptional() @IsIn(NUMBER_FORMATS) numberFormat?: NumberFormat;
     @IsOptional() @IsBoolean() bidirectional?: boolean;
     @IsOptional() @IsString() @MaxLength(80) inverseName?: string;
     @IsOptional() @IsString() @MaxLength(20) prefix?: string;

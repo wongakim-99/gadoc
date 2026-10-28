@@ -1,4 +1,5 @@
 'use client';
+import { formatDatabaseNumber } from '@slacord/document-core';
 import { useEffect, useRef, useState } from 'react';
 import { DatabaseMenu } from './DatabaseMenu';
 import { databaseApi } from '@/lib/api-client';
@@ -36,6 +37,7 @@ export function DatabaseCell({
     const savePromise = useRef<Promise<boolean> | null>(null);
     const editing = useRef(false);
     const draftRevision = useRef(row.revision);
+    const [numberFocused, setNumberFocused] = useState(false);
     const [draft, setDraft] = useState(String(value ?? ''));
     const [choices, setChoices] = useState<Array<{ id: string; title: string }>>([]);
     const [query, setQuery] = useState('');
@@ -171,7 +173,7 @@ export function DatabaseCell({
                       ? value
                           ? '참'
                           : '거짓'
-                      : (value ?? '—')}
+                      : typeof value === 'number' ? formatDatabaseNumber(value, property.numberFormat) : (value ?? '—')}
             </span>
         );
     if (property.type === 'unique_id')
@@ -398,10 +400,11 @@ export function DatabaseCell({
                 aria-label={label}
                 disabled={disabled}
                 className={`${cellClass} ${property.type === 'date' && !draft ? 'text-transparent focus:text-text-primary [&::-webkit-calendar-picker-indicator]:opacity-0 focus:[&::-webkit-calendar-picker-indicator]:opacity-100' : ''}`}
-                value={draft}
+                value={property.type === 'number' && !numberFocused && draft !== '' && Number.isFinite(Number(draft)) ? formatDatabaseNumber(Number(draft), property.numberFormat) : draft}
+                onFocus={() => { if (property.type === 'number') setNumberFocused(true); }}
                 type={
                     property.type === 'number'
-                        ? 'number'
+                        ? (numberFocused || !property.numberFormat || property.numberFormat === 'number' ? 'number' : 'text')
                         : property.type === 'date'
                           ? 'date'
                           : property.type === 'url'
@@ -422,6 +425,7 @@ export function DatabaseCell({
                     if (e.key === 'Enter') e.currentTarget.blur();
                 }}
                 onBlur={() => {
+                    setNumberFocused(false);
                     const next = draft === '' ? null : property.type === 'number' ? Number(draft) : draft;
                     if (next !== value) void commit(next);
                 }}
