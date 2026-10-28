@@ -204,7 +204,12 @@ export function DatabaseBoard({
                                         )}
                                         <div className="mt-2 space-y-1">
                                             {database.properties
-                                                .filter((property) => !hiddenProperties.includes(property.id))
+                                                .filter((property) => {
+                                                    if (hiddenProperties.includes(property.id)) return false;
+                                                    const value = row.values[property.id];
+                                                    return !!row.formulaErrors?.[property.id] ||
+                                                        (value !== null && value !== undefined && value !== '' && (!Array.isArray(value) || value.length > 0));
+                                                })
                                                 .map((property) => (
                                                     <div key={property.id} className="min-w-0">
                                                         <span className="text-[11px] text-text-tertiary">

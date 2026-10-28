@@ -48,5 +48,8 @@ test('status membership persists across rename and board grouping preserves cano
     await page.reload();
     await expect(page.getByLabel('보드 상태 표시')).toHaveValue('group');
     await expect(page.getByRole('region', { name: '할 일 그룹', exact: true }).getByRole('article')).toHaveCount(1);
+    const card = page.getByRole('region', { name: '할 일 그룹', exact: true }).getByRole('article');
+    await expect(card.getByText('검토일', { exact: true })).toHaveCount(0);
+    await expect(card.getByText('단계', { exact: true })).toBeVisible();
     await page.screenshot({ path: test.info().outputPath('status-group-board.png') });
 });
