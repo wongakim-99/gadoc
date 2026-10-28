@@ -9,6 +9,8 @@ import test from "node:test";
 import {
   activateRelease,
   readServerOverrides,
+  snapshotApps,
+  assertNoPendingEnvironmentApply,
 } from "../deploy/deploy-ubuntu.mjs";
 import {
   checksum,
@@ -19,6 +21,7 @@ import {
   parseCommand,
   readInput,
   validateOverrides,
+  verifyRollbackRuntime,
 } from "../deploy/env-management.mjs";
 
 const original =
@@ -64,9 +67,45 @@ function fixture(t, dependencies = {}) {
   const manager = environmentManager(state, {
     readApps: () => apps,
     readOrigin: () => "https://example.test",
+    verifyRollback: async () => {},
     ...dependencies,
   });
-  return { state, file, release, revision, apps, manager };
+  const ecosystem = path.join(release, "ecosystem.config.json");
+  const originalEcosystem = `${JSON.stringify({ ...snapshotApps(apps), metadata: { preserve: "original-format-and-fields" } }, null, 4)}\n`;
+  fs.writeFileSync(ecosystem, originalEcosystem, { mode: 0o600 });
+  return {
+    state,
+    file,
+    release,
+    revision,
+    apps,
+    manager,
+    ecosystem,
+    originalEcosystem,
+  };
+}
+
+// A fresh process reads the exact path used by Control's `pm2 start` on boot.
+function nextBootStorageKey(state) {
+  const result = spawnSync(
+    process.execPath,
+    [
+      "-e",
+      `
+    const fs = require('node:fs');
+    const config = JSON.parse(fs.readFileSync(process.argv[1] + '/current/ecosystem.config.json'));
+    process.stdout.write(config.apps[0].env.MINIO_SECRET_KEY);
+  `,
+      state,
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(
+    result.status,
+    0,
+    "next boot can read the saved PM2 configuration",
+  );
+  return result.stdout;
 }
 
 test("env-v1 accepts only exact verbs, SHA-256 and v4 UUID; no paths or shell input", () => {
@@ -336,6 +375,502 @@ test("failed health restores both PM2 definitions and records a failed applicati
   assert.equal(fs.realpathSync(path.join(state, "current")), release);
   assert.equal(manager.status(requestId).state, "failed");
 });
+
+test("failed same-release apply restores the exact boot configuration for the next restart", async (t) => {
+  const { manager, state, ecosystem, originalEcosystem } = fixture(t, {
+    activate: (input) =>
+      activateRelease(input, {
+        preparePaths: () => {},
+        replace: () => {},
+        run: () => {},
+        verify: async (_origin, revision) => {
+          if (revision) throw new Error("synthetic-health-failure");
+        },
+      }),
+  });
+  manager.write(checksum(original), checksum(desired), desired);
+  assert.equal(
+    (await manager.apply(requestId, checksum(desired))).state,
+    "failed",
+  );
+  assert.equal(fs.readFileSync(ecosystem, "utf8"), originalEcosystem);
+  assert.equal(fs.statSync(ecosystem).mode & 0o777, 0o600);
+  assert.equal(nextBootStorageKey(state), "synthetic-old");
+  assert.equal(
+    manager.read().payload,
+    desired,
+    "desired override remains available for an explicit retry",
+  );
+});
+
+test("successful same-release apply retains the desired configuration for the next restart", async (t) => {
+  const { manager, state, ecosystem, originalEcosystem } = fixture(t, {
+    activate: (input) =>
+      activateRelease(input, {
+        preparePaths: () => {},
+        replace: () => {},
+        run: () => {},
+        verify: async () => {},
+      }),
+  });
+  manager.write(checksum(original), checksum(desired), desired);
+  assert.equal(
+    (await manager.apply(requestId, checksum(desired))).state,
+    "succeeded",
+  );
+  assert.notEqual(fs.readFileSync(ecosystem, "utf8"), originalEcosystem);
+  assert.equal(fs.statSync(ecosystem).mode & 0o777, 0o600);
+  assert.equal(nextBootStorageKey(state), "synthetic-new");
+});
+
+test("original boot bytes and a fixed journal are durable and private before activation", async (t) => {
+  const { manager, state, revision, originalEcosystem } = fixture(t, {
+    activate: async () => {
+      const snapshot = path.join(state, "private/env-apply-original.json");
+      const journal = path.join(state, "env-apply-pending.json");
+      assert.equal(fs.readFileSync(snapshot, "utf8"), originalEcosystem);
+      assert.equal(fs.statSync(snapshot).mode & 0o777, 0o600);
+      assert.equal(fs.statSync(snapshot).nlink, 1);
+      assert.equal(fs.statSync(journal).mode & 0o777, 0o600);
+      assert.deepEqual(JSON.parse(fs.readFileSync(journal)), {
+        schema: "env-apply-v1",
+        requestId,
+        version: checksum(original),
+        revision,
+        originalSHA: checksum(originalEcosystem),
+      });
+    },
+  });
+  assert.equal(
+    (await manager.apply(requestId, checksum(original))).state,
+    "succeeded",
+  );
+  assert.equal(
+    fs.existsSync(path.join(state, "env-apply-pending.json")),
+    false,
+  );
+  assert.equal(
+    fs.existsSync(path.join(state, "private/env-apply-original.json")),
+    false,
+  );
+});
+
+for (const kind of [
+  "mode",
+  "symlink",
+  "hardlink",
+  "oversize",
+  "invalid-json",
+  "invalid-apps",
+]) {
+  test(`unsafe original ecosystem ${kind} stops before activation`, async (t) => {
+    let activations = 0;
+    const { manager, state, ecosystem, originalEcosystem } = fixture(t, {
+      activate: async () => {
+        activations++;
+      },
+    });
+    if (kind === "mode") fs.chmodSync(ecosystem, 0o644);
+    if (kind === "oversize")
+      fs.writeFileSync(ecosystem, Buffer.alloc(MAX_ENV_BYTES + 1));
+    if (kind === "invalid-json") fs.writeFileSync(ecosystem, "broken JSON");
+    if (kind === "invalid-apps") fs.writeFileSync(ecosystem, '{"apps":[]}');
+    if (kind === "hardlink" || kind === "symlink") {
+      const outside = path.join(state, "other-configuration");
+      fs.linkSync(ecosystem, outside);
+      if (kind === "symlink") {
+        fs.unlinkSync(ecosystem);
+        fs.symlinkSync(outside, ecosystem);
+      }
+    }
+    await assert.rejects(manager.apply(requestId, checksum(original)));
+    assert.equal(activations, 0);
+    assert.equal(
+      fs.existsSync(path.join(state, "env-apply-pending.json")),
+      false,
+    );
+    if (!["oversize", "invalid-json", "invalid-apps"].includes(kind))
+      assert.equal(fs.readFileSync(ecosystem, "utf8"), originalEcosystem);
+  });
+}
+
+for (const target of ["snapshot", "journal"]) {
+  test(`${target} persistence failure never starts activation or changes the boot file`, async (t) => {
+    let activations = 0;
+    const { manager, state, ecosystem, originalEcosystem } = fixture(t, {
+      activate: async () => {
+        activations++;
+      },
+    });
+    const link = fs.linkSync;
+    t.mock.method(fs, "linkSync", (source, destination) => {
+      if (
+        destination.endsWith(
+          target === "snapshot"
+            ? "/env-apply-original.json"
+            : "/env-apply-pending.json",
+        )
+      )
+        throw Object.assign(new Error("synthetic persistence failure"), {
+          code: "EIO",
+        });
+      return link(source, destination);
+    });
+    await assert.rejects(
+      manager.apply(requestId, checksum(original)),
+      /synthetic persistence failure/,
+    );
+    assert.equal(activations, 0);
+    assert.equal(fs.readFileSync(ecosystem, "utf8"), originalEcosystem);
+    assert.equal(nextBootStorageKey(state), "synthetic-old");
+    if (target === "journal") {
+      assert.throws(
+        () => manager.write(checksum(original), checksum(desired), desired),
+        /recovery/,
+      );
+    }
+  });
+}
+
+for (const point of ["before-commit", "commit-fsync"]) {
+  test(`${point} failure retains the barrier and cannot publish a successful apply`, async (t) => {
+    const { manager, state, ecosystem, originalEcosystem } = fixture(t, {
+      activate: (input) =>
+        activateRelease(input, {
+          preparePaths: () => {},
+          replace: () => {},
+          run: () => {},
+          verify: async () => {},
+        }),
+    });
+    manager.write(checksum(original), checksum(desired), desired);
+    const journal = path.join(state, "env-apply-pending.json");
+    const status = path.join(state, "env-requests", `${requestId}.json`);
+    let committing = false,
+      syncFailed = false;
+    const rename = fs.renameSync,
+      sync = fs.fsyncSync;
+    t.mock.method(fs, "renameSync", (from, to) => {
+      if (from === journal && to === status) {
+        assert.equal(
+          manager.status(requestId).state,
+          "running",
+          "terminal success is not visible while the barrier exists",
+        );
+        if (point === "before-commit")
+          throw new Error("synthetic terminal commit failure");
+        committing = true;
+      }
+      return rename(from, to);
+    });
+    t.mock.method(fs, "fsyncSync", (fd) => {
+      if (point === "commit-fsync" && committing && !syncFailed) {
+        syncFailed = true;
+        throw new Error("synthetic commit fsync failure");
+      }
+      return sync(fd);
+    });
+    const result = await manager.apply(requestId, checksum(desired));
+    assert.equal(result.state, "failed");
+    assert.equal(result.recoveryRequired, true);
+    assert.equal(manager.status(requestId).state, "failed");
+    assert.equal(fs.existsSync(journal), true);
+    assert.equal(fs.readFileSync(ecosystem, "utf8"), originalEcosystem);
+    assert.equal(nextBootStorageKey(state), "synthetic-old");
+  });
+}
+
+test("a stale success record never overrides an unresolved or unreadable recovery journal", async (t) => {
+  const { manager, state } = fixture(t, { activate: async () => {} });
+  await manager.apply(requestId, checksum(original));
+  const journal = path.join(state, "env-apply-pending.json");
+  fs.writeFileSync(journal, JSON.stringify({ requestId }), { mode: 0o600 });
+  assert.equal(manager.status(requestId).state, "running");
+  fs.writeFileSync(journal, "broken journal");
+  assert.equal(manager.status(requestId).state, "failed");
+  assert.equal(manager.status(requestId).recoveryRequired, true);
+});
+
+for (const target of ["snapshot", "journal"]) {
+  test(`${target} fsync failure stops before activation and preserves the original boot file`, async (t) => {
+    let activations = 0;
+    const { manager, ecosystem, originalEcosystem } = fixture(t, {
+      activate: async () => {
+        activations++;
+      },
+    });
+    const opened = new Map();
+    const open = fs.openSync,
+      sync = fs.fsyncSync;
+    t.mock.method(fs, "openSync", (file, ...args) => {
+      const fd = open(file, ...args);
+      opened.set(fd, String(file));
+      return fd;
+    });
+    t.mock.method(fs, "fsyncSync", (fd) => {
+      if (
+        opened
+          .get(fd)
+          ?.includes(
+            target === "snapshot"
+              ? "env-apply-original.json"
+              : "env-apply-pending.json",
+          )
+      )
+        throw new Error("synthetic fsync failure");
+      return sync(fd);
+    });
+    await assert.rejects(
+      manager.apply(requestId, checksum(original)),
+      /synthetic fsync failure/,
+    );
+    assert.equal(activations, 0);
+    assert.equal(fs.readFileSync(ecosystem, "utf8"), originalEcosystem);
+  });
+}
+
+test("restore failure retains the recovery barrier and never reports success", async (t) => {
+  const { manager, state, ecosystem, originalEcosystem } = fixture(t, {
+    activate: async () => {
+      fs.writeFileSync(
+        ecosystem,
+        originalEcosystem.replaceAll("synthetic-old", "synthetic-new"),
+      );
+      throw new Error("synthetic activation failure");
+    },
+  });
+  const rename = fs.renameSync;
+  t.mock.method(fs, "renameSync", (source, destination) => {
+    if (destination === ecosystem) throw new Error("synthetic restore failure");
+    return rename(source, destination);
+  });
+  const result = await manager.apply(requestId, checksum(original));
+  assert.equal(result.state, "failed");
+  assert.equal(result.recoveryRequired, true);
+  assert.equal(fs.existsSync(path.join(state, "env-apply-pending.json")), true);
+  assert.equal(
+    fs.readFileSync(
+      path.join(state, "private/env-apply-original.json"),
+      "utf8",
+    ),
+    originalEcosystem,
+  );
+  assert.throws(
+    () => manager.write(checksum(original), checksum(desired), desired),
+    /recovery/,
+  );
+  await assert.rejects(
+    manager.apply("22222222-2222-4222-8222-222222222222", checksum(original)),
+    /recovery/,
+  );
+  assert.equal(manager.read().payload, original);
+  assert.equal(manager.status(requestId).state, "failed");
+});
+
+test("a failed or unverifiable PM2 rollback keeps the journal even after exact boot restoration", async (t) => {
+  const { manager, state, ecosystem, originalEcosystem } = fixture(t, {
+    activate: async () => {
+      throw new Error("synthetic rollback failure");
+    },
+    verifyRollback: async () => {
+      throw new Error("old runtime not verified");
+    },
+  });
+  const result = await manager.apply(requestId, checksum(original));
+  assert.equal(result.state, "failed");
+  assert.equal(result.recoveryRequired, true);
+  assert.equal(fs.readFileSync(ecosystem, "utf8"), originalEcosystem);
+  assert.equal(fs.existsSync(path.join(state, "env-apply-pending.json")), true);
+});
+
+test("rollback verification rejects retained desired env and confirms health/save of the original runtime", async (t) => {
+  const { apps, release } = fixture(t);
+  const changed = structuredClone(apps);
+  changed[0].pm2_env.env.MINIO_SECRET_KEY = "synthetic-new";
+  let health = 0,
+    saves = 0;
+  await assert.rejects(
+    verifyRollbackRuntime(apps, "https://example.test", release, {
+      readApps: () => changed,
+      verify: async () => {
+        health++;
+      },
+      save: () => {
+        saves++;
+      },
+    }),
+    /rollback_unverified/,
+  );
+  assert.equal(health + saves, 0);
+  const missing = structuredClone(apps),
+    literalUndefined = structuredClone(apps);
+  delete missing[0].pm2_env.env.MINIO_ENDPOINT;
+  literalUndefined[0].pm2_env.env.MINIO_ENDPOINT = "undefined";
+  await assert.rejects(
+    verifyRollbackRuntime(missing, "https://example.test", release, {
+      readApps: () => literalUndefined,
+      verify: async () => {},
+      save: () => {},
+    }),
+    /rollback_unverified/,
+  );
+  await verifyRollbackRuntime(apps, "https://example.test", release, {
+    readApps: () => structuredClone(apps),
+    verify: async () => {
+      health++;
+    },
+    save: () => {
+      saves++;
+    },
+  });
+  assert.equal(health, 1);
+  assert.equal(saves, 1);
+});
+
+for (const kind of ["regular", "broken-symlink", "directory"]) {
+  test(`pending ${kind} blocks mutations and CI prepare/deploy without consuming the snapshot`, async (t) => {
+    const { manager, state, ecosystem, originalEcosystem } = fixture(t);
+    const pending = path.join(state, "env-apply-pending.json");
+    if (kind === "regular")
+      fs.writeFileSync(pending, "invalid journal", { mode: 0o600 });
+    if (kind === "directory") fs.mkdirSync(pending);
+    if (kind === "broken-symlink")
+      fs.symlinkSync(path.join(state, "missing"), pending);
+    assert.throws(() => assertNoPendingEnvironmentApply(state), /recovery/);
+    assert.throws(
+      () => manager.write(checksum(original), checksum(desired), desired),
+      /recovery/,
+    );
+    await assert.rejects(
+      manager.apply(requestId, checksum(original)),
+      /recovery/,
+    );
+    assert.equal(manager.read().payload, original);
+    assert.equal(manager.status(requestId), null);
+    assert.equal(fs.readFileSync(ecosystem, "utf8"), originalEcosystem);
+    const source = fs.readFileSync(
+      new URL("../deploy/ssh-entrypoint.sh", import.meta.url),
+      "utf8",
+    );
+    const quote = (value) => `'${value.replace(/'/g, `'"'"'`)}'`;
+    // Execute the actual forced handler with only its fixed state mapped to a fixture.
+    const script = source.replace(
+      "state=/app/slacord-deploy",
+      `state=${quote(state)}`,
+    );
+    for (const mode of ["prepare", "deploy"]) {
+      const result = spawnSync("bash", ["-c", script], {
+        encoding: "utf8",
+        input: "synthetic archive, never consumed",
+        env: {
+          ...process.env,
+          SSH_ORIGINAL_COMMAND: `${mode} ${"a".repeat(40)} ${"b".repeat(64)}`,
+        },
+      });
+      assert.equal(result.status, 75, result.stderr);
+      assert.match(result.stderr, /recovery is required/);
+      assert.equal(
+        fs.existsSync(path.join(state, "uploads")),
+        false,
+        "rejection precedes upload creation",
+      );
+    }
+  });
+}
+
+for (const stage of [
+  "snapshot",
+  "journal",
+  "activation",
+  "health",
+  "status",
+  "settled",
+]) {
+  test(`SIGKILL during ${stage} preserves either a boot barrier or a verified boot config`, async (t) => {
+    const { manager, state, apps, ecosystem, originalEcosystem } = fixture(t);
+    manager.write(checksum(original), checksum(desired), desired);
+    const moduleUrl = new URL("../deploy/env-management.mjs", import.meta.url)
+      .href;
+    const deployUrl = new URL("../deploy/deploy-ubuntu.mjs", import.meta.url)
+      .href;
+    const source = `
+      import fs from 'node:fs';
+      import {environmentManager} from ${JSON.stringify(moduleUrl)};
+      import {activateRelease} from ${JSON.stringify(deployUrl)};
+      const stage = ${JSON.stringify(stage)};
+      function halt() { fs.writeSync(1, 'ready\\n'); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0); }
+      const link = fs.linkSync; fs.linkSync = (from, to) => {
+        link(from,to);
+        if ((stage==='snapshot' && to.endsWith('/env-apply-original.json')) ||
+            (stage==='journal' && to.endsWith('/env-apply-pending.json'))) halt();
+      };
+      const rename = fs.renameSync; fs.renameSync = (from,to) => {
+        rename(from,to);
+        if (stage==='status' && to.endsWith('/${requestId}.json') && JSON.parse(fs.readFileSync(to)).state==='succeeded') halt();
+      };
+      const unlink = fs.unlinkSync; fs.unlinkSync = file => {
+        unlink(file); if (stage==='settled' && file.endsWith('/env-apply-original.json')) halt();
+      };
+      const manager = environmentManager(${JSON.stringify(state)}, {
+        readApps: () => ${JSON.stringify(apps)}, readOrigin: () => 'https://example.test',
+        activate: async input => {
+          await activateRelease(input, {preparePaths:()=>{}, replace:()=>{if(stage==='activation')halt();}, verify:async()=>{}, run:()=>{}});
+          if(stage==='health')halt();
+        },
+      });
+      await manager.apply(${JSON.stringify(requestId)}, ${JSON.stringify(checksum(desired))});
+    `;
+    const worker = spawn(
+      process.execPath,
+      ["--input-type=module", "-e", source],
+      { stdio: ["ignore", "pipe", "pipe"] },
+    );
+    t.after(() => {
+      try {
+        worker.kill("SIGKILL");
+      } catch {}
+    });
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error("worker did not reach the crash checkpoint")),
+        5000,
+      );
+      worker.once("error", reject);
+      worker.stdout.once("data", () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      worker.once("exit", () => {
+        clearTimeout(timeout);
+        reject(new Error("worker exited before the checkpoint"));
+      });
+    });
+    worker.kill("SIGKILL");
+    await new Promise((resolve) => worker.once("exit", resolve));
+    const pending = fs.existsSync(path.join(state, "env-apply-pending.json"));
+    if (stage === "snapshot") {
+      assert.equal(pending, false);
+      assert.equal(fs.readFileSync(ecosystem, "utf8"), originalEcosystem);
+      assert.equal(nextBootStorageKey(state), "synthetic-old");
+    } else if (stage === "settled" || stage === "status") {
+      assert.equal(pending, false);
+      assert.equal(manager.status(requestId).state, "succeeded");
+      assert.equal(nextBootStorageKey(state), "synthetic-new");
+    } else
+      assert.equal(
+        pending,
+        true,
+        "the paired Control boot guard must defer PM2 startup",
+      );
+    if (stage !== "settled")
+      assert.throws(
+        () => manager.write(checksum(desired), checksum(original), original),
+        /recovery/,
+      );
+    else assert.doesNotThrow(() => assertNoPendingEnvironmentApply(state));
+    assert.equal(manager.read().payload, desired);
+  });
+}
 
 test("rollback snapshot failure stops before restarting PM2 or overwriting an unsafe backup", async (t) => {
   let restarts = 0;

@@ -8,6 +8,23 @@ import { randomUUID } from "node:crypto";
 const APP_NAMES = ["slacord-backend", "slacord-frontend"];
 const DEFAULT_STATE = "/app/slacord-deploy";
 
+export function assertNoPendingEnvironmentApply(state) {
+  for (const file of [
+    "env-apply-pending.json",
+    "private/env-apply-original.json",
+  ]) {
+    try {
+      fs.lstatSync(path.join(state, file));
+    } catch (error) {
+      if (error.code === "ENOENT") continue;
+      throw error;
+    }
+    throw Object.assign(new Error("Environment apply recovery is required."), {
+      publicCode: "recovery_required",
+    });
+  }
+}
+
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, { stdio: "inherit", ...options });
   if (result.status !== 0)
@@ -442,6 +459,7 @@ async function main() {
   if (!["check", "prepare", "deploy"].includes(mode))
     throw new Error("Expected check, prepare, or deploy.");
   const state = DEFAULT_STATE;
+  if (mode !== "check") assertNoPendingEnvironmentApply(state);
   const origin = readPublicOrigin(state);
   const apps = readApps();
   const server = runtimeEnvironment(apps[0]);

@@ -1,13 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
 import { parseEnv } from "node:util";
 import { fileURLToPath } from "node:url";
 import {
   activateRelease,
   readApps,
   readPublicOrigin,
+  assertNoPendingEnvironmentApply,
+  snapshotApps,
+  verifyRelease,
 } from "./deploy-ubuntu.mjs";
 
 // These paths cannot be supplied over SSH or stdin.
@@ -155,6 +158,151 @@ function atomicPrivate(file, payload, exclusive = false) {
   }
 }
 
+function syncDirectory(directory) {
+  const fd = fs.openSync(directory, "r");
+  try {
+    fs.fsyncSync(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+// Only the fixed private snapshot is ever restored. Journal paths are diagnostics,
+// never input to a filesystem operation or an automatic recovery command.
+function bootTransaction(state, release, requestId, version, revision) {
+  assertDirectory(release);
+  const ecosystem = path.join(release, "ecosystem.config.json");
+  const original = privateFile(ecosystem).payload;
+  const config = JSON.parse(original);
+  if (
+    !Array.isArray(config.apps) ||
+    config.apps.length !== 2 ||
+    config.apps.some(
+      (app, index) =>
+        app.name !== ["slacord-backend", "slacord-frontend"][index] ||
+        app.script !==
+          path.join(
+            release,
+            ["packages/server/dist/main.js", "node_modules/next/dist/bin/next"][
+              index
+            ],
+          ),
+    )
+  )
+    fail("invalid_boot_configuration");
+  const originalSHA = checksum(original);
+  const snapshot = path.join(state, "private", "env-apply-original.json");
+  const journal = path.join(state, "env-apply-pending.json");
+  const metadata = {
+    schema: "env-apply-v1",
+    requestId,
+    version,
+    revision,
+    originalSHA,
+  };
+  // Never overwrite an orphan or unreviewed snapshot, even without a journal.
+  atomicPrivate(snapshot, original, true);
+  atomicPrivate(journal, `${JSON.stringify(metadata)}\n`, true);
+  return {
+    restore() {
+      const saved = privateFile(snapshot).payload;
+      if (checksum(saved) !== originalSHA) fail("invalid_boot_snapshot");
+      try {
+        privateFile(ecosystem);
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+      }
+      atomicPrivate(ecosystem, saved);
+      if (privateFile(ecosystem).payload !== original)
+        fail("invalid_boot_snapshot");
+    },
+    finish(record) {
+      privateFile(ecosystem);
+      syncDirectory(release);
+      if (
+        privateFile(journal, 4096).payload !== `${JSON.stringify(metadata)}\n`
+      )
+        fail("invalid_apply_journal");
+      // One atomic rename publishes the terminal UUID status AND removes the
+      // boot barrier. A crash before it leaves a nonterminal status + journal.
+      const statusFile = path.join(state, "env-requests", `${requestId}.json`);
+      privateFile(statusFile, 4096);
+      atomicPrivate(journal, `${JSON.stringify({ ...metadata, ...record })}\n`);
+      fs.renameSync(journal, statusFile);
+      try {
+        syncDirectory(state);
+        syncDirectory(path.dirname(statusFile));
+      } catch (error) {
+        // Put the barrier back if the commit could not be made durable.
+        fs.renameSync(statusFile, journal);
+        syncDirectory(state);
+        syncDirectory(path.dirname(statusFile));
+        throw error;
+      }
+      // Leftover snapshots also block the next mutation; boot safety no longer
+      // depends on one after the journal removal and directory fsync completed.
+      try {
+        fs.unlinkSync(snapshot);
+        syncDirectory(path.join(state, "private"));
+      } catch {
+        /* Private orphan blocks future mutations, without invalidating the committed boot file. */
+      }
+    },
+  };
+}
+
+// A thrown activation can include a failed PM2 rollback. Confirm the old runtime
+// and health, and save PM2 again, before clearing the boot recovery barrier.
+export async function verifyRollbackRuntime(
+  apps,
+  origin,
+  release,
+  dependencies = {},
+) {
+  const running = (dependencies.readApps || readApps)();
+  const expected = snapshotApps(apps).apps;
+  const actual = snapshotApps(running).apps;
+  for (const [index, before] of expected.entries()) {
+    const after = actual[index];
+    if (
+      !after ||
+      [
+        "name",
+        "script",
+        "cwd",
+        "args",
+        "interpreter",
+        "uid",
+        "gid",
+        "filter_env",
+      ].some(
+        (key) => JSON.stringify(before[key]) !== JSON.stringify(after[key]),
+      )
+    )
+      fail("rollback_unverified");
+    for (const key of new Set([
+      ...Object.keys(before.env || {}),
+      ...MANAGED_KEYS,
+    ])) {
+      if (
+        Object.hasOwn(before.env || {}, key) !==
+          Object.hasOwn(after.env || {}, key) ||
+        String(before.env?.[key]) !== String(after.env?.[key])
+      )
+        fail("rollback_unverified");
+    }
+  }
+  await (dependencies.verify || verifyRelease)(origin, null, release);
+  (
+    dependencies.save ||
+    (() =>
+      execFileSync("/usr/local/bin/pm2", ["save"], {
+        stdio: "ignore",
+        timeout: 30_000,
+      }))
+  )();
+}
+
 export function parseCommand(command) {
   if (
     typeof command !== "string" ||
@@ -215,6 +363,9 @@ export function environmentManager(state, dependencies = {}) {
     const file = requestPath(requestId);
     try {
       const record = JSON.parse(privateFile(file, 4096).payload);
+      // Commit metadata remains private on disk; keep the status wire shape stable.
+      delete record.schema;
+      delete record.originalSHA;
       if (
         record.requestId !== requestId ||
         typeof record.version !== "string" ||
@@ -222,6 +373,27 @@ export function environmentManager(state, dependencies = {}) {
         !["queued", "running", "succeeded", "failed"].includes(record.state)
       )
         fail("invalid_status");
+      if (record.state === "succeeded") {
+        try {
+          const pending = JSON.parse(
+            privateFile(path.join(state, "env-apply-pending.json"), 4096)
+              .payload,
+          );
+          if (pending.requestId === requestId) {
+            record.state = "running";
+            record.conclusion = null;
+            record.recoveryRequired = true;
+          }
+        } catch (error) {
+          if (error.code !== "ENOENT")
+            return {
+              ...record,
+              state: "failed",
+              conclusion: "interrupted",
+              recoveryRequired: true,
+            };
+        }
+      }
       if (
         ["queued", "running"].includes(record.state) &&
         Date.now() - Date.parse(record.createdAt) > MAX_APPLY_MS
@@ -239,6 +411,7 @@ export function environmentManager(state, dependencies = {}) {
     status,
     // Called only by the worker while holding the CI deployment flock.
     write(expected, version, payload) {
+      assertNoPendingEnvironmentApply(state);
       if (!SHA.test(expected) || !SHA.test(version)) fail("invalid_command");
       validateOverrides(payload);
       if (checksum(payload) !== version) fail("checksum_mismatch");
@@ -257,6 +430,7 @@ export function environmentManager(state, dependencies = {}) {
         acknowledge(existing);
         return existing;
       }
+      assertNoPendingEnvironmentApply(state);
       if (read().version !== version) fail("version_conflict");
       // Reuse exactly the healthy current release; never build, fetch, or change source.
       const release = fs.realpathSync(path.join(state, "current"));
@@ -279,6 +453,14 @@ export function environmentManager(state, dependencies = {}) {
         if (apps[index]?.pm2_env.pm_exec_path !== path.join(release, relative))
           fail("invalid_release");
       }
+      const origin = (dependencies.readOrigin || readPublicOrigin)(state);
+      const boot = bootTransaction(
+        state,
+        release,
+        requestId,
+        version,
+        manifest.revision,
+      );
       const record = {
         requestId,
         version,
@@ -292,29 +474,56 @@ export function environmentManager(state, dependencies = {}) {
       const save = () => atomicPrivate(file, `${JSON.stringify(record)}\n`);
       atomicPrivate(file, `${JSON.stringify(record)}\n`, true);
       acknowledge({ ...record });
+      let activationStarted = false;
       try {
         record.state = "running";
         record.updatedAt = now();
         save();
         // Recheck under the same lock immediately before activation.
         if (read().version !== version) fail("version_conflict");
+        activationStarted = true;
         await (dependencies.activate || activateRelease)({
           state,
           release,
           revision: manifest.revision,
-          origin: (dependencies.readOrigin || readPublicOrigin)(state),
+          origin,
           apps,
         });
         record.state = "succeeded";
         record.conclusion = "success";
       } catch {
-        // activateRelease restores both previous PM2 definitions on health failure.
-        // Keep the desired env file for an explicit retry or encrypted Control restore.
+        try {
+          boot.restore();
+          if (activationStarted)
+            await (dependencies.verifyRollback || verifyRollbackRuntime)(
+              apps,
+              origin,
+              release,
+            );
+        } catch {
+          record.recoveryRequired = true;
+        }
+        // The override is the desired value; the boot configuration is last-good.
         record.state = "failed";
         record.conclusion = "activation_failed";
       }
       record.updatedAt = now();
-      save();
+      if (record.recoveryRequired) save();
+      else {
+        try {
+          boot.finish(record);
+        } catch {
+          try {
+            boot.restore();
+          } catch {
+            /* Keep the barrier for manual recovery. */
+          }
+          record.state = "failed";
+          record.conclusion = "activation_failed";
+          record.recoveryRequired = true;
+          save();
+        }
+      }
       return record;
     },
   };
