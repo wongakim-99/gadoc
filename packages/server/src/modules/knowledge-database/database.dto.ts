@@ -49,6 +49,7 @@ export class StatusGroupAssignmentDto {
     @IsIn(STATUS_GROUP_KEYS) group!: StatusGroupKey;
 }
 export class AddPropertyDto {
+    @IsOptional() @IsIn(['select', 'checkbox']) statusDisplay?: 'select' | 'checkbox';
     @IsOptional() @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => StatusGroupAssignmentDto)
     statusGroups?: StatusGroupAssignmentDto[];
     @IsOptional() @ValidateNested() @Type(() => NumberPresentationDto)

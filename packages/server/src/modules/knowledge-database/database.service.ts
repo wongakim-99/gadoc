@@ -227,9 +227,10 @@ export class DatabaseService {
         return property;
     }
     private applyStatusGroups(property: DatabaseProperty, dto: AddPropertyDto, previous?: DatabaseProperty) {
-        if (dto.statusGroups && property.type !== 'status')
+        if ((dto.statusGroups || dto.statusDisplay) && property.type !== 'status')
             throw new BadRequestException('상태 그룹은 상태 속성에만 설정할 수 있습니다.');
         if (property.type !== 'status') return;
+        property.statusDisplay = dto.statusDisplay ?? previous?.statusDisplay ?? 'select';
         try {
             property.statusOptionGroups = resolveStatusGroups(identitiesFor(property), previous?.statusOptionGroups, dto.statusGroups);
         } catch (error) { throw new BadRequestException((error as Error).message); }
