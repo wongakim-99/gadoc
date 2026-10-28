@@ -12,6 +12,7 @@ import {
     IsBoolean,
     IsIn,
     IsInt,
+    IsNumber,
     IsMongoId,
     IsOptional,
     IsString,
@@ -37,6 +38,12 @@ export class RenameOptionDto {
     @IsString() @MinLength(1) @MaxLength(100) id!: string;
     @IsString() @MinLength(1) @MaxLength(80) name!: string;
 }
+export class NumberPresentationDto {
+    @IsIn(['number', 'bar', 'ring']) display!: 'number' | 'bar' | 'ring';
+    @IsNumber({ allowNaN: false, allowInfinity: false }) @Min(Number.MIN_VALUE) divideBy!: number;
+    @IsIn(OPTION_COLORS) color!: OptionColor;
+    @IsBoolean() showNumber!: boolean;
+}
 export class StatusGroupAssignmentDto {
     @IsString() @MinLength(1) @MaxLength(80) name!: string;
     @IsIn(STATUS_GROUP_KEYS) group!: StatusGroupKey;
@@ -44,6 +51,8 @@ export class StatusGroupAssignmentDto {
 export class AddPropertyDto {
     @IsOptional() @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => StatusGroupAssignmentDto)
     statusGroups?: StatusGroupAssignmentDto[];
+    @IsOptional() @ValidateNested() @Type(() => NumberPresentationDto)
+    numberPresentation?: NumberPresentationDto;
     @IsOptional() @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => RenameOptionDto)
     optionRenames?: RenameOptionDto[];
     @IsOptional() @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => OptionColorDto)
