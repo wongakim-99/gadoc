@@ -91,11 +91,32 @@ test("issue opens as a spacious Markdown detail, edits safely and fits mobile an
     markdown + "\n\n## 수정 내용\n초안 유지",
   );
   await page.unroute(endpoint);
+  let releaseLinks!: () => void;
+  const pendingLinks = new Promise<void>((resolve) => {
+    releaseLinks = resolve;
+  });
+  await page.route(`${endpoint}/links`, async (route) => {
+    await pendingLinks;
+    await route.continue();
+  });
   await editor.getByRole("button", { name: "저장", exact: true }).click();
-  await expect(
-    detail.getByRole("heading", { name: "수정 내용", exact: true }),
-  ).toBeVisible();
-  await expect(detail.getByRole("status")).toContainText("저장");
+  try {
+    await expect(
+      detail.getByRole("heading", { name: "수정 내용", exact: true }),
+    ).toBeVisible();
+    await expect(
+      detail
+        .getByRole("region", { name: "연결된 자료", exact: true })
+        .getByRole("status"),
+    ).toHaveText("불러오는 중…");
+    await expect(
+      detail
+        .getByRole("status")
+        .filter({ hasText: /^변경 사항을 저장했습니다\.$/ }),
+    ).toBeVisible();
+  } finally {
+    releaseLinks();
+  }
   await detail.getByRole("button", { name: "편집", exact: true }).click();
   await editor
     .getByPlaceholder("이슈 설명을 입력해 주세요")
