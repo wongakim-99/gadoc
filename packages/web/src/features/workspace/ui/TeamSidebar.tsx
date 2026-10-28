@@ -66,19 +66,25 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
     const [channelLoading, setChannelLoading] = useState(false);
     const [channelError, setChannelError] = useState('');
     const channelInputRef = useRef<HTMLInputElement>(null);
+    const channelRequest = useRef(0);
 
     useEffect(() => {
         if (channelFormOpen) {
             setTimeout(() => channelInputRef.current?.focus(), 50);
         } else {
+            channelRequest.current++;
             setChannelName('');
             setChannelType('public');
+            setChannelError('');
+            setChannelLoading(false);
         }
+        return () => { channelRequest.current++; };
     }, [channelFormOpen]);
 
     const handleCreateChannel = async () => {
         const trimmed = channelName.trim();
         if (!trimmed || channelLoading) return;
+        const request = ++channelRequest.current;
         setChannelLoading(true);
         setChannelError('');
         try {
@@ -86,14 +92,17 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
                 await channelApi.createChannel(teamId, { name: trimmed, type: channelType }),
             );
             if (created?.id) {
-                setChannelFormOpen(false);
-                router.push(`/${teamId}/channel/${created.id}`);
+                if (request === channelRequest.current) {
+                    setChannelFormOpen(false);
+                    router.push(`/${teamId}/channel/${created.id}`);
+                }
                 router.refresh();
             }
         } catch (error) {
-            setChannelError(error instanceof Error ? error.message : '채널을 만들지 못했습니다.');
+            if (request === channelRequest.current)
+                setChannelError(error instanceof Error ? error.message : '채널을 만들지 못했습니다.');
         } finally {
-            setChannelLoading(false);
+            if (request === channelRequest.current) setChannelLoading(false);
         }
     };
 
@@ -114,7 +123,7 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
             <DocumentNavigation teamId={teamId} canWrite={canWrite} />
         ) : area === 'channel' ? (
             <>
-                {channelError && (
+                {channelFormOpen && channelError && (
                     <p role="alert" className="px-3 py-2 text-xs text-red-300">
                         {channelError}
                     </p>
@@ -136,7 +145,8 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
                             <input
                                 ref={channelInputRef}
                                 value={channelName}
-                                onChange={(e) => setChannelName(e.target.value)}
+                                disabled={channelLoading}
+                                onChange={(e) => { setChannelName(e.target.value); setChannelError(''); }}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') void handleCreateChannel();
                                     if (e.key === 'Escape') setChannelFormOpen(false);
@@ -148,7 +158,8 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
                                 {(['public', 'private', 'voice'] as const).map((t) => (
                                     <button
                                         key={t}
-                                        onClick={() => setChannelType(t)}
+                                        disabled={channelLoading}
+                                        onClick={() => { setChannelType(t); setChannelError(''); }}
                                         className={`rounded-full px-2 py-0.5 text-[11px] transition ${channelType === t ? 'bg-action text-white' : 'border border-border-primary text-text-tertiary hover:text-white'}`}
                                     >
                                         {t === 'public' ? '공개' : t === 'private' ? '비공개' : '음성'}

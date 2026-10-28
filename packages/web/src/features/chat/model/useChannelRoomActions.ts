@@ -103,12 +103,15 @@ export function useChannelRoomActions({
 }: Props) {
     const [isUploading, setIsUploading] = useState(false);
     const [isLoadingOlder, setIsLoadingOlder] = useState(false);
-    const [hasOlderMessages, setHasOlderMessages] = useState(initialMessageCount >= HISTORY_PAGE_SIZE);
+    // Initial history availability must change in the same render as the first page.
+    // An effect-delayed value can prematurely finish a deep-link restoration.
+    const [olderPageAvailable, setHasOlderMessages] = useState<boolean | null>(null);
+    const hasOlderMessages = olderPageAvailable ?? initialMessageCount >= HISTORY_PAGE_SIZE;
 
     useEffect(() => {
         setIsLoadingOlder(false);
-        setHasOlderMessages(initialMessageCount >= HISTORY_PAGE_SIZE);
-    }, [channelId, initialMessageCount]);
+        setHasOlderMessages(null);
+    }, [channelId]);
 
     const emitMessage = async (payload: {
         content?: string;

@@ -128,8 +128,8 @@ test("issue reference drag is separate from Kanban status movement", async ({
   await expect(page.getByTestId("workspace-edge-drop")).toBeVisible();
   await dropOn(page, page.getByTestId("workspace-edge-drop"));
   await expect(
-    page.frameLocator("iframe").getByPlaceholder("이슈 제목", { exact: true }),
-  ).toHaveValue("연결 및 상태 이동");
+    page.frameLocator("iframe").getByRole("heading", { name: "연결 및 상태 이동", exact: true }),
+  ).toBeVisible();
   const status = async () =>
     (
       await jsonFetch<Array<{ id: string; status: string }>>(
