@@ -1,13 +1,4 @@
-.settings-layout { display:grid; grid-template-columns:216px minmax(0,1fr); max-width:1260px; min-height:calc(100dvh - 64px); margin:0 auto; }
-.settings-navigation { border-right:1px solid var(--color-border-primary); padding:28px 12px; background:var(--color-bg-secondary); }
-.settings-workspace { display:flex; align-items:center; gap:10px; padding:0 10px 24px; }
-.settings-workspace-icon { display:flex; align-items:center; justify-content:center; width:32px; height:32px; flex-shrink:0; border:1px solid var(--color-border-primary); border-radius:9px; background:var(--color-bg-primary); font-weight:700; }
-.settings-nav-group + .settings-nav-group { margin-top:24px; }
-.settings-group-label { padding:0 10px; margin-bottom:8px; font-size:11px; color:var(--color-text-tertiary); }
-.settings-nav-item { display:flex; align-items:center; gap:9px; width:100%; text-align:left; padding:9px 10px; border-radius:6px; margin:2px 0; font-size:13px; line-height:20px; color:var(--color-text-secondary); }
-.settings-nav-item:hover { background:var(--color-bg-hover); color:var(--color-text-primary); }
-.settings-nav-item[aria-pressed=true] { background:var(--color-selection); color:var(--color-action-text); font-weight:700; }
-.settings-role { display:flex; align-items:center; gap:7px; margin:28px 10px 0; border-top:1px solid var(--color-border-primary); padding-top:14px; font-size:12px; color:var(--color-text-tertiary); }
+.settings-layout { max-width:1120px; min-height:calc(100dvh - 64px); margin:0 auto; }
 .settings-main { min-width:0; padding:36px clamp(24px,4vw,56px) 64px; }
 .settings-heading { padding-bottom:24px; border-bottom:1px solid var(--color-border-primary); margin-bottom:28px; }
 .settings-content { display:flex; flex-direction:column; gap:24px; }
@@ -20,13 +11,5 @@
 .settings-content [class*='border-white/'] { border-color:var(--color-border-primary); }
 .settings-content [class*='text-brand-200'] { color:var(--color-action-text); }
 @media(max-width:900px) {
-    .settings-layout { grid-template-columns:minmax(0,1fr); }
-    .settings-navigation { padding:16px; border-right:0; border-bottom:1px solid var(--color-border-primary); }
-    .settings-workspace,.settings-role { display:none; }
-    .settings-nav-groups { display:flex; gap:20px; overflow-x:auto; }
-    .settings-nav-group { flex-shrink:0; }
-    .settings-nav-group + .settings-nav-group { margin-top:0; }
-    .settings-nav-item { width:auto; display:inline-flex; white-space:nowrap; margin-right:4px; }
-    .settings-group-label { padding-left:10px; }
     .settings-main { padding:24px 20px 48px; }
 }

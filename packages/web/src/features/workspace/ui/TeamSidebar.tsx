@@ -20,6 +20,7 @@ import { WorkspaceAreaNavigation } from './WorkspaceAreaNavigation';
 import { getWorkspaceArea } from '../model/workspaceNavigation';
 import { channelApi, unwrapApiData } from '@/lib/api-client';
 import { ProjectSidebar } from '@/src/features/project/ui/ProjectSidebar';
+import { TeamSettingsNavigation } from '@/src/features/team/ui/TeamSettingsNavigation';
 
 interface Props {
     teamId: string;
@@ -54,10 +55,14 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
     const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
     const workspaceChannels = sidebarChannels.filter(
-        (channel) => !channel.isArchived && (channel.type === 'public' || channel.type === 'private' || channel.type === 'voice'),
+        (channel) =>
+            !channel.isArchived &&
+            (channel.type === 'public' || channel.type === 'private' || channel.type === 'voice'),
     );
     const archivedChannels = sidebarChannels.filter((channel) => channel.isArchived);
-    const directChannels = sidebarChannels.filter((channel) => !channel.isArchived && (channel.type === 'dm' || channel.type === 'group'));
+    const directChannels = sidebarChannels.filter(
+        (channel) => !channel.isArchived && (channel.type === 'dm' || channel.type === 'group'),
+    );
 
     // 채널 생성 인라인 폼 상태
     const [channelFormOpen, setChannelFormOpen] = useState(false);
@@ -78,7 +83,9 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
             setChannelError('');
             setChannelLoading(false);
         }
-        return () => { channelRequest.current++; };
+        return () => {
+            channelRequest.current++;
+        };
     }, [channelFormOpen]);
 
     const handleCreateChannel = async () => {
@@ -119,7 +126,9 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
 
     const area = getWorkspaceArea(pathname, teamId);
     const context =
-        area === 'docs' ? (
+        area === 'settings' ? (
+            <TeamSettingsNavigation />
+        ) : area === 'docs' ? (
             <DocumentNavigation teamId={teamId} canWrite={canWrite} />
         ) : area === 'channel' ? (
             <>
@@ -146,7 +155,10 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
                                 ref={channelInputRef}
                                 value={channelName}
                                 disabled={channelLoading}
-                                onChange={(e) => { setChannelName(e.target.value); setChannelError(''); }}
+                                onChange={(e) => {
+                                    setChannelName(e.target.value);
+                                    setChannelError('');
+                                }}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') void handleCreateChannel();
                                     if (e.key === 'Escape') setChannelFormOpen(false);
@@ -159,7 +171,10 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
                                     <button
                                         key={t}
                                         disabled={channelLoading}
-                                        onClick={() => { setChannelType(t); setChannelError(''); }}
+                                        onClick={() => {
+                                            setChannelType(t);
+                                            setChannelError('');
+                                        }}
                                         className={`rounded-full px-2 py-0.5 text-[11px] transition ${channelType === t ? 'bg-action text-white' : 'border border-border-primary text-text-tertiary hover:text-white'}`}
                                     >
                                         {t === 'public' ? '공개' : t === 'private' ? '비공개' : '음성'}
@@ -193,14 +208,21 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
                 </SidebarSection>
 
                 {archivedChannels.length > 0 && (
-                    <details className="mt-4" open={archivedChannels.some((channel) => channel.id === activeChannelId) || undefined}>
+                    <details
+                        className="mt-4"
+                        open={archivedChannels.some((channel) => channel.id === activeChannelId) || undefined}
+                    >
                         <summary className="cursor-pointer rounded-control px-3 py-2 text-xs font-semibold text-text-tertiary hover:bg-bg-hover">
                             보관된 채널 <span className="ml-1">{archivedChannels.length}</span>
                         </summary>
                         <div className="space-y-0.5">
                             {archivedChannels.map((channel) => (
-                                <SidebarNavLink key={channel.id} href={`/${teamId}/channel/${channel.id}`}
-                                    label={`# ${channel.name}`} active={isActive(`/${teamId}/channel/${channel.id}`)} />
+                                <SidebarNavLink
+                                    key={channel.id}
+                                    href={`/${teamId}/channel/${channel.id}`}
+                                    label={`# ${channel.name}`}
+                                    active={isActive(`/${teamId}/channel/${channel.id}`)}
+                                />
                             ))}
                         </div>
                     </details>
@@ -246,7 +268,16 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
                 teamId={teamId}
                 teamName={loadedTeamName || teamName}
                 area={area}
-                context={<>{area !== 'channel' && <div className="mb-4"><ProjectSidebar teamId={teamId} pathname={pathname} /></div>}{context}</>}
+                context={
+                    <>
+                        {area !== 'channel' && area !== 'settings' && (
+                            <div className="mb-4">
+                                <ProjectSidebar teamId={teamId} pathname={pathname} />
+                            </div>
+                        )}
+                        {context}
+                    </>
+                }
                 channelId={activeChannelId ?? workspaceChannels[0]?.id}
                 canAdmin={hasTeamAdminAccess(currentMember?.role)}
                 username={currentUsername}
