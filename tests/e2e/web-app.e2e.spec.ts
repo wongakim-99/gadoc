@@ -275,7 +275,7 @@ test.describe.serial("slacord web e2e", () => {
 
     await page.goto(`/${fixture.teamId}`);
     await page.getByRole("button", { name: /알림/ }).click();
-    await expect(page.getByText(issueTitle)).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "알림", exact: true }).getByText(issueTitle, { exact: false })).toBeVisible();
 
     await page.getByRole("dialog", { name: "알림", exact: true })
       .getByRole("button").filter({ has: page.getByText(issueTitle, { exact: false }) }).click();
