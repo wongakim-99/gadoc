@@ -119,6 +119,7 @@ export class DatabaseService {
         return sources.map((db) => ({
             id: String(db._id),
             name: db.name,
+            titlePropertyName: db.titlePropertyName,
             sourceKind: db.sourceKind,
             parentDocumentId: db.parentDocumentId ?? null,
             locked: db.locked ?? false,
@@ -190,6 +191,7 @@ export class DatabaseService {
         return {
             id: String(db._id),
             name: db.name,
+            titlePropertyName: db.titlePropertyName,
             sourceKind: db.sourceKind,
             locked: db.locked ?? false,
             properties: db.properties.filter((prop) => !prop.archived),
@@ -469,6 +471,7 @@ export class DatabaseService {
         return {
             id,
             name: db.name,
+            titlePropertyName: db.titlePropertyName,
             sourceKind: db.sourceKind,
             locked: db.locked ?? false,
             properties: db.properties.filter((prop) => !prop.archived),
@@ -1041,6 +1044,16 @@ export class DatabaseService {
     async renameProperty(teamId: string, userId: string, id: string, propertyId: string, dto: RenamePropertyDto) {
         await this.access.requireWritableMember(teamId, userId);
         const db = await this.database(teamId, id, userId, true);
+        if (propertyId === 'title') {
+            if (db.locked) throw new ForbiddenException('데이터베이스 잠금을 해제하세요.');
+            if (!dto.name.trim()) throw new BadRequestException('속성 이름을 입력하세요.');
+            const result = await this.databases.updateOne(
+                { _id: id, teamId, revision: dto.revision },
+                { $set: { titlePropertyName: dto.name.trim() }, $inc: { revision: 1 } },
+            );
+            if (!result.modifiedCount) throw new ConflictException('속성이 변경되었습니다. 새로고침 후 다시 시도하세요.');
+            return;
+        }
         this.assertEditableProperty(db, propertyId);
         if (db.locked) throw new ForbiddenException('데이터베이스 잠금을 해제한 후 구조를 변경하세요.');
         if (!dto.name.trim() || !db.properties.some((prop) => prop.id === propertyId))

@@ -116,6 +116,17 @@ export function useMessageComposer({ draftScope, members, onTyping, onUpload, on
         setPendingFiles((current) => current.filter((_, currentIndex) => currentIndex !== index));
     }, []);
 
+    const handlePaste = useCallback(
+        (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+            const files = Array.from(event.clipboardData.files ?? []);
+            if (!files.length) return;
+            // Keep native text insertion when the clipboard also contains text.
+            if (!event.clipboardData.getData('text/plain')) event.preventDefault();
+            appendFiles(files);
+        },
+        [appendFiles],
+    );
+
     const handleFileChange = async (files: FileList | null) => {
         const nextFiles = Array.from(files ?? []);
         if (nextFiles.length === 0) return;
@@ -165,6 +176,7 @@ export function useMessageComposer({ draftScope, members, onTyping, onUpload, on
         handleDragOver,
         handleDrop,
         handleFileChange,
+        handlePaste,
         isDraggingFiles,
         isSending,
         sendError,

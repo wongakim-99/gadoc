@@ -1,19 +1,13 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist, Noto_Sans_KR } from 'next/font/google';
 import { siteConfig } from '@/src/shared/config/site';
 import { DesktopRuntimeBadge } from '@/src/widgets/desktop/ui/DesktopRuntimeBadge';
 import { DesktopDragBar } from '@/src/widgets/desktop/ui/DesktopDragBar';
 import { DesktopNavigation } from '@/src/widgets/desktop/ui/DesktopNavigation';
 import './globals.css';
 import './brand.css';
-
-const geist = Geist({
-    subsets: ['latin'],
-    display: 'swap',
-    variable: '--font-geist',
-});
-
-const korean = Noto_Sans_KR({ subsets: ['latin'], display: 'swap', variable: '--font-korean' });
+import './typography.css';
+import './themes.css';
+import { ThemeProvider } from '@/src/features/appearance/ThemePreference';
 
 export const metadata: Metadata = {
     metadataBase: new URL(siteConfig.url),
@@ -56,12 +50,18 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="ko" className={`${geist.variable} ${korean.variable}`} data-scroll-behavior="smooth">
+        <html lang="ko" data-scroll-behavior="smooth" suppressHydrationWarning>
+            <head>
+                <link rel="preload" href="/fonts/gadoc-sans/GaDocSans-Regular.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+                <script dangerouslySetInnerHTML={{ __html: "try{var t=localStorage.getItem('gadoc:theme');document.documentElement.dataset.theme=t==='light'?'light':t==='system'&&!matchMedia('(prefers-color-scheme: dark)').matches?'light':'dark'}catch{}" }} />
+            </head>
             <body>
+                <ThemeProvider>
                 <DesktopNavigation />
                 <DesktopDragBar />
                 <DesktopRuntimeBadge />
                 {children}
+                </ThemeProvider>
             </body>
         </html>
     );

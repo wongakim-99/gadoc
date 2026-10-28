@@ -250,6 +250,7 @@ export async function sendSocketMessage(input: {
   teamId: string;
   channelId: string;
   content: string;
+  replyToId?: string;
 }) {
   const { io } = await import("socket.io-client");
   const socket = io(`${e2eSocketUrl}/chat`, {
@@ -272,6 +273,7 @@ export async function sendSocketMessage(input: {
           teamId: input.teamId,
           channelId: input.channelId,
           content: input.content,
+          ...(input.replyToId ? { replyToId: input.replyToId } : {}),
         },
         resolve,
       );

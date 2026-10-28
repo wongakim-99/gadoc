@@ -13,6 +13,7 @@ export class ChannelEntity {
         public readonly externalSource: string | null,
         public readonly externalId: string | null,
         public readonly createdAt: Date,
+        public readonly isArchived: boolean = false,
     ) {}
 
     isMember(userId: string): boolean {
@@ -31,6 +32,8 @@ export class ChannelEntity {
             externalSource: this.externalSource,
             externalId: this.externalId,
             createdAt: this.createdAt,
+            createdBy: this.createdBy,
+            isArchived: this.isArchived,
         };
     }
 }

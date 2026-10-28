@@ -53,9 +53,10 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
     const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
     const workspaceChannels = sidebarChannels.filter(
-        (channel) => channel.type === 'public' || channel.type === 'private' || channel.type === 'voice',
+        (channel) => !channel.isArchived && (channel.type === 'public' || channel.type === 'private' || channel.type === 'voice'),
     );
-    const directChannels = sidebarChannels.filter((channel) => channel.type === 'dm' || channel.type === 'group');
+    const archivedChannels = sidebarChannels.filter((channel) => channel.isArchived);
+    const directChannels = sidebarChannels.filter((channel) => !channel.isArchived && (channel.type === 'dm' || channel.type === 'group'));
 
     // 채널 생성 인라인 폼 상태
     const [channelFormOpen, setChannelFormOpen] = useState(false);
@@ -187,6 +188,20 @@ export function TeamSidebar({ teamId, teamName, channels }: Props) {
                         ))}
                     </div>
                 </SidebarSection>
+
+                {archivedChannels.length > 0 && (
+                    <details className="mt-4" open={archivedChannels.some((channel) => channel.id === activeChannelId) || undefined}>
+                        <summary className="cursor-pointer rounded-control px-3 py-2 text-xs font-semibold text-text-tertiary hover:bg-bg-hover">
+                            보관된 채널 <span className="ml-1">{archivedChannels.length}</span>
+                        </summary>
+                        <div className="space-y-0.5">
+                            {archivedChannels.map((channel) => (
+                                <SidebarNavLink key={channel.id} href={`/${teamId}/channel/${channel.id}`}
+                                    label={`# ${channel.name}`} active={isActive(`/${teamId}/channel/${channel.id}`)} />
+                            ))}
+                        </div>
+                    </details>
+                )}
 
                 {/* DM / 소그룹 섹션 */}
                 <div className="mt-4">

@@ -13,6 +13,7 @@ import { ChannelController } from './infrastructure/http/channel.controller';
 import { ChannelReadController } from './infrastructure/http/channel-read.controller';
 import { TeamModule } from '../team/team.module';
 import { Message, MessageSchema } from '../message/infrastructure/persistence/message.schema';
+import { ArchiveChannelUseCase } from './application/use-cases/archive-channel.use-case';
 
 @Module({
     imports: [
@@ -28,6 +29,7 @@ import { Message, MessageSchema } from '../message/infrastructure/persistence/me
         { provide: CHANNEL_REPOSITORY, useClass: ChannelRepository },
         { provide: CHANNEL_READ_REPOSITORY, useClass: ChannelReadRepository },
         CreateChannelUseCase,
+        ArchiveChannelUseCase,
         GetChannelsUseCase,
         MarkChannelAsReadUseCase,
     ],

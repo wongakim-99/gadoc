@@ -1,0 +1,56 @@
+html[data-theme='light'] {
+    color-scheme: light;
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #f5f6f8;
+    --color-bg-tertiary: #eceff3;
+    --color-bg-active: #dfe6f0;
+    --color-bg-hover: #e9edf3;
+    --color-text-primary: #202936;
+    --color-text-secondary: #46566b;
+    --color-text-tertiary: #59697d;
+    --color-text-muted: #65738a;
+    --color-border-primary: #ced5df;
+    --color-border-secondary: #e1e5ec;
+    --color-border-glow: #687d9e;
+    --color-action: #365bc7;
+    --color-action-hover: #294ab0;
+    --color-action-text: #294eb4;
+    --color-selection: #e4ebff;
+    --workspace-accent: #365bc7;
+    --color-info: #294eb4;
+    --color-success: #21764c;
+    --color-error: #b72f43;
+    --color-warning: #875b13;
+    --color-overlay: rgb(25 35 50 / 35%);
+    --shadow-sm: 0 1px 2px rgb(25 35 50 / 6%);
+    --shadow-md: 0 6px 18px rgb(25 35 50 / 10%);
+    --shadow-lg: 0 12px 32px rgb(25 35 50 / 12%);
+    --shadow-xl: 0 20px 48px rgb(25 35 50 / 16%);
+}
+/* Legacy foreground utilities used before semantic workspace tokens. */
+html[data-theme='light'] :is(.text-white, [class~='text-white/90'], [class~='text-white/80']) {
+    color: var(--color-text-primary);
+}
+html[data-theme='light'] :is([class~='text-white/70'], [class~='text-white/60'], [class~='text-white/50']) {
+    color: var(--color-text-secondary);
+}
+html[data-theme='light'] :is(.hover\:text-white:hover, .focus\:text-white:focus) {
+    color: var(--color-text-primary);
+}
+/* Filled actions and generated avatars keep white text against their colored surface. */
+html[data-theme='light'] :is(.bg-action, .bg-brand-500, .bg-brand-600, .bg-red-500, .bg-red-600, [style*='background-color']):is(.text-white, [class~='text-white/90']) {
+    color: #fff;
+}
+html[data-theme='light'] .bn-container {
+    --bn-colors-editor-background: var(--color-bg-primary);
+    --bn-colors-editor-text: var(--color-text-primary);
+    --bn-colors-menu-background: var(--color-bg-secondary);
+    --bn-colors-menu-text: var(--color-text-primary);
+    --bn-colors-tooltip-background: var(--color-bg-tertiary);
+    --bn-colors-tooltip-text: var(--color-text-primary);
+    --bn-colors-hovered-background: var(--color-bg-hover);
+    --bn-colors-hovered-text: var(--color-text-primary);
+    --bn-colors-selected-background: var(--color-selection);
+    --bn-colors-selected-text: var(--color-text-primary);
+    --bn-colors-border: var(--color-border-primary);
+}

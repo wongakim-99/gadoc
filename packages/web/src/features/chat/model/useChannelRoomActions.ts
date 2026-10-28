@@ -193,9 +193,9 @@ export function useChannelRoomActions({
         sendTyping: () => getChatSocket().emit('typing', { channelId }),
         reactToMessage: (messageId: string, emoji: string) =>
             getChatSocket().emit('add_reaction', { messageId, channelId, emoji }),
-        deleteMessage: (messageId: string) => {
+        deleteMessage: async (messageId: string) => {
+            await messageApi.deleteMessage(channelId, messageId);
             removeMessage(messageId);
-            void messageApi.deleteMessage(channelId, messageId);
         },
         editMessage: async (messageId: string, content: string) => {
             const updated = unwrapApiData<Message>(await messageApi.editMessage(channelId, messageId, content));

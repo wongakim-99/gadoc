@@ -160,6 +160,24 @@ test("workspace design tokens keep readable text and primary actions across surf
   await page.screenshot({ path: testInfo.outputPath('issue-modal.png') });
 });
 
+test('sidebar collapse persists and navigation reopens the contextual panel', async ({ page }) => {
+  await fixture(page);
+  await page.goto('/review-team/docs');
+  const sidebar = page.getByRole('complementary', { name: '워크스페이스 사이드바' });
+  await sidebar.getByRole('button', { name: '사이드바 접기', exact: true }).click();
+  await expect(sidebar).toHaveCSS('width', '64px');
+  await page.reload();
+  await expect(sidebar.getByRole('button', { name: '사이드바 펼치기', exact: true })).toBeVisible();
+  await expect(sidebar).toHaveCSS('width', '64px');
+  await page.keyboard.press('Control+Shift+Backslash');
+  await expect(sidebar).toHaveCSS('width', '256px');
+  await page.keyboard.press('Control+Shift+Backslash');
+  await sidebar.getByRole('navigation', { name: '워크스페이스 영역', exact: true })
+    .getByRole('link', { name: '문서', exact: true }).click();
+  await expect(sidebar).toHaveCSS('width', '256px');
+  await expect(sidebar.getByRole('navigation', { name: '문서 탐색', exact: true })).toBeVisible();
+});
+
 test("workspace shell stays mounted and aligned across every area", async ({
   page,
 }, testInfo) => {

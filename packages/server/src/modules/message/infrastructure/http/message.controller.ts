@@ -74,6 +74,16 @@ export class MessageController {
         return messages;
     }
 
+    @Get(':messageId')
+    async getMessage(
+        @Param('channelId') channelId: string,
+        @Param('messageId') messageId: string,
+        @CurrentUser() user: { userId: string },
+    ) {
+        const { message } = await this.messageAccessService.ensureMessageInChannel(channelId, messageId, user.userId);
+        return message;
+    }
+
     @Patch(':messageId')
     @ApiOperation({ summary: '메시지 편집 (작성자 본인만)' })
     async editMessage(

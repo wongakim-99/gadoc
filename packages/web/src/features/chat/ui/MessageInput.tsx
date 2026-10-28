@@ -104,7 +104,7 @@ function ScopedMessageInput({
                     className={`relative min-w-0 rounded-xl border bg-bg-secondary transition-colors ${
                         composer.isDraggingFiles
                             ? 'border-action-text bg-selection'
-                            : 'border-border-primary focus-within:border-action-text/60'
+                            : 'border-border-primary'
                     }`}
                     onDragEnter={readOnly ? undefined : composer.handleDragEnter}
                     onDragOver={readOnly ? undefined : composer.handleDragOver}
@@ -144,9 +144,10 @@ function ScopedMessageInput({
                                     : composer.handleChange(event.target.value, event.target.selectionStart)
                             }
                             onKeyDown={handleKeyDown}
+                            onPaste={readOnly ? undefined : composer.handlePaste}
                             placeholder={
                                 readOnly
-                                    ? `${channelName} 채널은 guest에게 읽기 전용입니다.`
+                                    ? (readOnlyMessage ?? `${channelName} 채널은 guest에게 읽기 전용입니다.`)
                                     : `#${channelName}에 메시지 보내기`
                             }
                             rows={1}

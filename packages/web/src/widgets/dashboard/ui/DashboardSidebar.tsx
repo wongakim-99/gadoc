@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { WorkspaceSearchPalette } from '@/src/features/search/ui/WorkspaceSearchPalette';
 import { siteConfig } from '@/src/shared/config/site';
+import { ThemePreference } from '@/src/features/appearance/ThemePreference';
 
 const NAV_ITEMS = [
     {
@@ -102,6 +103,7 @@ export function DashboardSidebar({ currentUserName }: Props) {
                         );
                     })}
                 </nav>
+                <div className="px-4 pb-2"><ThemePreference /></div>
                 <div className="hidden border-t border-border-primary p-4 text-xs text-text-tertiary lg:block">
                     <p className="font-semibold text-action-text">v{siteConfig.desktopVersion}</p>
                     <p className="mt-1">{siteConfig.badge}</p>

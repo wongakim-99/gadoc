@@ -62,6 +62,7 @@ export interface DatabaseView {
 
 @Schema({ timestamps: true, collection: 'knowledge_databases' })
 export class KnowledgeDatabase {
+    @Prop({ default: '이름' }) titlePropertyName!: string;
     @Prop({ enum: ['issues'] }) sourceKind?: 'issues';
     @Prop() defaultTemplateId?: string;
     @Prop() parentDocumentId?: string;

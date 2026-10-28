@@ -102,6 +102,21 @@ describe('canonical issue database source', () => {
         );
     });
 
+    it('renames the title column while enforcing locks, write access and revision conflicts', async () => {
+        await database.renameProperty(teamId, userId, sourceId, 'title', { name: '작업명', revision: 0 });
+        expect(sources.updateOne).toHaveBeenCalledWith(
+            { _id: sourceId, teamId, revision: 0 },
+            { $set: { titlePropertyName: '작업명' }, $inc: { revision: 1 } },
+        );
+        sources.updateOne.mockResolvedValueOnce({ modifiedCount: 0 });
+        await expect(database.renameProperty(teamId, userId, sourceId, 'title', { name: '제목', revision: 0 })).rejects.toBeInstanceOf(ConflictException);
+        source.locked = true;
+        await expect(database.renameProperty(teamId, userId, sourceId, 'title', { name: '제목', revision: 1 })).rejects.toBeInstanceOf(ForbiddenException);
+        source.locked = false;
+        access.requireWritableMember.mockRejectedValueOnce(new ForbiddenException());
+        await expect(database.renameProperty(teamId, userId, sourceId, 'title', { name: '제목', revision: 1 })).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
     it('provisions one deterministic team source across callers and lists/wraps it', async () => {
         expect(issueSourceId(teamId)).not.toBe(issueSourceId(otherId));
         expect(await database.provisionIssueSource(teamId, userId)).toEqual(

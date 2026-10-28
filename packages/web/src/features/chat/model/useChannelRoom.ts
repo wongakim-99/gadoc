@@ -55,7 +55,10 @@ export function useChannelRoom(teamId: string, channelId: string) {
     return {
         channel: room.channel,
         channelLabel: room.channelLabel,
-        canWrite: hasTeamWriteAccess(currentMember?.role),
+        canWrite: hasTeamWriteAccess(currentMember?.role) && !room.channel?.isArchived,
+        canManageChannel: hasTeamWriteAccess(currentMember?.role) &&
+            room.channel?.type !== 'dm' && room.channel?.type !== 'group' &&
+            (room.channel?.createdBy === room.currentUser?.id || currentMember?.role === 'owner' || currentMember?.role === 'admin'),
         members: room.members,
         currentUserId: room.currentUser?.id ?? '',
         currentUsername: room.currentUser?.username ?? '',

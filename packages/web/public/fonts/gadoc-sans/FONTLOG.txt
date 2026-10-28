@@ -1,0 +1,56 @@
+GaDoc Sans — Version 0.100
+Release date: 2026-10-28
+
+Purpose
+-------
+A real, installable Korean/Latin font family derived from the visual direction
+of a generated GaDoc logo concept. No named original font was used to create
+that concept. This release is a new modified OFL font, not a recovered source
+typeface from the image.
+
+Upstream sources
+----------------
+Korean: LINE Seed KR Regular and Bold, official 2023.09.06 distribution.
+https://seed.line.me/index_kr.html
+https://seed.line.me/src/images/fonts/LINE_Seed_Sans_KR.zip
+Copyright: © LY Corporation
+Design credits: LINE VX Design & Sandoll Inc & Dalton Maag Ltd.
+
+Latin: Fredoka variable font, from the official Google Fonts repository.
+https://github.com/google/fonts/tree/main/ofl/fredoka
+Copyright 2016 The Fredoka Project Authors
+(https://github.com/hafontia/Fredoka-One)
+Design credits: Milena Brandão, Ben Nathan.
+
+Changes
+-------
+1. Reconstructed the five visible lowercase letters g/a/d/o/c as smooth
+   TrueType outlines measured from the supplied GaDoc logo image.
+2. Created a lighter Regular adaptation. Bold uses the observed logo shapes;
+   unobserved letters and symbols are adaptations of Fredoka, not recovered
+   shapes. Accent composites and positioning were adjusted where applicable.
+3. Retained LINE Seed KR's professional Korean outlines for all 11,172 modern
+   precomposed syllables, compatible Jamo and its additional available symbols.
+   The Korean glyph outlines were not individually redesigned or traced from
+   the logo image. Original private-use brand icon mappings were excluded.
+4. Assigned Latin and shared punctuation to the Latin component before merging
+   to prevent automatic script-dependent duplicate-character substitutions.
+5. Unified family names, style linking, Unicode maps and vertical metrics.
+   Replaced original font identifiers and removed obsolete digital signatures.
+6. Produced real Regular 400 and Bold 700 static TTF and WOFF2 files. No variable
+   font and no separate Medium 500 or SemiBold 600 are claimed in this release.
+
+Validation
+----------
+See QA-report.json for the executed file, coverage, metadata and shaping checks.
+Actual TTF renders are supplied in GaDocSans-preview.png. The local preview.html
+checks that both WOFF2 faces load before showing its specimens. Desktop font
+installation and browser behavior have not been exhaustively tested across
+all operating systems. Old Hangul and isolated conjoining Jamo are not a
+complete supported set; modern syllable strings in NFC and NFD were tested.
+
+License
+-------
+The font software remains under SIL Open Font License 1.1. See LICENSE.txt
+and the verbatim upstream notices in licenses/. This release is not endorsed
+by the upstream font designers or publishers.

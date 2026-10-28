@@ -80,6 +80,7 @@ export class IssueSourceService {
         return {
             id,
             name: db.name,
+            titlePropertyName: db.titlePropertyName,
             sourceKind: 'issues' as const,
             locked: db.locked ?? false,
             canEditSchema: role !== 'guest',

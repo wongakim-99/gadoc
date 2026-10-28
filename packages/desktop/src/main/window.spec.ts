@@ -109,6 +109,7 @@ describe.each(['win32', 'darwin'])('desktop window on %s', (platform) => {
         window.emit('close', { preventDefault });
         expect(preventDefault).not.toHaveBeenCalled();
         expect(window.options.titleBarStyle).toBe('default');
+        expect(window.options.autoHideMenuBar).toBe(true);
         expect(window.options.title).toBe('GaDoc');
         expect(window.options.webPreferences).toMatchObject({
             sandbox: true,
