@@ -104,7 +104,7 @@ export default function IssuesPage({ params }: Props) {
     if (pane && (board.showCreate || board.selectedIssue)) return <div className="h-full min-h-0">{forms}</div>;
 
     return (
-        <div className="h-full flex flex-col">
+        <div className="issue-workspace h-full min-h-0 min-w-0 flex flex-col">
             <IssueBoardHeader
                 canWrite={board.canWrite}
                 onCreate={() => {
@@ -127,8 +127,8 @@ export default function IssuesPage({ params }: Props) {
                 }}
             />
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-                <div className="space-y-4 lg:hidden">
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4">
+                <div className="issue-board-stacked space-y-4">
                     {COLUMNS.map((status) => (
                         <IssueMobileSection
                             canWrite={board.canWrite}
@@ -144,7 +144,7 @@ export default function IssuesPage({ params }: Props) {
                         />
                     ))}
                 </div>
-                <div className="hidden h-full lg:block lg:overflow-x-auto">
+                <div className="issue-board-columns h-full overflow-x-auto">
                     <IssueDesktopBoard
                         canWrite={board.canWrite}
                         columns={COLUMNS}

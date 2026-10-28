@@ -41,7 +41,11 @@ export class IssueRepository implements IIssueRepository {
     async findByTeam(teamId: string, filters?: IssueSearchFilters): Promise<IssueEntity[]> {
         const query: Record<string, unknown> = { teamId };
         if (filters?.status) query.status = filters.status;
-        if (filters?.assigneeId) query.assigneeIds = filters.assigneeId;
+        if (filters?.assigneeId === 'unassigned') {
+            query['assigneeIds.0'] = { $exists: false };
+        } else if (filters?.assigneeId) {
+            query.assigneeIds = filters.assigneeId;
+        }
         if (filters?.query?.trim()) {
             const pattern = new RegExp(escapeRegExp(filters.query.trim()), 'i');
             query.$or = [{ title: pattern }, { description: pattern }];

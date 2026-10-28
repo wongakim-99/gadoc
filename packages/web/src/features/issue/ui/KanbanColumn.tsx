@@ -29,6 +29,7 @@ export function KanbanColumn({ canWrite, status, label, issues, members, onCardC
                     <span className="text-xs text-text-tertiary bg-bg-tertiary rounded-full px-2 py-0.5">{issues.length}</span>
                 </div>
                 <button
+                    aria-label={`${label} 이슈 추가`}
                     onClick={onAddClick}
                     disabled={!canWrite}
                     className="text-text-tertiary hover:text-white hover:bg-bg-hover rounded p-0.5 transition-colors disabled:opacity-30"

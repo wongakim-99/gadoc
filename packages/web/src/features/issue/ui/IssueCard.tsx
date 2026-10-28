@@ -78,8 +78,8 @@ function IssueCardBody({
 }) {
     return (
         <>
-            <p className="mb-2 line-clamp-2 text-sm font-medium text-white">{issue.title}</p>
-            <div className="flex items-center justify-between gap-2">
+            <p className="mb-2 line-clamp-2 break-words text-sm font-medium text-white">{issue.title}</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                     <span className={`rounded-full border px-2 py-0.5 text-xs ${priorityClass}`}>
                         {PRIORITY_LABELS[issue.priority]}
@@ -87,7 +87,7 @@ function IssueCardBody({
                     {issue.labels.slice(0, 2).map((label) => (
                         <span
                             key={label}
-                            className="rounded-full border border-slack-green/20 bg-slack-green/10 px-2 py-0.5 text-xs text-slack-green"
+                            className="max-w-full break-words rounded-full border border-slack-green/20 bg-slack-green/10 px-2 py-0.5 text-xs text-slack-green"
                         >
                             {label}
                         </span>
@@ -98,6 +98,7 @@ function IssueCardBody({
                         </span>
                     )}
                 </div>
+                {issue.assigneeIds.length === 0 && <span className="shrink-0 text-xs text-text-tertiary">미할당</span>}
                 {assignees.length > 0 ? (
                     <div className="flex shrink-0 -space-x-1.5">
                         {assignees.slice(0, 3).map((member) => {
