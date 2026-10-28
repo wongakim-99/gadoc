@@ -28,6 +28,11 @@ import { DatabaseService } from './database.service';
 @Controller('team/:teamId/database')
 export class DatabaseController {
     constructor(private readonly service: DatabaseService) {}
+    @Post('issue-source')
+    @TeamRole('writable')
+    issueSource(@Param('teamId') teamId: string, @CurrentUser() user: { userId: string }) {
+        return this.service.provisionIssueSource(teamId, user.userId);
+    }
     @Get()
     @TeamRole('member')
     list(@Param('teamId') teamId: string, @CurrentUser() user: { userId: string }) {

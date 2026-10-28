@@ -7,6 +7,9 @@ export type IssueDocument = Issue & Document;
 /** 이슈 트래커 MongoDB 스키마 */
 @Schema({ timestamps: true, collection: 'issues' })
 export class Issue {
+    @Prop({ default: 0 }) revision: number;
+    @Prop() sourceCreationId?: string;
+    @Prop() sourceCreationHash?: string;
     @Prop({
         type: [
             {

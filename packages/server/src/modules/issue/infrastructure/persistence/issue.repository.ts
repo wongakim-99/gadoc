@@ -1,4 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { CONTENT_CHANGED } from '../../../../shared/interceptors/content-change.interceptor';
+import { issueSourceId } from '../../domain/issue-source';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { IIssueRepository, type IssueSearchFilters } from '../../domain/issue.port';
@@ -9,7 +12,14 @@ import type { IssueLink } from '../../domain/issue-link';
 /** Issue Repository Adapter - MongoDB 구현체 */
 @Injectable()
 export class IssueRepository implements IIssueRepository {
-    constructor(@InjectModel(Issue.name) private readonly issueModel: Model<IssueDocument>) {}
+    constructor(
+        @InjectModel(Issue.name) private readonly issueModel: Model<IssueDocument>,
+        @Optional() private readonly events?: EventEmitter2,
+    ) {}
+
+    private changed(teamId: string) {
+        this.events?.emit(CONTENT_CHANGED, { teamId, sourceId: issueSourceId(teamId), resourceKind: 'issue' });
+    }
 
     async findLinked(teamId: string, link: Pick<IssueLink, 'kind' | 'resourceId'>) {
         const docs = await this.issueModel
@@ -29,13 +39,18 @@ export class IssueRepository implements IIssueRepository {
                 links: { $not: { $elemMatch: { kind: link.kind, resourceId: link.resourceId } } },
                 'links.49': { $exists: false },
             },
-            { $push: { links: link } },
+            { $push: { links: link }, $inc: { revision: 1 } },
         );
+        if (result.modifiedCount) this.changed(teamId);
         return result.modifiedCount > 0;
     }
 
     async removeLink(id: string, teamId: string, kind: IssueLink['kind'], resourceId: string) {
-        await this.issueModel.updateOne({ _id: id, teamId }, { $pull: { links: { kind, resourceId } } });
+        const result = await this.issueModel.updateOne(
+            { _id: id, teamId },
+            { $pull: { links: { kind, resourceId } }, $inc: { revision: 1 } },
+        );
+        if (result.modifiedCount) this.changed(teamId);
     }
 
     async findByTeam(teamId: string, filters?: IssueSearchFilters): Promise<IssueEntity[]> {
@@ -70,6 +85,7 @@ export class IssueRepository implements IIssueRepository {
         links?: IssueLink[];
     }): Promise<IssueEntity> {
         const doc = await this.issueModel.create(data);
+        this.changed(String(doc.teamId));
         return this.toEntity(doc);
     }
 
@@ -84,12 +100,16 @@ export class IssueRepository implements IIssueRepository {
             labels: string[];
         }>,
     ): Promise<IssueEntity | null> {
-        const doc = await this.issueModel.findByIdAndUpdate(id, data, { new: true }).lean();
+        const doc = await this.issueModel
+            .findByIdAndUpdate(id, { $set: data, $inc: { revision: 1 } }, { new: true })
+            .lean();
+        if (doc) this.changed(String(doc.teamId));
         return doc ? this.toEntity(doc as IssueDocument) : null;
     }
 
     async deleteById(id: string): Promise<boolean> {
         const result = await this.issueModel.findByIdAndDelete(id);
+        if (result) this.changed(String(result.teamId));
         return result !== null;
     }
 
@@ -107,6 +127,7 @@ export class IssueRepository implements IIssueRepository {
             doc.createdAt,
             doc.updatedAt,
             doc.links ?? [],
+            doc.revision ?? 0,
         );
     }
 }
