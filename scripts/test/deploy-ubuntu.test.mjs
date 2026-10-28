@@ -10,6 +10,9 @@ import {
   readServerOverrides,
   releaseApps,
   runtimeEnvironment,
+  snapshotApps,
+  webEnvironment,
+  prepareRuntimePaths,
   validateArchiveNames,
 } from "../deploy/deploy-ubuntu.mjs";
 
@@ -18,9 +21,9 @@ function fixture(t) {
     fs.mkdtempSync(path.join(os.tmpdir(), "slacord-deploy-test-")),
   );
   t.after(() => fs.rmSync(state, { recursive: true, force: true }));
-  const release = path.join(state, "new-release");
+  const release = path.join(state, "releases", "new-release");
   const previous = path.join(state, "old-release");
-  fs.mkdirSync(release);
+  fs.mkdirSync(release, { recursive: true });
   fs.mkdirSync(previous);
   fs.symlinkSync(previous, path.join(state, "current"));
   const apps = ["slacord-backend", "slacord-frontend"].map((name) => ({
@@ -81,6 +84,117 @@ test("existing package .env is inherited while PM2 overrides retain priority", (
   );
   assert.equal(result.DATABASE_OPTION, "existing");
   assert.equal(result.JWT_SECRET, "existing-test-secret");
+});
+
+test("frontend allows only web runtime configuration and drops unknown secrets", (t) => {
+  const input = fixture(t);
+  const secrets = {
+    MONGO_ROOT_USERNAME: "test-root",
+    MONGO_ROOT_PASSWORD: "test-root-password",
+    MONGO_APP_USERNAME: "test-app",
+    MONGO_APP_PASSWORD: "test-app-password",
+    AWS_SECRET_ACCESS_KEY: "test-unknown-secret",
+    GITHUB_TOKEN: "test-token",
+  };
+  for (const app of input.apps) Object.assign(app.pm2_env.env, secrets);
+  const config = releaseApps(input.release, input.apps, input.origin);
+  for (const key of Object.keys(secrets))
+    assert.equal(config.apps[1].env[key], undefined);
+  for (const key of Object.keys(secrets).filter((key) =>
+    key.startsWith("MONGO_"),
+  ))
+    assert.equal(config.apps[0].env[key], undefined);
+  assert.equal(
+    config.apps[0].env.MONGODB_URI,
+    input.apps[0].pm2_env.env.MONGODB_URI,
+  );
+  assert.ok(
+    config.apps.every((app) => JSON.stringify(app.filter_env) === '[""]'),
+  );
+  assert.deepEqual(
+    webEnvironment({
+      PATH: "/bin",
+      NEXT_PUBLIC_WEBRTC_ICE_SERVERS: "[]",
+      COOKIE_SECRET: "secret",
+    }),
+    { PATH: "/bin", NEXT_PUBLIC_WEBRTC_ICE_SERVERS: "[]" },
+  );
+});
+
+test("non-root identities and environment isolation survive release and rollback snapshots", (t) => {
+  const input = fixture(t);
+  for (const [index, app] of input.apps.entries()) {
+    app.pm2_env.uid = 1002 + index;
+    app.pm2_env.gid = 1002 + index;
+    app.pm2_env.filter_env = [""];
+  }
+  for (const config of [
+    releaseApps(input.release, input.apps, input.origin),
+    snapshotApps(input.apps),
+  ]) {
+    assert.deepEqual(
+      config.apps.map(({ uid, gid }) => ({ uid, gid })),
+      [
+        { uid: 1002, gid: 1002 },
+        { uid: 1003, gid: 1003 },
+      ],
+    );
+    assert.ok(
+      config.apps.every((app) => JSON.stringify(app.filter_env) === '[""]'),
+    );
+  }
+});
+
+test("legacy root deployment needs no permission changes and invalid non-root identity fails closed", (t) => {
+  const input = fixture(t);
+  const config = releaseApps(input.release, input.apps, input.origin);
+  const original = fs.statSync(input.release).mode;
+  prepareRuntimePaths(input.release, config);
+  assert.equal(fs.statSync(input.release).mode, original);
+  config.apps[0].uid = "invalid";
+  assert.throws(
+    () => prepareRuntimePaths(input.release, config),
+    /numeric positive/,
+  );
+});
+
+test("activation prepares permissions before writing private config and starting PM2", async (t) => {
+  const input = fixture(t);
+  const events = [];
+  await activateRelease(input, {
+    preparePaths: () => events.push("permissions"),
+    replace: (file) => {
+      assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+      events.push("start");
+    },
+    verify: async () => {},
+    run: () => {},
+  });
+  assert.deepEqual(events, ["permissions", "start"]);
+});
+
+test("artifact permissions never temporarily expose private files or follow external symlinks", (t) => {
+  const input = fixture(t);
+  const nested = path.join(input.release, "nested");
+  fs.mkdirSync(nested, { mode: 0o700 });
+  const secret = path.join(nested, ".env.production");
+  const artifact = path.join(nested, "main.js");
+  const external = path.join(input.state, "outside-private");
+  fs.writeFileSync(secret, "SYNTHETIC_SECRET=test", { mode: 0o600 });
+  fs.writeFileSync(artifact, "// test", { mode: 0o600 });
+  fs.writeFileSync(external, "test", { mode: 0o600 });
+  fs.symlinkSync(external, path.join(nested, "external-link"));
+  const chmod = fs.chmodSync;
+  t.mock.method(fs, "chmodSync", (file, mode) => {
+    if (file === secret) assert.equal(mode, 0o600);
+    return chmod(file, mode);
+  });
+  prepareRuntimePaths(input.release, {
+    apps: [{ name: "slacord-backend", uid: 1002, gid: 1002 }],
+  });
+  assert.equal(fs.statSync(secret).mode & 0o777, 0o600);
+  assert.equal(fs.statSync(artifact).mode & 0o777, 0o644);
+  assert.equal(fs.statSync(external).mode & 0o777, 0o600);
 });
 
 test("private storage rotation applies only to the backend and rejects unsafe override files", (t) => {
