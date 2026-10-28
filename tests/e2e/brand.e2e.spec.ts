@@ -8,12 +8,16 @@ for (const width of [390, 1440]) {
     page.on("pageerror", (error) => errors.push(error.message));
     await page.setViewportSize({ width, height: 960 });
     await page.goto("/");
-    await expect(page).toHaveTitle(/GaDoc/);
+    await expect(page).toHaveTitle(/GaDoc.*문서의 가닥이 잡히는 곳/);
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+      "content",
+      /문서의 가닥이 잡히는 곳/,
+    );
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
-      "일의 가닥이",
+      "문서의 가닥이",
     );
     await expect(
-      page.getByRole("main").getByText("Where work comes together."),
+      page.getByRole("main").getByText("Where documents come together."),
     ).toBeVisible();
     const firstTab = page.getByRole("tab", { name: /대화에서/ });
     await firstTab.focus();
@@ -38,6 +42,7 @@ for (const width of [390, 1440]) {
     });
     await page.getByRole("link", { name: /우리 팀의 가닥 잡기/ }).click();
     await expect(page).toHaveURL(/\/auth\/register$/);
+    await expect(page).toHaveTitle(/문서의 가닥이 잡히는 곳/);
     expect(errors).toEqual([]);
   });
 }
