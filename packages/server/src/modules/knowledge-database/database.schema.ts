@@ -60,6 +60,8 @@ export interface DatabaseView {
     groupProperty?: string;
     statusGrouping?: 'option' | 'group';
     hideEmptyGroups?: boolean;
+    hiddenBoardGroups?: string[];
+    boardGroupOrder?: string[];
     cardSize?: 'small' | 'medium' | 'large';
     hiddenProperties?: string[];
     propertyOrder?: string[];

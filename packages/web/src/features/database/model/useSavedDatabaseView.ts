@@ -17,6 +17,8 @@ export function viewFingerprint(view: DatabaseView): string {
         groupProperty: view.groupProperty ?? 'status',
         statusGrouping: view.statusGrouping ?? 'option',
         hideEmptyGroups: view.hideEmptyGroups ?? false,
+        hiddenBoardGroups: view.hiddenBoardGroups ?? [],
+        boardGroupOrder: view.boardGroupOrder ?? [],
         cardSize: view.cardSize ?? 'medium',
         hiddenProperties: view.hiddenProperties ?? [],
         propertyOrder: view.propertyOrder ?? [],

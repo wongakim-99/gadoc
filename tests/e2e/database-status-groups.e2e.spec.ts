@@ -70,5 +70,20 @@ test('status membership persists across rename and board grouping preserves cano
     await page.keyboard.press('Escape');
     await expect(page.getByRole('region', { name: '완료 그룹', exact: true })).toBeVisible();
     expect((await call<DatabaseDetail>(''))!.data!.rows[0].values[prop.id]).toBe('준비');
+    const todo = page.getByRole('region', { name: '할 일 그룹', exact: true });
+    await todo.getByLabel('할 일 그룹 옵션', { exact: true }).click();
+    await todo.getByRole('button', { name: '오른쪽으로 이동', exact: true }).click();
+    await todo.getByRole('button', { name: '그룹 숨기기', exact: true }).click();
+    await expect(todo).toHaveCount(0);
+    await expect.poll(async () => {
+        const saved = (await call<DatabaseDetail>(''))!.data!.views.find(view => view.name === '범주별');
+        return { hidden: saved?.hiddenBoardGroups?.length, ordered: !!saved?.boardGroupOrder?.length };
+    }).toEqual({ hidden: 1, ordered: true });
+    await page.reload();
+    await expect(todo).toHaveCount(0);
+    await page.getByText('숨긴 그룹', { exact: true }).click();
+    await page.getByRole('button', { name: '할 일 그룹 다시 표시', exact: true }).click();
+    await expect(todo.getByRole('article')).toHaveCount(1);
+
 
 });

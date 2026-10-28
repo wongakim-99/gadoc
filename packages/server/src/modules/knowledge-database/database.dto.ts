@@ -134,6 +134,8 @@ export class AddViewDto {
     @IsOptional() @IsString() @MaxLength(40) groupProperty?: string;
     @IsOptional() @IsIn(['option', 'group']) statusGrouping?: 'option' | 'group';
     @IsOptional() @IsBoolean() hideEmptyGroups?: boolean;
+    @IsOptional() @IsArray() @ArrayMaxSize(500) @IsString({ each: true }) @MaxLength(500, { each: true }) hiddenBoardGroups?: string[];
+    @IsOptional() @IsArray() @ArrayMaxSize(500) @IsString({ each: true }) @MaxLength(500, { each: true }) boardGroupOrder?: string[];
     @IsOptional() @IsIn(['small', 'medium', 'large']) cardSize?: 'small' | 'medium' | 'large';
     @IsOptional() @IsArray() @ArrayMaxSize(50) @IsString({ each: true }) hiddenProperties?: string[];
     @IsString() @MaxLength(200) query!: string;

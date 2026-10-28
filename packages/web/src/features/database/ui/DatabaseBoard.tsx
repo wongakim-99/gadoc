@@ -8,6 +8,7 @@ import { ResourceNavigation } from '@/src/features/workspace/ui/ResourceNavigati
 import { DatabaseOptionTag } from './DatabaseOptionTag';
 import { DatabaseCell } from './DatabaseCell';
 
+const columnDragType = 'application/x-slacord-board-column';
 const dragType = 'application/x-slacord-board-row';
 export function DatabaseBoard({
     hiddenProperties,
@@ -20,6 +21,10 @@ export function DatabaseBoard({
     groupProperty,
     statusGrouping = 'option',
     hideEmptyGroups = false,
+    hiddenBoardGroups = [],
+    boardGroupOrder = [],
+    onHiddenBoardGroupsChange,
+    onBoardGroupOrderChange,
     cardSize = 'medium',
     onStatusGroupingChange,
     onGroupPropertyChange,
@@ -34,6 +39,10 @@ export function DatabaseBoard({
     groupProperty: string;
     statusGrouping?: 'option' | 'group';
     hideEmptyGroups?: boolean;
+    hiddenBoardGroups?: string[];
+    boardGroupOrder?: string[];
+    onHiddenBoardGroupsChange?: (groups: string[]) => void;
+    onBoardGroupOrderChange?: (groups: string[]) => void;
     cardSize?: 'small' | 'medium' | 'large';
     onStatusGroupingChange?: (mode: 'option' | 'group') => void;
     onGroupPropertyChange: (id: string) => void;
@@ -69,6 +78,21 @@ export function DatabaseBoard({
     for (const row of rows)
         for (const key of keys(row))
             if (!labels.has(key)) labels.set(key, prop?.type === 'person' ? '워크스페이스에서 나간 사람' : key);
+    // Scope preferences to the property and use stable option identities across renames.
+    const groupId = (key: string) => JSON.stringify([prop?.id, groupedStatus ? 'category' : 'option',
+        !groupedStatus ? identities.find(option => option.name === key)?.id ?? key : key]);
+    const ordered = [...labels].sort(([a], [b]) => {
+        const rank = (key: string) => { const index = boardGroupOrder.indexOf(groupId(key)); return index < 0 ? Number.MAX_SAFE_INTEGER : index; };
+        return rank(a) - rank(b);
+    });
+    const reorder = (source: string, target: string) => {
+        if (busy || source === target) return;
+        const ids = ordered.map(([key]) => groupId(key));
+        const from = ids.indexOf(source), to = ids.indexOf(target);
+        if (from < 0 || to < 0) return;
+        ids.splice(from, 1); ids.splice(to, 0, source);
+        onBoardGroupOrderChange?.([...boardGroupOrder.filter(id => !ids.includes(id)), ...ids].slice(-500));
+    };
     const move = async (row: DatabaseRow, source: string, target: string) => {
         if (!prop || busy || !row.canEdit || source === target) return;
         if (groupedStatus && target && !statusOptions(target).length) return;
@@ -106,11 +130,18 @@ export function DatabaseBoard({
                     선택, 상태, 담당자 또는 체크박스 속성을 추가해 그룹을 나눌 수 있습니다.
                 </p>
             )}
+            {ordered.some(([key]) => hiddenBoardGroups.includes(groupId(key))) && <details className="text-xs text-text-secondary">
+                <summary className="cursor-pointer py-2">숨긴 그룹</summary>
+                <div className="flex flex-wrap gap-2">{ordered.filter(([key]) => hiddenBoardGroups.includes(groupId(key))).map(([key, label]) =>
+                    <button key={key} type="button" disabled={busy} aria-label={`${label} 그룹 다시 표시`} className="rounded border border-border-primary px-3 py-2 hover:bg-bg-hover" onClick={() => onHiddenBoardGroupsChange?.(hiddenBoardGroups.filter(id => id !== groupId(key)))}>{label} · 다시 표시</button>
+                )}</div>
+            </details>}
             <div className="flex gap-3 overflow-x-auto pb-3" aria-label="데이터베이스 보드">
-                {[...labels].map(([key, label]) => {
+                {ordered.map(([key, label], index) => {
                     const grouped = rows.filter((row) =>
                         key === '' ? keys(row).length === 0 : keys(row).includes(key),
                     );
+                    if (hiddenBoardGroups.includes(groupId(key))) return null;
                     if ((key === '' || hideEmptyGroups) && grouped.length === 0) return null;
                     return (
                         <section
@@ -118,6 +149,7 @@ export function DatabaseBoard({
                             aria-label={`${label} 그룹`}
                             className={`${cardSize === 'small' ? 'w-56' : cardSize === 'large' ? 'w-96' : 'w-72'} shrink-0 rounded-panel border p-3 ${over === key ? 'border-action bg-bg-secondary' : 'border-border-primary bg-bg-secondary'}`}
                             onDragOver={(e) => {
+                                if (e.dataTransfer.types.includes(columnDragType)) { e.preventDefault(); return; }
                                 if (e.dataTransfer.types.includes(dragType) && !busy && (!groupedStatus || !key || statusOptions(key).length)) {
                                     e.preventDefault();
                                     e.dataTransfer.dropEffect = 'move';
@@ -128,6 +160,8 @@ export function DatabaseBoard({
                                 if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(null);
                             }}
                             onDrop={(e) => {
+                                const column = e.dataTransfer.getData(columnDragType);
+                                if (column) { e.preventDefault(); e.stopPropagation(); try { const data = JSON.parse(column); if (data.databaseId === database.id) reorder(data.id, groupId(key)); } catch {} return; }
                                 const raw = e.dataTransfer.getData(dragType);
                                 if (!raw) return;
                                 e.preventDefault();
@@ -143,8 +177,18 @@ export function DatabaseBoard({
                                 }
                             }}
                         >
-                            <h3 className="mb-3 text-sm font-medium">
+                            <h3 className="mb-3 flex items-center gap-2 text-sm font-medium" draggable={!busy && !!onBoardGroupOrderChange}
+                                onDragStart={event => { event.stopPropagation(); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData(columnDragType, JSON.stringify({ databaseId: database.id, id: groupId(key) })); }}>
+
                                 {prop && !groupedStatus && ['select', 'multi_select', 'status'].includes(prop.type) && key ? <DatabaseOptionTag property={prop} name={key}>{label}</DatabaseOptionTag> : label} <span className="text-text-tertiary">{grouped.length}</span>
+                                <details className="relative ml-auto text-xs" draggable={false} onDragStart={event => event.stopPropagation()}>
+                                    <summary aria-label={`${label} 그룹 옵션`} className="cursor-pointer list-none rounded px-2 py-1 hover:bg-bg-hover">···</summary>
+                                    <div className="absolute right-0 z-20 w-36 rounded border border-border-primary bg-bg-primary p-1 shadow-lg">
+                                        <button type="button" disabled={busy} className="block w-full p-2 text-left hover:bg-bg-hover" onClick={() => onHiddenBoardGroupsChange?.([...new Set([...hiddenBoardGroups, groupId(key)])].slice(-500))}>그룹 숨기기</button>
+                                        <button type="button" disabled={busy || index === 0} className="block w-full p-2 text-left hover:bg-bg-hover disabled:opacity-40" onClick={() => reorder(groupId(key), groupId(ordered[index - 1][0]))}>왼쪽으로 이동</button>
+                                        <button type="button" disabled={busy || index === ordered.length - 1} className="block w-full p-2 text-left hover:bg-bg-hover disabled:opacity-40" onClick={() => reorder(groupId(key), groupId(ordered[index + 1][0]))}>오른쪽으로 이동</button>
+                                    </div>
+                                </details>
                             </h3>
                             <div className="min-h-16 space-y-3">
                                 {grouped.map((row) => (
