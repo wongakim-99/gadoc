@@ -1,10 +1,15 @@
 'use client';
 
-import { use, useEffect, useMemo, useRef, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useChannelRoom } from '@/src/features/chat/model/useChannelRoom';
 import { useChatStore } from '@/src/features/chat/model/chat.store';
-import { readChannelViewportAnchor, writeChannelViewportAnchor } from '@/src/features/chat/model/channelViewportAnchor';
+import {
+    type ChannelViewportAnchor,
+    readChannelViewportAnchor,
+    writeChannelViewportAnchor,
+} from '@/src/features/chat/model/channelViewportAnchor';
+import { resolveViewportRestore, type RestoreTarget } from '@/src/features/chat/model/resolveViewportRestore';
 import { useHuddle } from '@/src/features/huddle/model/useHuddle';
 import { ChannelHeader } from '@/src/features/chat/ui/ChannelHeader';
 import { MessageList } from '@/src/features/chat/ui/MessageList';
@@ -17,11 +22,33 @@ interface Props {
     params: Promise<{ teamId: string; channelId: string }>;
 }
 
-type RestoreTarget = { createdAt: string; kind: 'message'; messageId: string } | { after: string; kind: 'unread' };
-
 export default function ChannelPage({ params }: Props) {
     const { teamId, channelId } = use(params);
     const searchParams = useSearchParams();
+    const messageId = searchParams.get('message');
+    const messageAt = searchParams.get('at');
+    return (
+        <ChannelRoom
+            key={JSON.stringify([teamId, channelId, messageId, messageAt])}
+            teamId={teamId}
+            channelId={channelId}
+            targetMessageId={messageId}
+            targetMessageAt={messageAt}
+        />
+    );
+}
+
+function ChannelRoom({
+    teamId,
+    channelId,
+    targetMessageId,
+    targetMessageAt,
+}: {
+    teamId: string;
+    channelId: string;
+    targetMessageId: string | null;
+    targetMessageAt: string | null;
+}) {
     const room = useChannelRoom(teamId, channelId);
     const messages = useChatStore((state) => state.messages);
     const [threadMessageId, setThreadMessageId] = useState<string | null>(null);
@@ -30,12 +57,13 @@ export default function ChannelPage({ params }: Props) {
         () => messages.find((message) => message.id === threadMessageId) ?? null,
         [messages, threadMessageId],
     );
-    const targetMessageId = searchParams.get('message');
-    const targetMessageAt = searchParams.get('at');
-    const [restoreTarget, setRestoreTarget] = useState<RestoreTarget | null>(null);
-    const [highlightMessageId, setHighlightMessageId] = useState<string | null>(targetMessageId);
-    const persistAnchorRef = useRef(false);
-    const restoreInitializedRef = useRef(false);
+    const isLoading = useChatStore((state) => state.isLoading);
+    const restoreTargetRef = useRef<RestoreTarget | null | undefined>(undefined);
+    const loadingHistoryRef = useRef(false);
+    const [restoration, setRestoration] = useState<{ ready: boolean; anchor: ChannelViewportAnchor | null }>({
+        ready: false,
+        anchor: null,
+    });
 
     const huddle = useHuddle(room.currentUserId, channelId);
     const huddleActive = huddle.activeChannelId === channelId;
@@ -49,93 +77,59 @@ export default function ChannelPage({ params }: Props) {
     };
 
     useEffect(() => {
-        persistAnchorRef.current = false;
-        restoreInitializedRef.current = false;
-        setRestoreTarget(null);
-        setHighlightMessageId(targetMessageId);
-    }, [channelId, targetMessageId]);
-
-    useEffect(() => {
-        if (restoreInitializedRef.current) return;
-
-        if (targetMessageId && targetMessageAt) {
-            restoreInitializedRef.current = true;
-            setRestoreTarget({
-                kind: 'message',
-                messageId: targetMessageId,
-                createdAt: targetMessageAt,
-            });
+        if (restoration.ready || isLoading || !room.currentUserId || room.channel?.id !== channelId) return;
+        if (restoreTargetRef.current === undefined) {
+            const stored = readChannelViewportAnchor(teamId, channelId, room.currentUserId);
+            restoreTargetRef.current =
+                targetMessageId && targetMessageAt
+                    ? { kind: 'message', messageId: targetMessageId, createdAt: targetMessageAt }
+                    : stored
+                      ? { kind: 'message', ...stored }
+                      : (room.channel.unreadCount ?? 0) > 0 && room.channel.lastReadAt
+                        ? { kind: 'unread', after: room.channel.lastReadAt }
+                        : null;
+        }
+        const target = restoreTargetRef.current;
+        const result = target
+            ? resolveViewportRestore(target, messages, room.hasOlderMessages)
+            : { loadOlder: false, anchor: null };
+        if (result.loadOlder) {
+            if (room.isLoadingOlder || loadingHistoryRef.current) return;
+            loadingHistoryRef.current = true;
+            void room
+                .loadOlderMessages()
+                .catch(() => {
+                    setRestoration({ ready: true, anchor: null });
+                })
+                .finally(() => {
+                    loadingHistoryRef.current = false;
+                });
             return;
         }
+        setRestoration({ ready: true, anchor: result.anchor });
+    }, [
+        channelId,
+        isLoading,
+        messages,
+        restoration.ready,
+        room.channel,
+        room.currentUserId,
+        room.hasOlderMessages,
+        room.isLoadingOlder,
+        room.loadOlderMessages,
+        targetMessageAt,
+        targetMessageId,
+        teamId,
+    ]);
 
-        if (!room.channel) return;
-
-        restoreInitializedRef.current = true;
-
-        if ((room.channel.unreadCount ?? 0) > 0 && room.channel.lastReadAt) {
-            setRestoreTarget({
-                kind: 'unread',
-                after: room.channel.lastReadAt,
-            });
-            return;
-        }
-
-        const storedAnchor = readChannelViewportAnchor(teamId, channelId);
-        if (storedAnchor) {
-            setRestoreTarget({
-                kind: 'message',
-                messageId: storedAnchor.messageId,
-                createdAt: storedAnchor.createdAt,
-            });
-            return;
-        }
-
-        persistAnchorRef.current = true;
-    }, [channelId, room.channel, targetMessageAt, targetMessageId, teamId]);
-
-    useEffect(() => {
-        if (!restoreTarget) return;
-
-        const oldestMessage = messages[0];
-
-        if (restoreTarget.kind === 'message') {
-            if (messages.some((message) => message.id === restoreTarget.messageId)) {
-                setHighlightMessageId(restoreTarget.messageId);
-                persistAnchorRef.current = true;
-                return;
+    const persistAnchor = useCallback(
+        (anchor: ChannelViewportAnchor | null) => {
+            if (restoration.ready && room.currentUserId && anchor) {
+                writeChannelViewportAnchor(teamId, channelId, anchor, room.currentUserId);
             }
-
-            if (!oldestMessage?.createdAt || room.isLoadingOlder || !room.hasOlderMessages) return;
-            if (new Date(oldestMessage.createdAt).getTime() > new Date(restoreTarget.createdAt).getTime()) {
-                void room.loadOlderMessages();
-                return;
-            }
-
-            persistAnchorRef.current = true;
-            setRestoreTarget(null);
-            return;
-        }
-
-        const unreadAnchor = messages.find(
-            (message) =>
-                !message.replyToId && new Date(message.createdAt).getTime() > new Date(restoreTarget.after).getTime(),
-        );
-
-        if (unreadAnchor) {
-            setHighlightMessageId(unreadAnchor.id);
-            persistAnchorRef.current = true;
-            return;
-        }
-
-        if (!oldestMessage?.createdAt || room.isLoadingOlder || !room.hasOlderMessages) return;
-        if (new Date(oldestMessage.createdAt).getTime() > new Date(restoreTarget.after).getTime()) {
-            void room.loadOlderMessages();
-            return;
-        }
-
-        persistAnchorRef.current = true;
-        setRestoreTarget(null);
-    }, [messages, restoreTarget, room.hasOlderMessages, room.isLoadingOlder, room.loadOlderMessages]);
+        },
+        [channelId, restoration.ready, room.currentUserId, teamId],
+    );
 
     return (
         <div className="flex flex-col h-full">
@@ -153,13 +147,12 @@ export default function ChannelPage({ params }: Props) {
                     <MessageList
                         currentUserId={room.currentUserId}
                         hasOlderMessages={room.hasOlderMessages}
-                        highlightMessageId={highlightMessageId}
+                        highlightMessageId={targetMessageId}
+                        isRestoring={!restoration.ready}
+                        restoreAnchor={restoration.anchor}
                         isLoadingOlder={room.isLoadingOlder}
                         onLoadOlder={room.loadOlderMessages}
-                        onViewportAnchorChange={(anchor) => {
-                            if (!persistAnchorRef.current) return;
-                            writeChannelViewportAnchor(teamId, channelId, anchor);
-                        }}
+                        onViewportAnchorChange={persistAnchor}
                         onReact={room.reactToMessage}
                         onDelete={room.deleteMessage}
                         onEdit={room.editMessage}
@@ -167,6 +160,7 @@ export default function ChannelPage({ params }: Props) {
                         onTogglePin={room.togglePinMessage}
                     />
                     <MessageInput
+                        draftScope={{ userId: room.currentUserId, teamId, channelId }}
                         channelName={room.channelLabel}
                         members={room.members}
                         readOnly={!room.canWrite}
@@ -186,6 +180,8 @@ export default function ChannelPage({ params }: Props) {
                 )}
                 {threadMessage && (
                     <ThreadPanel
+                        key={threadMessage.id}
+                        teamId={teamId}
                         canWrite={room.canWrite}
                         channelId={channelId}
                         parentMessage={threadMessage}
