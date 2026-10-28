@@ -216,7 +216,7 @@ test.describe.serial("slacord web e2e", () => {
     await page.getByRole("button", { name: "해결됨" }).click();
     await expect(page.getByText(editedCommentContent)).toBeVisible();
 
-    await page.getByRole("button", { name: "삭제" }).first().click();
+    await page.getByRole("region", { name: "문서 토론" }).getByRole("button", { name: "삭제", exact: true }).first().click();
     await page.getByRole("button", { name: "삭제하기" }).click();
     await expect(page.getByText("삭제된 코멘트입니다.")).toBeVisible();
   });
