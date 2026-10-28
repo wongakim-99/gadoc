@@ -4,107 +4,95 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { BlockNoteSchema, defaultBlockSpecs } from '@blocknote/core';
 import { createReactBlockSpec } from '@blocknote/react';
 import { DatabaseWorkspace } from '@/src/features/database/ui/DatabaseWorkspace';
-import { creationRequestId } from '@/src/features/database/model/creationRequestId';
 import { databaseApi, databaseContainerApi } from '@/lib/api-client';
 import type { KnowledgeDatabase } from '@/src/features/database/model/types';
 
 function DatabaseSetup({
     teamId,
     parentDocumentId,
+    blockId,
+    linked,
     onSelect,
 }: {
     teamId: string;
     parentDocumentId?: string;
+    blockId: string;
+    linked: boolean;
     onSelect: (id: string) => void;
 }) {
-    const creation = useRef<{ key: string; id: string } | null>(null);
-    const [name, setName] = useState('새 데이터베이스');
     const [items, setItems] = useState<KnowledgeDatabase[] | null>(null);
-    const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
-    const run = async (action: () => Promise<void>) => {
-        if (busy) return;
-        setBusy(true);
+    const [attempt, setAttempt] = useState(0);
+    const select = useRef(onSelect);
+    select.current = onSelect;
+    useEffect(() => {
+        let active = true;
         setError('');
-        try {
-            await action();
-        } catch (e) {
-            setError(e instanceof Error ? e.message : '데이터베이스를 불러오지 못했습니다.');
-        } finally {
-            setBusy(false);
-        }
-    };
-    return (
-        <section
-            aria-label="본문 데이터베이스 만들기"
-            className="rounded-panel border border-border-primary p-4 space-y-3"
-        >
-            <p className="font-medium">데이터베이스</p>
-            <p className="text-xs text-text-secondary">이 페이지 안에서 문서와 속성을 관리하세요.</p>
-            <form
-                className="flex flex-wrap gap-2"
-                onSubmit={(e) => {
-                    e.preventDefault();
-                    void run(async () => {
-                        const result = await databaseContainerApi.create(
-                            teamId,
-                            name.trim(),
-                            creationRequestId(creation, name.trim()),
-                            parentDocumentId,
-                        );
-                        if (!result.data) throw new Error('생성하지 못했습니다. 다시 시도하세요.');
-                        creation.current = null;
-                        onSelect(result.data.id);
-                    });
-                }}
-            >
-                <input
-                    aria-label="본문 데이터베이스 이름"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    maxLength={100}
-                    className="rounded-control border border-border-primary bg-bg-secondary px-3 py-2 text-sm"
-                />
-                <button
-                    disabled={busy || !name.trim()}
-                    className="rounded-control bg-action px-3 py-2 text-sm text-white"
-                >
-                    새 데이터베이스
-                </button>
-                <button
-                    type="button"
-                    disabled={busy}
-                    className="rounded-control border border-border-primary px-3 py-2 text-sm"
-                    onClick={() =>
-                        void run(async () => {
-                            const result = await databaseApi.list(teamId);
-                            if (!result.success) throw new Error('목록을 불러오지 못했습니다.');
-                            setItems(result.data ?? []);
-                        })
+        const load = async () => {
+            try {
+                if (linked) {
+                    const result = await databaseApi.list(teamId);
+                    if (!result.success) throw new Error('목록을 불러오지 못했습니다.');
+                    if (active) setItems(result.data ?? []);
+                } else {
+                    // Stable across StrictMode, reloads and ambiguous network failures.
+                    const hash = await crypto.subtle.digest(
+                        'SHA-256',
+                        new TextEncoder().encode(JSON.stringify([teamId, parentDocumentId, blockId])),
+                    );
+                    const requestId = Array.from(new Uint8Array(hash).slice(0, 12), (byte) =>
+                        byte.toString(16).padStart(2, '0'),
+                    ).join('');
+                    if (!active) return;
+                    const result = await databaseContainerApi.create(
+                        teamId,
+                        '새 데이터베이스',
+                        requestId,
+                        parentDocumentId,
+                    );
+                    if (!result.data) throw new Error('데이터베이스를 생성하지 못했습니다.');
+                    if (active) {
+                        select.current(result.data.id);
+                        window.dispatchEvent(new CustomEvent('slacord:documents-refresh'));
                     }
-                >
-                    기존 데이터베이스 연결
-                </button>
-            </form>
-            {items && (
-                <div className="space-y-1">
-                    {items.length === 0 && <p>연결할 데이터베이스가 없습니다.</p>}
+                }
+            } catch (caught) {
+                if (active) setError(caught instanceof Error ? caught.message : '데이터베이스를 불러오지 못했습니다.');
+            }
+        };
+        void load();
+        return () => {
+            active = false;
+        };
+    }, [teamId, parentDocumentId, blockId, linked, attempt]);
+    return (
+        <section aria-label={linked ? '데이터베이스 연결' : '데이터베이스 생성'} className="py-3">
+            {error ? (
+                <div role="alert" className="text-sm text-error">
+                    {error}
+                    <button type="button" onClick={() => setAttempt((value) => value + 1)} className="ml-2 underline">
+                        다시 시도
+                    </button>
+                </div>
+            ) : linked && items ? (
+                <div className="max-h-64 overflow-auto rounded-control border border-border-primary">
                     {items.map((item) => (
                         <button
                             key={item.id}
                             type="button"
-                            className="block w-full rounded-control p-2 text-left hover:bg-bg-hover"
+                            className="block w-full px-3 py-2 text-left text-sm hover:bg-bg-hover"
                             onClick={() => onSelect(item.id)}
                         >
                             {item.name}
                         </button>
                     ))}
+                    {!items.length && (
+                        <p className="p-3 text-sm text-text-secondary">연결할 데이터베이스가 없습니다.</p>
+                    )}
                 </div>
-            )}
-            {error && (
-                <p role="alert" className="text-sm text-error">
-                    {error}
+            ) : (
+                <p role="status" className="text-sm text-text-tertiary">
+                    {linked ? '불러오는 중…' : '생성 중…'}
                 </p>
             )}
         </section>
@@ -141,7 +129,11 @@ function DatabaseBlockBoundary({ id, children }: { id: string; children: ReactNo
 
 export function createDocumentSchema(teamId: string, documentId?: string) {
     const database = createReactBlockSpec(
-        { type: 'database', propSchema: { databaseId: { default: '' }, viewState: { default: '' } }, content: 'none' },
+        {
+            type: 'database',
+            propSchema: { databaseId: { default: '' }, viewState: { default: '' }, linked: { default: false } },
+            content: 'none',
+        },
         {
             render: ({ block, editor }) => (
                 <DatabaseBlockBoundary id={block.props.databaseId}>
@@ -160,6 +152,8 @@ export function createDocumentSchema(teamId: string, documentId?: string) {
                     ) : editor.isEditable ? (
                         <DatabaseSetup
                             parentDocumentId={documentId}
+                            blockId={block.id}
+                            linked={block.props.linked}
                             teamId={teamId}
                             onSelect={(id) => editor.updateBlock(block, { props: { databaseId: id } })}
                         />

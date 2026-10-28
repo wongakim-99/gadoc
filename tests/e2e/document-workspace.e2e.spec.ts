@@ -221,10 +221,10 @@ test("workspace shell stays mounted and aligned across every area", async ({
         path: testInfo.outputPath("workspace-issues.png"),
       });
   }
-  await sidebar.getByRole("link", { name: "설정", exact: true }).click();
-  await expect(
-    sidebar.getByRole("link", { name: "설정", exact: true }),
-  ).toHaveAttribute("aria-current", "page");
+  await sidebar.getByRole("button", { name: "사용자 메뉴", exact: true }).click();
+  await page.getByRole("dialog", { name: "사용자 메뉴", exact: true }).getByRole("link", { name: "설정", exact: true }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await page.keyboard.press("Escape");
   expect(await modules.boundingBox()).toEqual(initial);
   await sidebar
     .getByRole("button", { name: "사이드바 접기", exact: true })

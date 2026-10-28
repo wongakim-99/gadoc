@@ -74,14 +74,20 @@ test("issue references survive a failed save and persist after retry", async ({
 });
 
 async function choose(page: Page, kind: string, title: string) {
-  await page.getByRole("button", { name: "찾아서 열기", exact: true }).click();
-  const picker = page.getByRole("dialog", { name: "옆에 열 내용 선택" });
-  await picker.getByRole("button", { name: kind, exact: true }).click();
-  await picker
-    .getByRole("button", { name: `${title} 옆에 열기 ↗`, exact: true })
-    .click();
-  await expect(picker).toHaveCount(0);
-  return page.frameLocator('iframe[title="연결된 작업 화면"]');
+  const sidebar = page.getByRole("complementary", { name: "워크스페이스 사이드바" });
+  const side = page.frameLocator('iframe[title="연결된 작업 화면"]');
+  if (kind === "문서") {
+    await sidebar.getByRole("button", { name: `${title} 옆에 열기`, exact: true }).click();
+  } else {
+    await sidebar.getByRole("button", { name: `${kind === "대화" ? "채팅" : kind} 옆에 열기`, exact: true }).click();
+    if (kind === "이슈") await side.getByText(title, { exact: true }).filter({ visible: true }).click();
+    if (kind === "대화") {
+      await expect(side.getByRole("textbox")).toBeVisible();
+      await side.getByRole("textbox").click();
+      await sidebar.getByRole("button", { name: `# ${title} 옆에 열기`, exact: true }).click();
+    }
+  }
+  return side;
 }
 
 test("document and chat exchange durable references without sending drafts automatically", async ({
@@ -131,7 +137,7 @@ test("document and chat exchange durable references without sending drafts autom
     .filter({ hasText: "분할 화면에서 결정 근거 연결 검증" });
   await message.hover();
   await message.getByLabel(/대화 원문 .* 연결 메뉴/).click();
-  await message.getByRole("button", { name: "다른 본문에 링크 넣기" }).click();
+  await side.getByRole("button", { name: "다른 본문에 링크 넣기" }).click();
   await page
     .getByRole("button", { name: /본문에 링크 넣기: 대화 원문/ })
     .click();
@@ -153,7 +159,7 @@ test("document and chat exchange durable references without sending drafts autom
   const divider = page.getByRole("separator", { name: "작업 영역 너비" });
   await divider.focus();
   await divider.press("ArrowRight");
-  await expect(divider).toHaveAttribute("aria-valuenow", "60");
+  await expect(divider).toHaveAttribute("aria-valuenow", "55");
   await page.getByRole("button", { name: "좌우 바꾸기" }).click();
   await expect(page.locator(".connection-panes")).toHaveClass(/is-reversed/);
   await page.screenshot({ path: testInfo.outputPath("document-chat.png") });
@@ -221,6 +227,7 @@ test("two channel panes remain isolated and the side draft survives primary navi
     page.getByText("오른쪽 채널 전용 메시지", { exact: true }),
   ).toHaveCount(0);
   await side.locator("textarea").fill("작업 중인 메시지 유지");
+  await page.locator("main textarea").click();
   await page
     .getByRole("navigation", { name: "워크스페이스 영역", exact: true })
     .getByRole("link", { name: "공지", exact: true })
@@ -293,7 +300,7 @@ test("issues and announcements connect through a published reference with mobile
   await expect(
     page.getByRole("heading", { name: "이슈 트래커" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "운영 안내", exact: true }).click();
+  await page.getByRole("button", { name: "공지", exact: true }).click();
   await expect(side.getByText("배포 완료 안내", { exact: true })).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath("mobile-announcements.png"),

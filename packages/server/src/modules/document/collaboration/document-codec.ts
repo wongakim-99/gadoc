@@ -23,7 +23,7 @@ export class DocumentCodec {
         const database = core.createBlockSpec(
             {
                 type: 'database',
-                propSchema: { databaseId: { default: '' }, viewState: { default: '' } },
+                propSchema: { databaseId: { default: '' }, viewState: { default: '' }, linked: { default: false } },
                 content: 'none',
             },
             { render: () => ({ dom: globalThis.document.createElement('div') }) },

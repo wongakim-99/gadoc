@@ -5,7 +5,8 @@ import { useWorkspaceConnection } from '../model/useWorkspaceConnection';
 import { referenceMarkdown, workspaceHref, type WorkspaceReference } from '../model/workspaceReference';
 import { useWorkspaceDragSource } from '../model/useWorkspaceDragSource';
 import { ResourceNavigation } from './ResourceNavigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export function WorkspaceOpenButton({ reference }: { reference: WorkspaceReference }) {
     const connection = useWorkspaceConnection();
@@ -27,17 +28,28 @@ export function WorkspaceOpenButton({ reference }: { reference: WorkspaceReferen
     );
 }
 
-export function WorkspaceReferenceActions({ reference }: { reference: WorkspaceReference }) {
+export function WorkspaceReferenceActions({
+    reference,
+    onMenuOpenChange,
+}: {
+    reference: WorkspaceReference;
+    onMenuOpenChange?: (open: boolean) => void;
+}) {
     const [position, setPosition] = useState({ left: 0, top: 0 });
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDetailsElement>(null);
     const connection = useWorkspaceConnection();
     const dragSource = useWorkspaceDragSource(reference);
     if (!connection) return null;
     return (
         <span className="inline-flex shrink-0 items-center gap-1">
             <details
+                ref={menuRef}
                 className="relative"
                 onClick={(event) => event.stopPropagation()}
                 onToggle={(event) => {
+                    setMenuOpen(event.currentTarget.open);
+                    onMenuOpenChange?.(event.currentTarget.open);
                     if (!event.currentTarget.open) return;
                     const rect = event.currentTarget.getBoundingClientRect();
                     setPosition({
@@ -54,24 +66,27 @@ export function WorkspaceReferenceActions({ reference }: { reference: WorkspaceR
                 >
                     <Link2 size={15} />
                 </summary>
-                <div
-                    style={position}
-                    className="fixed z-[90] w-56 rounded-control border border-border-primary bg-bg-secondary p-2 shadow-lg"
-                >
-                    <p className="px-2 py-1 text-xs text-text-tertiary">
-                        아이콘을 끌어 자료에 연결하거나 옆에 열 수 있습니다.
-                    </p>
-                    <button
-                        type="button"
-                        className="w-full rounded-control p-2 text-left text-xs hover:bg-bg-hover"
-                        onClick={(event) => {
-                            connection.offer(reference);
-                            event.currentTarget.closest('details')?.removeAttribute('open');
-                        }}
-                    >
-                        다른 본문에 링크 넣기
-                    </button>
-                </div>
+                {menuOpen &&
+                    createPortal(
+                        <div
+                            style={position}
+                            className="fixed z-[90] w-56 rounded-control border border-border-primary bg-bg-secondary p-2 shadow-lg"
+                        >
+                            <button
+                                type="button"
+                                className="w-full rounded-control p-2 text-left text-xs hover:bg-bg-hover"
+                                onClick={() => {
+                                    connection.offer(reference);
+                                    if (menuRef.current) menuRef.current.open = false;
+                                    setMenuOpen(false);
+                                    onMenuOpenChange?.(false);
+                                }}
+                            >
+                                다른 본문에 링크 넣기
+                            </button>
+                        </div>,
+                        document.body,
+                    )}
             </details>
             <WorkspaceOpenButton reference={reference} />
         </span>

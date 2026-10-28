@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { FileText, Plus } from 'lucide-react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useWorkspaceConnection } from '@/src/features/workspace/model/useWorkspaceConnection';
+import { Database, FileText, Plus } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { DocumentTreeNode } from '@/src/entities/document/lib/buildDocumentTree';
 import { WorkspaceOpenButton } from '@/src/features/workspace/ui/WorkspaceReferenceActions';
@@ -20,8 +21,14 @@ interface Props {
 export function DocumentTreeBranch({ depth, expandedIds, node, onToggle, teamId, canCreate }: Props) {
     const hasChildren = node.children.length > 0;
     const expanded = expandedIds.has(node.id);
-    const href = `/${teamId}/docs/${node.id}`;
-    const active = usePathname() === href;
+    const href = node.databaseId ? `/${teamId}/docs?database=${node.databaseId}` : `/${teamId}/docs/${node.id}`;
+    const pathname = usePathname();
+    const search = useSearchParams();
+    const activeHref = useWorkspaceConnection()?.activeHref ?? pathname + '?' + search.toString();
+    const [activePath, activeQuery] = activeHref.split('?');
+    const active = node.databaseId
+        ? new URLSearchParams(activeQuery).get('database') === node.databaseId
+        : activePath === href;
     const reduceMotion = useReducedMotion();
     const reference = { kind: 'docs' as const, href, label: node.title };
     const dragSource = useWorkspaceDragSource(reference);
@@ -65,13 +72,17 @@ export function DocumentTreeBranch({ depth, expandedIds, node, onToggle, teamId,
                     }}
                     className={`document-tree-row flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors hover:bg-bg-hover ${active ? 'bg-bg-hover text-white' : 'text-text-secondary'}`}
                 >
-                    <FileText size={15} className="shrink-0 text-text-tertiary" />
+                    {node.databaseId ? (
+                        <Database size={15} className="shrink-0 text-text-tertiary" />
+                    ) : (
+                        <FileText size={15} className="shrink-0 text-text-tertiary" />
+                    )}
                     <div className="min-w-0">
                         <p className="truncate font-medium">{node.title}</p>
                     </div>
                 </Link>
                 <WorkspaceOpenButton reference={reference} />
-                {canCreate && (
+                {canCreate && !node.databaseId && (
                     <Link
                         href={`/${teamId}/docs?create=1&parentId=${encodeURIComponent(node.id)}`}
                         aria-label={`${node.title} 아래 페이지 추가`}

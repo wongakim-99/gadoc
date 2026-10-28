@@ -40,6 +40,7 @@ export interface DatabaseProperty {
     reverseOf?: {databaseId:string;propertyId:string};
 }
 export interface KnowledgeDatabase {
+    parentDocumentId?: string | null;
     locked?: boolean;
     id: string;
     name: string;

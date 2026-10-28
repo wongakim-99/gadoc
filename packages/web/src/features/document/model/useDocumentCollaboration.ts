@@ -16,7 +16,18 @@ export function useDocumentCollaboration(teamId: string, documentId: string) {
         current.current = live;
         setProvider(live);
         setState(live.state);
-        const unsubscribe = live.subscribe(() => setState(live.state));
+        let active = true;
+        let scheduled = false;
+        const unsubscribe = live.subscribe(() => {
+            // Editor initialization publishes awareness during render. Coalesce
+            // notifications after that render instead of updating its parent.
+            if (scheduled) return;
+            scheduled = true;
+            queueMicrotask(() => {
+                scheduled = false;
+                if (active) setState(live.state);
+            });
+        });
         const save = (event: KeyboardEvent) => {
             if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
                 event.preventDefault();
@@ -25,6 +36,7 @@ export function useDocumentCollaboration(teamId: string, documentId: string) {
         };
         window.addEventListener('keydown', save);
         return () => {
+            active = false;
             current.current = null;
             unsubscribe();
             window.removeEventListener('keydown', save);

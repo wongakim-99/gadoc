@@ -765,3 +765,16 @@ body:has(.workspace-shell) ::selection {
         flex-wrap: wrap;
     }
 }
+
+.connection-primary,
+.connection-secondary {
+    position: relative;
+}
+.connection-panes.is-split [data-active="true"]::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    border-top: 2px solid var(--color-action);
+}

@@ -61,9 +61,7 @@ test("create nested pages, preserve parent edits, retry failures and navigate th
     sidebar.getByRole("img", { name: "GaDoc", exact: true }),
   ).toBeVisible();
   await expect(
-    sidebar.getByRole("link", {
-      name: `${fixture.teamName} · 워크스페이스 전환`,
-    }),
+    sidebar.getByRole("button", { name: "워크스페이스 전환", exact: true }),
   ).toBeVisible();
   for (const parent of ancestors)
     await expect(
@@ -88,13 +86,9 @@ test("create nested pages, preserve parent edits, retry failures and navigate th
   });
   await sidebar.getByRole("link", { name: "제품 가이드", exact: true }).hover();
   await add.click();
-  await expect(
-    page.getByText("생성 위치: 제품 가이드 / 하위 페이지"),
-  ).toBeVisible();
-  await page
-    .getByRole("textbox", { name: "문서 제목", exact: true })
-    .fill("팀 운영");
-  await page.getByRole("button", { name: "생성", exact: true }).click();
+  await expect(title).toBeFocused();
+  await title.fill("팀 운영");
+  await title.press("Tab");
   await expect(title).toHaveValue("팀 운영");
   await expect(
     page

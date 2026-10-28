@@ -1,12 +1,12 @@
 'use client';
 
-import Link from 'next/link';
 import { DatabaseWorkspace } from '@/src/features/database/ui/DatabaseWorkspace';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { authApi, documentApi, teamApi } from '@/lib/api-client';
+import { authApi, databaseApi, documentApi, teamApi } from '@/lib/api-client';
 import { hasTeamWriteAccess, resolveCurrentTeamMember } from '@/src/entities/team/lib/access';
+import type { KnowledgeDatabase } from '@/src/features/database/model/types';
 import type { DocumentNode } from '@/src/entities/document/types';
 import type { TeamMemberSummary } from '@/src/entities/team/types';
 import { DocumentTree } from '@/src/widgets/document/ui/DocumentTree';
@@ -18,7 +18,7 @@ interface Props {
 export default function DocsPage({ params }: Props) {
     const { teamId } = use(params);
     const searchParams = useSearchParams();
-    if (searchParams.has('database') || searchParams.has('databases'))
+    if (searchParams.get('database'))
         return (
             <DatabaseWorkspace
                 key={searchParams.get('database') ?? 'index'}
@@ -36,13 +36,11 @@ function DocumentIndex({ teamId }: { teamId: string }) {
     const [docs, setDocs] = useState<DocumentNode[]>([]);
     const parent = docs.find((doc) => doc.id === parentId);
     const [canWrite, setCanWrite] = useState(false);
-    const [showCreate, setShowCreate] = useState(searchParams.get('create') === '1');
-    useEffect(() => {
-        if (searchParams.get('create') === '1') setShowCreate(true);
-    }, [searchParams]);
-    const [newTitle, setNewTitle] = useState('');
+    const creating = useRef(false);
+    const automaticCreation = useRef<string | null>(null);
 
     const [error, setError] = useState('');
+    const [databases, setDatabases] = useState<KnowledgeDatabase[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -50,9 +48,9 @@ function DocumentIndex({ teamId }: { teamId: string }) {
         let active = true;
         setLoading(true);
         setError('');
-        documentApi
-            .getDocuments(teamId)
-            .then((response) => {
+        Promise.all([documentApi.getDocuments(teamId), databaseApi.list(teamId)])
+            .then(([response, sources]) => {
+                if (active && sources.success) setDatabases(sources.data ?? []);
                 if (active && response.success && Array.isArray(response.data))
                     setDocs(response.data as DocumentNode[]);
             })
@@ -83,10 +81,9 @@ function DocumentIndex({ teamId }: { teamId: string }) {
         };
     }, [teamId]);
 
-    const handleCreate = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!canWrite || saving) return;
-        if (!newTitle.trim()) return;
+    const handleCreate = useCallback(async () => {
+        if (!canWrite || creating.current) return;
+        creating.current = true;
         setSaving(true);
         setError('');
         try {
@@ -94,47 +91,48 @@ function DocumentIndex({ teamId }: { teamId: string }) {
                 throw new Error('상위 페이지를 확인할 수 없습니다. 페이지 목록에서 다시 선택해 주세요.');
             const res = await documentApi.createDocument(teamId, {
                 parentId,
-                title: newTitle.trim(),
-                content: '',
+                title: '제목 없음',
+                content: '[]',
                 contentFormat: 'json',
             });
             if (!res.success || !res.data) throw new Error('문서를 생성하지 못했습니다.');
             const nextDoc = res.data as DocumentNode;
             setDocs((prev) => [...prev, nextDoc]);
-            setNewTitle('');
-            setShowCreate(false);
             window.dispatchEvent(new CustomEvent('slacord:documents-refresh'));
-            router.push(`/${teamId}/docs/${nextDoc.id}?edit=1`);
+            router.replace(`/${teamId}/docs/${nextDoc.id}?new=1`);
         } catch (caught) {
             setError(caught instanceof Error ? caught.message : '문서를 생성하지 못했습니다.');
         } finally {
+            creating.current = false;
             setSaving(false);
         }
-    };
+    }, [canWrite, parentId, parent, loading, teamId, router]);
+    const createRequested = searchParams.get('create') === '1';
+    useEffect(() => {
+        if (!createRequested) {
+            automaticCreation.current = null;
+            return;
+        }
+        if (loading || !canWrite) return;
+        const key = teamId + ':' + (parentId ?? 'root');
+        if (automaticCreation.current === key) return;
+        automaticCreation.current = key;
+        void handleCreate();
+    }, [createRequested, loading, canWrite, teamId, parentId, handleCreate]);
 
     return (
         <div className="min-h-full">
             <div className="workspace-topbar">
                 <div>
-                    <h2 className="text-xl font-bold text-white">문서/위키</h2>
-                    <p className="sr-only">
-                        {canWrite
-                            ? '문서를 찾고, 폴더를 펼쳐보고, 새 문서를 바로 블록 에디터로 시작할 수 있습니다.'
-                            : 'guest는 문서를 읽고 탐색할 수 있지만 새 문서를 만들 수는 없습니다.'}
-                    </p>
+                    <h2 className="text-xl font-bold text-white">문서</h2>
                 </div>
-                <Link
-                    href={`/${teamId}/docs?databases=1`}
-                    className="rounded-control border border-border-primary px-3 py-2 text-sm"
-                >
-                    데이터베이스
-                </Link>
                 {canWrite ? (
                     <button
-                        onClick={() => setShowCreate(true)}
+                        disabled={saving || loading}
+                        onClick={() => void handleCreate()}
                         className="px-4 py-2 rounded-lg bg-slack-green text-white text-sm font-medium hover:bg-slack-green/90 transition-colors"
                     >
-                        문서 생성
+                        {saving ? '생성 중…' : '새 페이지'}
                     </button>
                 ) : null}
             </div>
@@ -145,40 +143,12 @@ function DocumentIndex({ teamId }: { teamId: string }) {
                         {error}
                     </p>
                 )}
-                {showCreate && canWrite && (
-                    <form onSubmit={handleCreate} className="mb-6 flex flex-wrap gap-3">
-                        <p className="w-full text-sm text-text-secondary">
-                            생성 위치: {parentId ? `${parent?.title ?? '상위 페이지'} / 하위 페이지` : '최상위 페이지'}
-                        </p>
-                        <input
-                            value={newTitle}
-                            onChange={(e) => setNewTitle(e.target.value)}
-                            placeholder="문서 제목"
-                            aria-label="문서 제목"
-                            className="flex-1 bg-bg-secondary border border-border-primary rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-slack-green/50"
-                            required
-                        />
-                        <button
-                            type="submit"
-                            disabled={saving}
-                            className="px-4 py-2 rounded-lg bg-slack-green text-white text-sm font-medium"
-                        >
-                            {saving ? '생성 중…' : '생성'}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setShowCreate(false)}
-                            className="px-4 py-2 rounded-lg border border-border-primary text-text-secondary text-sm hover:text-white hover:bg-bg-hover transition-colors"
-                        >
-                            취소
-                        </button>
-                    </form>
-                )}
-
                 {loading ? (
                     <p role="status">문서를 불러오는 중입니다.</p>
                 ) : (
-                    !error && <DocumentTree documents={docs} teamId={teamId} canCreate={canWrite} />
+                    !error && (
+                        <DocumentTree documents={docs} databases={databases} teamId={teamId} canCreate={canWrite} />
+                    )
                 )}
             </div>
         </div>

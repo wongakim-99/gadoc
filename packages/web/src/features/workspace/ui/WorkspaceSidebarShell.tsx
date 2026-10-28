@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useWorkspaceConnection } from '../model/useWorkspaceConnection';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode, type RefObject } from 'react';
 import {
@@ -10,15 +11,14 @@ import {
     MessageSquare,
     ListTodo,
     Megaphone,
-    PanelLeftClose,
-    PanelLeftOpen,
+    ChevronLeft,
+    ChevronRight,
     Search,
-    Settings,
     Trash2,
-    ChevronsUpDown,
     Menu,
 } from 'lucide-react';
 import { NotificationBell } from '@/src/features/notification/ui/NotificationBell';
+import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarUserBar } from './SidebarUserBar';
 import { useWorkspaceDragSource } from '../model/useWorkspaceDragSource';
 import { WorkspaceOpenButton } from './WorkspaceReferenceActions';
@@ -50,7 +50,8 @@ export function WorkspaceSidebarShell({
     searchButtonRef: RefObject<HTMLButtonElement | null>;
     isDesktopMac: boolean;
 }) {
-    const pathname = usePathname();
+    const routePathname = usePathname();
+    const pathname = useWorkspaceConnection()?.activePath ?? routePathname;
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     useEffect(() => setMobileOpen(false), [pathname]);
@@ -83,26 +84,17 @@ export function WorkspaceSidebarShell({
                 >
                     <Image src="/logo-workspace.svg" alt="GaDoc" width={32} height={32} />
                 </Link>
-                <Link
-                    href="/dashboard"
-                    title="워크스페이스 전환"
-                    aria-label={`${teamName} · 워크스페이스 전환`}
-                    className={`flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold ${hideCollapsed}`}
-                >
-                    <span className="min-w-0">
-                        <span className="block text-[11px] font-medium leading-4 text-text-tertiary">GaDoc</span>
-                        <span className="block truncate text-[13px] leading-5">{teamName}</span>
-                    </span>
-                    <ChevronsUpDown size={14} className="shrink-0 text-text-tertiary" />
-                </Link>
+                <div className={'min-w-0 flex-1 ' + hideCollapsed}>
+                    <WorkspaceSwitcher teamId={teamId} teamName={teamName} />
+                </div>
                 <button
                     type="button"
                     aria-label={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
                     aria-expanded={!collapsed}
                     onClick={() => setCollapsed(!collapsed)}
-                    className="hidden rounded p-2 text-text-secondary hover:bg-bg-hover lg:block"
+                    className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-control text-text-secondary hover:bg-bg-hover lg:inline-flex"
                 >
-                    {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+                    {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
                 </button>
                 <button
                     type="button"
@@ -138,9 +130,6 @@ export function WorkspaceSidebarShell({
                             {isDesktopMac ? '⌘ K' : 'Ctrl K'}
                         </span>
                     </button>
-                    <div className={hideCollapsed}>
-                        <NotificationBell teamId={teamId} />
-                    </div>
                 </div>
                 <nav
                     aria-label="워크스페이스 영역"
@@ -169,35 +158,32 @@ export function WorkspaceSidebarShell({
                 >
                     {context}
                 </nav>
-                <div className={`mt-auto shrink-0 border-t border-border-primary ${collapsed ? 'lg:pt-2' : ''}`}>
-                    <div
-                        className={`flex items-center gap-1 px-3 py-2 text-xs text-text-secondary ${collapsed ? 'lg:flex-col lg:px-1' : ''}`}
-                    >
-                        {canAdmin && (
-                            <Link
-                                href={`/${teamId}/docs/archived`}
-                                title="문서 휴지통"
-                                aria-label="문서 휴지통"
-                                aria-current={pathname === `/${teamId}/docs/archived` ? 'page' : undefined}
-                                className="flex items-center gap-1 rounded p-2 hover:bg-bg-hover"
-                            >
-                                <Trash2 size={14} />
-                                <span className={hideCollapsed}>휴지통</span>
-                            </Link>
-                        )}
+                <div className="mt-auto shrink-0 border-t border-border-primary">
+                    {area === 'docs' && canAdmin && (
                         <Link
-                            href={`/${teamId}/settings`}
-                            title="설정"
-                            aria-label="설정"
-                            aria-current={area === 'settings' ? 'page' : undefined}
-                            className={`flex items-center gap-1 rounded p-2 hover:bg-bg-hover ${area === 'settings' ? 'bg-bg-active text-text-primary' : ''}`}
+                            href={`/${teamId}/docs/archived`}
+                            aria-label="문서 휴지통"
+                            className={
+                                'mx-3 mt-2 flex items-center gap-2 rounded-control p-2 text-sm text-text-secondary hover:bg-bg-hover ' +
+                                hideCollapsed
+                            }
                         >
-                            <Settings size={14} />
-                            <span className={hideCollapsed}>설정</span>
+                            <Trash2 size={16} />
+                            휴지통
                         </Link>
-                    </div>
-                    <div className={hideCollapsed}>
-                        <SidebarUserBar username={username} onLogout={onLogout} />
+                    )}
+                    <div className={'flex min-w-0 items-center ' + (collapsed ? 'lg:flex-col' : '')}>
+                        <div className="min-w-0 flex-1">
+                            <SidebarUserBar
+                                username={username}
+                                teamId={teamId}
+                                collapsed={collapsed}
+                                onLogout={onLogout}
+                            />
+                        </div>
+                        <div className="pr-2">
+                            <NotificationBell teamId={teamId} compact />
+                        </div>
                     </div>
                 </div>
             </div>

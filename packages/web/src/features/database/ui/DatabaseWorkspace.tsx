@@ -61,7 +61,6 @@ export function DatabaseWorkspace({
     onInlineStateChange?: (state: string) => void;
 }) {
     const instanceId = useId();
-    const newDatabaseRequest = useRef<{ key: string; id: string } | null>(null);
     const router = useRouter();
     const searchParams = useSearchParams();
     const [localViews, setLocalViews] = useState(() => readInlineDatabaseViews(inlineState));
@@ -89,7 +88,6 @@ export function DatabaseWorkspace({
     const pending = useRef(false);
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
-    const [name, setName] = useState('');
     const [contextRow, setContextRow] = useState<string | null>(null);
     const duplicateCreation = useRef<{ key: string; id: string } | null>(null);
     const pageCreation = useRef<{ key: string; id: string } | null>(null);
@@ -476,8 +474,8 @@ export function DatabaseWorkspace({
             <header className={inline ? 'flex items-center justify-between gap-3 px-1 pb-2' : 'workspace-topbar'}>
                 <div>
                     {!inline && (
-                        <Link href={`/${teamId}/docs?databases=1`} className="text-xs text-text-secondary">
-                            문서 · 지식베이스
+                        <Link href={`/${teamId}/docs`} className="text-xs text-text-secondary">
+                            문서
                         </Link>
                     )}
                     <h2 aria-label={database?.name ?? '데이터베이스'}>
@@ -504,6 +502,7 @@ export function DatabaseWorkspace({
                 </div>
                 <Link
                     href={inline ? `/${teamId}/docs?database=${databaseId}` : `/${teamId}/docs`}
+                    data-open-in-current-pane
                     className={buttonClass}
                 >
                     {inline ? (
@@ -572,64 +571,6 @@ export function DatabaseWorkspace({
                 <p role="status" className="sr-only">
                     {busy ? '저장 중…' : loading ? '불러오는 중…' : notice}
                 </p>
-                {!databaseId && (
-                    <>
-                        {canManageDatabase && (
-                            <form
-                                className="flex flex-wrap gap-2"
-                                onSubmit={(event) => {
-                                    event.preventDefault();
-                                    void mutate(async () => {
-                                        const result = await databaseContainerApi.create(
-                                            teamId,
-                                            name,
-                                            creationRequestId(newDatabaseRequest, name.trim()),
-                                        );
-                                        if (!result.data) throw new Error('생성하지 못했습니다.');
-                                        setName('');
-                                        newDatabaseRequest.current = null;
-                                        router.push(`/${teamId}/docs?database=${result.data.id}`);
-                                    }, '데이터베이스를 만들었습니다.');
-                                }}
-                            >
-                                <input
-                                    aria-label="데이터베이스 이름"
-                                    placeholder="예: 제품 지식베이스"
-                                    className={inputClass}
-                                    value={name}
-                                    required
-                                    maxLength={100}
-                                    onChange={(e) => setName(e.target.value)}
-                                />
-                                <button
-                                    disabled={busy || !name.trim()}
-                                    className="rounded-control bg-action px-3 py-2 text-sm text-white"
-                                >
-                                    데이터베이스 만들기
-                                </button>
-                            </form>
-                        )}
-                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                            {databases.map((db) => (
-                                <Link
-                                    key={db.id}
-                                    href={`/${teamId}/docs?database=${db.id}`}
-                                    className="rounded-panel border border-border-primary bg-bg-secondary p-4 hover:bg-bg-hover"
-                                >
-                                    <h3 className="font-medium">{db.name}</h3>
-                                    <p className="mt-2 text-xs text-text-secondary">
-                                        속성 {db.properties.length}개 · 문서 기반
-                                    </p>
-                                </Link>
-                            ))}
-                        </div>
-                        {!loading && !databases.length && !error && (
-                            <p className="rounded-panel border border-dashed border-border-primary p-8 text-sm text-text-secondary">
-                                프로젝트, 제품 문서, 회의록 등을 데이터베이스로 묶어 관리하세요.
-                            </p>
-                        )}
-                    </>
-                )}
                 {database && !loading && (
                     <>
                         <div className="flex flex-wrap items-center gap-1 pb-2" aria-label="저장된 보기">
