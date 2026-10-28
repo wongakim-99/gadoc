@@ -41,6 +41,7 @@ export class UploadMessageAttachmentUseCase {
         const stored = await this.fileStorage.upload({
             buffer: input.file.buffer,
             objectName,
+            originalName: input.file.originalname,
             mimeType: input.file.mimetype || 'application/octet-stream',
             size: input.file.size,
         });
