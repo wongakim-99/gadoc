@@ -1,3 +1,4 @@
+import { optionDisplayValue, optionStoredValue } from './option-identities';
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -131,7 +132,7 @@ export class IssueSourceService {
     private rowValues(properties: DatabaseProperty[], issue: Issue) {
         const active = properties.filter((p) => !p.archived);
         const values: Record<string, PropertyValue> = {
-            ...Object.fromEntries(active.map((p) => [p.id, issue.databaseValues?.[p.id] ?? null])),
+            ...Object.fromEntries(active.map((p) => [p.id, optionDisplayValue(p, issue.databaseValues?.[p.id] ?? null)])),
             status: ISSUE_STATUS_LABELS[issue.status as keyof typeof ISSUE_STATUS_LABELS],
             owner: issue.assigneeIds ?? [],
             priority: ISSUE_PRIORITY_LABELS[issue.priority as keyof typeof ISSUE_PRIORITY_LABELS],
@@ -219,7 +220,7 @@ export class IssueSourceService {
                 const prop = source.properties.find((p) => p.id === key && !p.archived);
                 if (!prop || !/^[a-zA-Z0-9_-]+$/.test(key)) throw new BadRequestException('편집할 수 없는 속성입니다.');
                 await this.validateCustomValue(teamId, prop, value);
-                patch[`databaseValues.${key}`] = value;
+                patch[`databaseValues.${key}`] = optionStoredValue(prop, value);
             }
         }
         return patch;
